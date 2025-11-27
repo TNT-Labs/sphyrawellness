@@ -3,6 +3,7 @@ import { useApp } from '../contexts/AppContext';
 import { Customer } from '../types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
@@ -65,9 +66,22 @@ const Customers: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate email
+    if (!isValidEmail(formData.email)) {
+      alert('Inserisci un indirizzo email valido');
+      return;
+    }
+
+    // Validate phone
+    if (!isValidPhone(formData.phone)) {
+      alert('Inserisci un numero di telefono valido (es: +39 333 1234567)');
+      return;
+    }
+
     const customerData: Customer = {
-      id: editingCustomer?.id || Date.now().toString(),
+      id: editingCustomer?.id || generateId(),
       ...formData,
+      phone: formatPhoneNumber(formData.phone),
       dateOfBirth: formData.dateOfBirth || undefined,
       notes: formData.notes || undefined,
       allergies: formData.allergies || undefined,

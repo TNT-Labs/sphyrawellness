@@ -10,20 +10,52 @@ const STORAGE_KEYS = {
 };
 
 // Generic storage functions
-export const saveToStorage = <T>(key: string, data: T): void => {
+export const saveToStorage = <T>(key: string, data: T): boolean => {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    const serialized = JSON.stringify(data);
+    localStorage.setItem(key, serialized);
+    return true;
   } catch (error) {
-    console.error('Error saving to storage:', error);
+    if (error instanceof Error) {
+      if (error.name === 'QuotaExceededError') {
+        console.error('LocalStorage quota exceeded. Cannot save data.');
+        // In a real app, notify user to clear data or upgrade
+      } else {
+        console.error('Error saving to storage:', error.message);
+      }
+    }
+    return false;
   }
 };
 
 export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
   try {
     const item = localStorage.getItem(key);
-    return item ? JSON.parse(item) : defaultValue;
+    if (!item) {
+      return defaultValue;
+    }
+
+    const parsed = JSON.parse(item);
+
+    // Basic validation: ensure parsed data has expected structure
+    if (parsed === null || parsed === undefined) {
+      console.warn(`Invalid data in localStorage for key: ${key}`);
+      return defaultValue;
+    }
+
+    return parsed;
   } catch (error) {
-    console.error('Error loading from storage:', error);
+    if (error instanceof SyntaxError) {
+      console.error(`Corrupted data in localStorage for key: ${key}. Returning default.`);
+      // Clear corrupted data
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        // Ignore if we can't remove
+      }
+    } else {
+      console.error('Error loading from storage:', error);
+    }
     return defaultValue;
   }
 };

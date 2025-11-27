@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react';
+import { generateId } from '../utils/helpers';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService } = useApp();
@@ -72,7 +73,7 @@ const Services: React.FC = () => {
     e.preventDefault();
 
     const serviceData: Service = {
-      id: editingService?.id || Date.now().toString(),
+      id: editingService?.id || generateId(),
       ...formData,
     };
 

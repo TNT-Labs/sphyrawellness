@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { generateId, calculateEndTime } from '../utils/helpers';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -104,16 +105,19 @@ const CalendarPage: React.FC = () => {
     e.preventDefault();
 
     const service = services.find((s) => s.id === formData.serviceId);
-    if (!service) return;
+    if (!service) {
+      alert('Servizio non trovato');
+      return;
+    }
 
-    const [hours, minutes] = formData.startTime.split(':').map(Number);
-    const endMinutes = hours * 60 + minutes + service.duration;
-    const endHours = Math.floor(endMinutes / 60);
-    const endMins = endMinutes % 60;
-    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+    const endTime = calculateEndTime(formData.startTime, service.duration);
+    if (!endTime) {
+      alert('Errore nel calcolo dell\'ora di fine. Verifica l\'orario inserito.');
+      return;
+    }
 
     const appointmentData: Appointment = {
-      id: editingAppointment?.id || Date.now().toString(),
+      id: editingAppointment?.id || generateId(),
       customerId: formData.customerId,
       serviceId: formData.serviceId,
       staffId: formData.staffId,
