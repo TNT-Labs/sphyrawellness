@@ -39,6 +39,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        navigateFallback: null, // Disable automatic offline fallback
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -54,6 +55,10 @@ export default defineConfig({
               }
             }
           }
+        ],
+        // Include offline page
+        additionalManifestEntries: [
+          { url: '/sphyrawellness/offline.html', revision: null }
         ]
       },
       devOptions: {

@@ -3,6 +3,7 @@ import { useApp } from '../contexts/AppContext';
 import { Staff } from '../types';
 import { Plus, Search, Edit, Trash2, UserCheck, Mail, Phone } from 'lucide-react';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const StaffPage: React.FC = () => {
   const { staff, addStaff, updateStaff, deleteStaff, services } = useApp();
@@ -73,6 +74,9 @@ const StaffPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingStaff(null);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

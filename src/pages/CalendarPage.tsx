@@ -10,6 +10,7 @@ import {
 import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generateId, calculateEndTime } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -99,6 +100,9 @@ const CalendarPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingAppointment(null);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

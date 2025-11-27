@@ -5,6 +5,7 @@ import { DollarSign, Plus, CreditCard, Banknote, Building2, Search } from 'lucid
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generateId } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const Payments: React.FC = () => {
   const { payments, addPayment, appointments, customers, services } = useApp();
@@ -79,6 +80,9 @@ const Payments: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

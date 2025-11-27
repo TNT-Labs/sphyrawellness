@@ -4,6 +4,7 @@ import { Customer } from '../types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
@@ -61,6 +62,9 @@ const Customers: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCustomer(null);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -3,6 +3,7 @@ import { useApp } from '../contexts/AppContext';
 import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react';
 import { generateId } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService } = useApp();
@@ -67,6 +68,9 @@ const Services: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingService(null);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
