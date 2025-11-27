@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../hooks/useConfirm';
+import { useDebounce } from '../hooks/useDebounce';
 import { Customer } from '../types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
 import { format } from 'date-fns';
@@ -8,9 +11,14 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
+  const { showSuccess, showError } = useToast();
+  const { confirm, ConfirmationDialog } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+
+  // Debounce search term
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -22,15 +30,18 @@ const Customers: React.FC = () => {
     allergies: '',
   });
 
-  const filteredCustomers = customers.filter((customer) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      customer.firstName.toLowerCase().includes(searchLower) ||
-      customer.lastName.toLowerCase().includes(searchLower) ||
-      customer.email.toLowerCase().includes(searchLower) ||
-      customer.phone.includes(searchTerm)
-    );
-  });
+  // Memoize filtered customers with debounced search
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((customer) => {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      return (
+        customer.firstName.toLowerCase().includes(searchLower) ||
+        customer.lastName.toLowerCase().includes(searchLower) ||
+        customer.email.toLowerCase().includes(searchLower) ||
+        customer.phone.includes(debouncedSearchTerm)
+      );
+    });
+  }, [customers, debouncedSearchTerm]);
 
   const handleOpenModal = (customer?: Customer) => {
     if (customer) {
@@ -62,23 +73,23 @@ const Customers: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingCustomer(null);
+  };
 
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate email
     if (!isValidEmail(formData.email)) {
-      alert('Inserisci un indirizzo email valido');
+      showError('Inserisci un indirizzo email valido');
       return;
     }
 
     // Validate phone
     if (!isValidPhone(formData.phone)) {
-      alert('Inserisci un numero di telefono valido (es: +39 333 1234567)');
+      showError('Inserisci un numero di telefono valido (es: +39 333 1234567)');
       return;
     }
 
@@ -94,21 +105,33 @@ const Customers: React.FC = () => {
 
     if (editingCustomer) {
       updateCustomer(customerData);
+      showSuccess('Cliente aggiornato con successo!');
     } else {
       addCustomer(customerData);
+      showSuccess('Cliente aggiunto con successo!');
     }
 
     handleCloseModal();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questo cliente?')) {
-      deleteCustomer(id);
+  const handleDelete = async (customer: Customer) => {
+    const confirmed = await confirm({
+      title: 'Elimina Cliente',
+      message: `Sei sicuro di voler eliminare ${customer.firstName} ${customer.lastName}? Questa azione non può essere annullata.`,
+      confirmText: 'Elimina',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      deleteCustomer(customer.id);
+      showSuccess('Cliente eliminato con successo!');
     }
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <ConfirmationDialog />
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -214,7 +237,7 @@ const Customers: React.FC = () => {
                   Modifica
                 </button>
                 <button
-                  onClick={() => handleDelete(customer.id)}
+                  onClick={() => handleDelete(customer)}
                   className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold"
                 >
                   <Trash2 size={16} className="inline mr-1" />
@@ -348,6 +371,7 @@ const Customers: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

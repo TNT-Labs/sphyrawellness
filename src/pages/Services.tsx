@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../hooks/useConfirm';
+import { useDebounce } from '../hooks/useDebounce';
 import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react';
 import { generateId } from '../utils/helpers';
@@ -7,9 +10,14 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService } = useApp();
+  const { showSuccess } = useToast();
+  const { confirm, ConfirmationDialog } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+
+  // Debounce search
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -31,14 +39,16 @@ const Services: React.FC = () => {
     'Altro',
   ];
 
-  const filteredServices = services.filter((service) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      service.name.toLowerCase().includes(searchLower) ||
-      service.category.toLowerCase().includes(searchLower) ||
-      service.description.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredServices = useMemo(() => {
+    return services.filter((service) => {
+      const searchLower = debouncedSearchTerm.toLowerCase();
+      return (
+        service.name.toLowerCase().includes(searchLower) ||
+        service.category.toLowerCase().includes(searchLower) ||
+        service.description.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [services, debouncedSearchTerm]);
 
   const handleOpenModal = (service?: Service) => {
     if (service) {
@@ -68,10 +78,10 @@ const Services: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingService(null);
+  };
 
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,21 +93,33 @@ const Services: React.FC = () => {
 
     if (editingService) {
       updateService(serviceData);
+      showSuccess('Servizio aggiornato con successo!');
     } else {
       addService(serviceData);
+      showSuccess('Servizio aggiunto con successo!');
     }
 
     handleCloseModal();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questo servizio?')) {
-      deleteService(id);
+  const handleDelete = async (service: Service) => {
+    const confirmed = await confirm({
+      title: 'Elimina Servizio',
+      message: `Sei sicuro di voler eliminare "${service.name}"? Questa azione non può essere annullata.`,
+      confirmText: 'Elimina',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      deleteService(service.id);
+      showSuccess('Servizio eliminato con successo!');
     }
   };
 
   return (
-    <div className="space-y-6">
+    <>
+      <ConfirmationDialog />
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -196,7 +218,7 @@ const Services: React.FC = () => {
                   Modifica
                 </button>
                 <button
-                  onClick={() => handleDelete(service.id)}
+                  onClick={() => handleDelete(service)}
                   className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold"
                 >
                   <Trash2 size={16} className="inline mr-1" />
@@ -338,6 +360,7 @@ const Services: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

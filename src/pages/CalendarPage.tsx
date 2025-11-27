@@ -11,6 +11,7 @@ import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generateId, calculateEndTime } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useToast } from '../contexts/ToastContext';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -22,6 +23,7 @@ const CalendarPage: React.FC = () => {
     services,
     staff,
   } = useApp();
+  const { showSuccess, showError } = useToast();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -110,13 +112,13 @@ const CalendarPage: React.FC = () => {
 
     const service = services.find((s) => s.id === formData.serviceId);
     if (!service) {
-      alert('Servizio non trovato');
+      showError('Servizio non trovato');
       return;
     }
 
     const endTime = calculateEndTime(formData.startTime, service.duration);
     if (!endTime) {
-      alert('Errore nel calcolo dell\'ora di fine. Verifica l\'orario inserito.');
+      showError('Errore nel calcolo dell\'ora di fine. Verifica l\'orario inserito.');
       return;
     }
 
@@ -135,8 +137,10 @@ const CalendarPage: React.FC = () => {
 
     if (editingAppointment) {
       updateAppointment(appointmentData);
+      showSuccess('Appuntamento aggiornato con successo!');
     } else {
       addAppointment(appointmentData);
+      showSuccess('Appuntamento aggiunto con successo!');
     }
 
     handleCloseModal();

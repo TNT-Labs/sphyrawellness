@@ -6,9 +6,11 @@ import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generateId } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useToast } from '../contexts/ToastContext';
 
 const Payments: React.FC = () => {
   const { payments, addPayment, appointments, customers, services } = useApp();
+  const { showSuccess } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -95,6 +97,7 @@ const Payments: React.FC = () => {
     };
 
     addPayment(paymentData);
+      showSuccess('Pagamento aggiunto con successo!');
     handleCloseModal();
   };
 

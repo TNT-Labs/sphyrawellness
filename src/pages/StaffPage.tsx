@@ -4,9 +4,11 @@ import { Staff } from '../types';
 import { Plus, Search, Edit, Trash2, UserCheck, Mail, Phone } from 'lucide-react';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useToast } from '../contexts/ToastContext';
 
 const StaffPage: React.FC = () => {
   const { staff, addStaff, updateStaff, deleteStaff, services } = useApp();
+  const { showSuccess, showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -84,13 +86,13 @@ const StaffPage: React.FC = () => {
 
     // Validate email
     if (!isValidEmail(formData.email)) {
-      alert('Inserisci un indirizzo email valido');
+      showError('Inserisci un indirizzo email valido');
       return;
     }
 
     // Validate phone
     if (!isValidPhone(formData.phone)) {
-      alert('Inserisci un numero di telefono valido (es: +39 333 1234567)');
+      showError('Inserisci un numero di telefono valido (es: +39 333 1234567)');
       return;
     }
 
@@ -102,8 +104,10 @@ const StaffPage: React.FC = () => {
 
     if (editingStaff) {
       updateStaff(staffData);
+      showSuccess('Membro aggiornato con successo!');
     } else {
       addStaff(staffData);
+      showSuccess('Membro aggiunto con successo!');
     }
 
     handleCloseModal();
