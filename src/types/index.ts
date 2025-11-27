@@ -1,0 +1,73 @@
+export interface Customer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  dateOfBirth?: string;
+  notes?: string;
+  allergies?: string;
+  createdAt: string;
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  description: string;
+  duration: number; // in minutes
+  price: number;
+  category: string;
+  color?: string;
+}
+
+export interface Staff {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  role: string;
+  specializations: string[];
+  color: string;
+  isActive: boolean;
+}
+
+export interface Appointment {
+  id: string;
+  customerId: string;
+  serviceId: string;
+  staffId: string;
+  date: string; // ISO format
+  startTime: string; // HH:mm format
+  endTime: string; // HH:mm format
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
+  notes?: string;
+  reminderSent?: boolean;
+  createdAt: string;
+}
+
+export interface Payment {
+  id: string;
+  appointmentId: string;
+  amount: number;
+  method: 'cash' | 'card' | 'transfer' | 'other';
+  date: string;
+  notes?: string;
+}
+
+export interface Reminder {
+  id: string;
+  appointmentId: string;
+  type: 'email' | 'sms' | 'whatsapp' | 'notification';
+  scheduledFor: string;
+  sent: boolean;
+  sentAt?: string;
+}
+
+export interface Statistics {
+  totalRevenue: number;
+  appointmentsCount: number;
+  customersCount: number;
+  popularServices: { serviceId: string; count: number }[];
+  revenueByMonth: { month: string; revenue: number }[];
+}
