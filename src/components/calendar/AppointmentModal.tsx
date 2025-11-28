@@ -8,6 +8,7 @@ import { useEscapeKey } from '../../hooks/useEscapeKey';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
+import { logger } from '../../utils/logger';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -125,7 +126,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       onClose();
     } catch (error) {
       showError("Errore durante il salvataggio dell'appuntamento");
-      console.error(error);
+      logger.error('Error saving appointment:', error);
     }
   };
 
@@ -151,7 +152,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         onClose();
       } catch (error) {
         showError("Errore durante l'eliminazione dell'appuntamento");
-        console.error(error);
+        logger.error('Error saving appointment:', error);
       }
     }
   };

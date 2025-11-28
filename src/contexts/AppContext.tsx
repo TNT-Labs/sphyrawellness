@@ -112,24 +112,29 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
 
   // Initialize database and load data
   useEffect(() => {
+    let isMounted = true;
+
     const initializeApp = async () => {
       try {
         setIsLoading(true);
 
-        // Initialize IndexedDB
+        // Step 1: Initialize database infrastructure
         await initDB();
+        if (!isMounted) return;
         logger.log('✓ IndexedDB initialized');
 
-        // Request storage persistence to prevent data loss
+        // Step 2: Request storage persistence to prevent data loss
         await initStoragePersistence();
+        if (!isMounted) return;
 
-        // Migrate data from localStorage if needed
+        // Step 3: Migrate data from localStorage if needed (sequential to avoid race)
         const migrationResult = await migrateFromLocalStorage();
+        if (!isMounted) return;
         if (migrationResult.success && migrationResult.itemsMigrated > 0) {
           logger.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
         }
 
-        // Load all data from IndexedDB
+        // Step 4: Load all data from IndexedDB
         const [
           loadedCustomers,
           loadedServices,
@@ -150,7 +155,9 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
           getAllServiceCategories(),
         ]);
 
-        // If no data exists, initialize with demo data
+        if (!isMounted) return;
+
+        // Step 5: Initialize demo data if database is empty
         if (
           loadedCustomers.length === 0 &&
           loadedServices.length === 0 &&
@@ -161,8 +168,9 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
 
           // Trigger migration again to load demo data into IndexedDB
           await migrateFromLocalStorage();
+          if (!isMounted) return;
 
-          // Reload data
+          // Reload data after demo initialization
           const [demoCustomers, demoServices, demoStaff, demoRoles, demoCategories] = await Promise.all([
             getAllCustomers(),
             getAllServices(),
@@ -170,6 +178,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
             getAllStaffRoles(),
             getAllServiceCategories(),
           ]);
+
+          if (!isMounted) return;
 
           setCustomers(demoCustomers);
           setServices(demoServices);
@@ -190,28 +200,43 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
 
         logger.log('✓ App data loaded successfully');
 
-        // Initialize auto-backup system
-        await initAutoBackup();
+        // Step 6: Initialize auto-backup system (non-blocking)
+        if (isMounted) {
+          initAutoBackup().catch((error) => {
+            logger.error('Failed to initialize auto-backup:', error);
+          });
+        }
 
-        // Initialize sync if enabled
+        // Step 7: Initialize sync if enabled (non-blocking)
         const settings = loadSettings();
-        if (settings.sync.enabled) {
-          try {
-            await startSync(settings.sync);
-            logger.log('✓ Database sync started');
-          } catch (error) {
-            logger.error('Failed to start sync:', error);
-            // Don't throw - app should still work without sync
-          }
+        if (settings.sync.enabled && isMounted) {
+          startSync(settings.sync)
+            .then(() => {
+              if (isMounted) {
+                logger.log('✓ Database sync started');
+              }
+            })
+            .catch((error) => {
+              logger.error('Failed to start sync:', error);
+              // Don't throw - app should still work without sync
+            });
         }
       } catch (error) {
         logger.error('Failed to initialize app:', error);
+        // TODO: Show user-friendly error message instead of silent failure
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeApp();
+
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Customers

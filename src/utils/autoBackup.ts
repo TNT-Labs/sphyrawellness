@@ -151,6 +151,12 @@ export function deleteBackup(date: string): void {
   logger.log(`Deleted backup: ${date}`);
 }
 
+// Store interval ID for cleanup
+let backupIntervalId: number | null = null;
+
+// Backup interval constant (6 hours)
+const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
 /**
  * Initialize auto-backup system
  * Should be called when app starts
@@ -161,8 +167,25 @@ export async function initAutoBackup(): Promise<void> {
   // Create backup if needed
   await createAutoBackup();
 
+  // Clear existing interval if any
+  if (backupIntervalId) {
+    clearInterval(backupIntervalId);
+  }
+
   // Set up daily check (every 6 hours)
-  setInterval(async () => {
+  backupIntervalId = setInterval(async () => {
     await createAutoBackup();
-  }, 6 * 60 * 60 * 1000); // Check every 6 hours
+  }, BACKUP_INTERVAL_MS);
+}
+
+/**
+ * Stop auto-backup system
+ * Should be called when app is being torn down
+ */
+export function stopAutoBackup(): void {
+  if (backupIntervalId) {
+    clearInterval(backupIntervalId);
+    backupIntervalId = null;
+    logger.log('Auto-backup system stopped');
+  }
 }

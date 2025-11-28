@@ -7,6 +7,7 @@ import { it } from 'date-fns/locale';
 import { generateId } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
+import { logger } from '../utils/logger';
 
 const Payments: React.FC = () => {
   const { payments, addPayment, appointments, customers, services } = useApp();
@@ -102,7 +103,7 @@ const Payments: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       showError('Errore durante la registrazione del pagamento');
-      console.error(error);
+      logger.error('Error saving payment:', error);
     }
   };
 

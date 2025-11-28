@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteCustomer } from '../utils/db';
+import { logger } from '../utils/logger';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
@@ -115,7 +116,7 @@ const Customers: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       showError('Errore durante il salvataggio del cliente');
-      console.error(error);
+      logger.error('Error saving customer:', error);
     }
   };
 
@@ -141,7 +142,7 @@ const Customers: React.FC = () => {
         showSuccess('Cliente eliminato con successo!');
       } catch (error) {
         showError('Errore durante l\'eliminazione del cliente');
-        console.error(error);
+        logger.error('Error deleting customer:', error);
       }
     }
   };
