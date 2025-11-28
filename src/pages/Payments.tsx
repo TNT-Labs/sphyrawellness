@@ -4,9 +4,13 @@ import { Payment } from '../types';
 import { DollarSign, Plus, CreditCard, Banknote, Building2, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { generateId } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useToast } from '../contexts/ToastContext';
 
 const Payments: React.FC = () => {
   const { payments, addPayment, appointments, customers, services } = useApp();
+  const { showSuccess } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -78,18 +82,22 @@ const Payments: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     const paymentData: Payment = {
-      id: Date.now().toString(),
+      id: generateId(),
       ...formData,
       notes: formData.notes || undefined,
     };
 
     addPayment(paymentData);
+      showSuccess('Pagamento aggiunto con successo!');
     handleCloseModal();
   };
 

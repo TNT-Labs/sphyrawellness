@@ -98,7 +98,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Footer */}
           <div className="p-4 border-t border-gray-200">
             <div className="text-xs text-gray-500 text-center">
-              © 2024 Sphyra Wellness
+              © {new Date().getFullYear()} Sphyra Wellness
             </div>
           </div>
         </div>

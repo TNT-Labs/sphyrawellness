@@ -17,10 +17,14 @@ const Dashboard: React.FC = () => {
 
   const upcomingAppointments = appointments
     .filter((apt) => {
-      const aptDate = parseISO(apt.date);
-      return aptDate >= new Date() && apt.status === 'scheduled';
+      const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
+      return aptDateTime >= new Date() && apt.status === 'scheduled';
     })
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .sort((a, b) => {
+      const dateA = parseISO(`${a.date}T${a.startTime}`);
+      const dateB = parseISO(`${b.date}T${b.startTime}`);
+      return dateA.getTime() - dateB.getTime();
+    })
     .slice(0, 5);
 
   const getCustomerName = (customerId: string) => {

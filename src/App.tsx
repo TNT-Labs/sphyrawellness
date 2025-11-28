@@ -1,34 +1,72 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
+import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
+
+// Eager load Dashboard (most visited page)
 import Dashboard from './pages/Dashboard';
-import CalendarPage from './pages/CalendarPage';
-import Customers from './pages/Customers';
-import Services from './pages/Services';
-import StaffPage from './pages/StaffPage';
-import Payments from './pages/Payments';
-import Reminders from './pages/Reminders';
-import Statistics from './pages/Statistics';
+
+// Lazy load other pages
+const CalendarPage = lazy(() => import('./pages/CalendarPage'));
+const Customers = lazy(() => import('./pages/Customers'));
+const Services = lazy(() => import('./pages/Services'));
+const StaffPage = lazy(() => import('./pages/StaffPage'));
+const Payments = lazy(() => import('./pages/Payments'));
+const Reminders = lazy(() => import('./pages/Reminders'));
+const Statistics = lazy(() => import('./pages/Statistics'));
+
+// Loading fallback component
+const PageLoader: React.FC = () => (
+  <div className="flex items-center justify-center min-h-[400px]">
+    <div className="text-center">
+      <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600"></div>
+      <p className="mt-4 text-gray-600">Caricamento...</p>
+    </div>
+  </div>
+);
+
+// Global loading screen
+const GlobalLoader: React.FC = () => (
+  <div className="fixed inset-0 bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center z-50">
+    <div className="text-center">
+      <div className="mb-6">
+        <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent"></div>
+      </div>
+      <h1 className="text-3xl font-bold text-white mb-2">Sphyra Wellness</h1>
+      <p className="text-primary-100">Caricamento dati...</p>
+    </div>
+  </div>
+);
 
 const App: React.FC = () => {
   return (
-    <AppProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/calendario" element={<CalendarPage />} />
-            <Route path="/clienti" element={<Customers />} />
-            <Route path="/servizi" element={<Services />} />
-            <Route path="/personale" element={<StaffPage />} />
-            <Route path="/pagamenti" element={<Payments />} />
-            <Route path="/reminder" element={<Reminders />} />
-            <Route path="/statistiche" element={<Statistics />} />
-          </Routes>
-        </Layout>
-      </Router>
-    </AppProvider>
+    <ToastProvider>
+      <AppProvider>
+        {(isLoading) => (
+          isLoading ? (
+            <GlobalLoader />
+          ) : (
+            <Router basename="/sphyrawellness">
+              <Layout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/calendario" element={<CalendarPage />} />
+                    <Route path="/clienti" element={<Customers />} />
+                    <Route path="/servizi" element={<Services />} />
+                    <Route path="/personale" element={<StaffPage />} />
+                    <Route path="/pagamenti" element={<Payments />} />
+                    <Route path="/reminder" element={<Reminders />} />
+                    <Route path="/statistiche" element={<Statistics />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </Router>
+          )
+        )}
+      </AppProvider>
+    </ToastProvider>
   );
 };
 

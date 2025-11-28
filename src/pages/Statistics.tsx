@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import {
   TrendingUp,
@@ -14,97 +14,113 @@ import { it } from 'date-fns/locale';
 const Statistics: React.FC = () => {
   const { appointments, payments, customers, services, staff } = useApp();
 
-  // Calculate statistics
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
-  const totalCustomers = customers.length;
-  const totalAppointments = appointments.length;
-  const completedAppointments = appointments.filter(
-    (apt) => apt.status === 'completed'
-  ).length;
-
-  // This month stats
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-
-  const thisMonthAppointments = appointments.filter((apt) => {
-    const aptDate = parseISO(apt.date);
-    return isWithinInterval(aptDate, { start: monthStart, end: monthEnd });
-  });
-
-  const thisMonthPayments = payments.filter((p) => {
-    const payDate = parseISO(p.date);
-    return isWithinInterval(payDate, { start: monthStart, end: monthEnd });
-  });
-
-  const thisMonthRevenue = thisMonthPayments.reduce((sum, p) => sum + p.amount, 0);
-
-  // Service statistics
-  const serviceStats = services.map((service) => {
-    const serviceAppointments = appointments.filter(
-      (apt) => apt.serviceId === service.id
-    );
-    const revenue = payments
-      .filter((p) => {
-        const apt = appointments.find((a) => a.id === p.appointmentId);
-        return apt?.serviceId === service.id;
-      })
-      .reduce((sum, p) => sum + p.amount, 0);
-
-    return {
-      service,
-      count: serviceAppointments.length,
-      revenue,
-    };
-  });
-
-  const topServices = serviceStats
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-
-  // Staff statistics
-  const staffStats = staff.map((member) => {
-    const memberAppointments = appointments.filter(
-      (apt) => apt.staffId === member.id
-    );
-    const completedCount = memberAppointments.filter(
+  // Memoize expensive calculations
+  const stats = useMemo(() => {
+    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    const totalCustomers = customers.length;
+    const totalAppointments = appointments.length;
+    const completedAppointments = appointments.filter(
       (apt) => apt.status === 'completed'
     ).length;
 
+    // This month stats
+    const now = new Date();
+    const monthStart = startOfMonth(now);
+    const monthEnd = endOfMonth(now);
+
+    const thisMonthAppointments = appointments.filter((apt) => {
+      const aptDate = parseISO(apt.date);
+      return isWithinInterval(aptDate, { start: monthStart, end: monthEnd });
+    });
+
+    const thisMonthPayments = payments.filter((p) => {
+      const payDate = parseISO(p.date);
+      return isWithinInterval(payDate, { start: monthStart, end: monthEnd });
+    });
+
+    const thisMonthRevenue = thisMonthPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Average appointment value
+    const avgAppointmentValue =
+      completedAppointments > 0 ? totalRevenue / completedAppointments : 0;
+
+    // Customer retention
+    const customersWithMultipleAppointments = customers.filter((customer) => {
+      const customerAppointments = appointments.filter(
+        (apt) => apt.customerId === customer.id
+      );
+      return customerAppointments.length > 1;
+    });
+
+    const retentionRate =
+      totalCustomers > 0
+        ? (customersWithMultipleAppointments.length / totalCustomers) * 100
+        : 0;
+
     return {
-      member,
-      count: memberAppointments.length,
-      completed: completedCount,
+      totalRevenue,
+      totalCustomers,
+      totalAppointments,
+      completedAppointments,
+      thisMonthAppointments,
+      thisMonthRevenue,
+      avgAppointmentValue,
+      retentionRate,
+      now,
     };
-  });
+  }, [appointments, payments, customers]);
 
-  const topStaff = staffStats.sort((a, b) => b.completed - a.completed).slice(0, 5);
+  // Service statistics - memoized
+  const serviceStats = useMemo(() => {
+    const stats = services.map((service) => {
+      const serviceAppointments = appointments.filter(
+        (apt) => apt.serviceId === service.id
+      );
+      const revenue = payments
+        .filter((p) => {
+          const apt = appointments.find((a) => a.id === p.appointmentId);
+          return apt?.serviceId === service.id;
+        })
+        .reduce((sum, p) => sum + p.amount, 0);
 
-  // Status statistics
-  const statusCounts = {
+      return {
+        service,
+        count: serviceAppointments.length,
+        revenue,
+      };
+    });
+
+    return stats.sort((a, b) => b.count - a.count).slice(0, 5);
+  }, [services, appointments, payments]);
+
+  // Staff statistics - memoized
+  const staffStats = useMemo(() => {
+    const stats = staff.map((member) => {
+      const memberAppointments = appointments.filter(
+        (apt) => apt.staffId === member.id
+      );
+      const completedCount = memberAppointments.filter(
+        (apt) => apt.status === 'completed'
+      ).length;
+
+      return {
+        member,
+        count: memberAppointments.length,
+        completed: completedCount,
+      };
+    });
+
+    return stats.sort((a, b) => b.completed - a.completed).slice(0, 5);
+  }, [staff, appointments]);
+
+  // Status statistics - memoized
+  const statusCounts = useMemo(() => ({
     scheduled: appointments.filter((apt) => apt.status === 'scheduled').length,
     confirmed: appointments.filter((apt) => apt.status === 'confirmed').length,
     completed: appointments.filter((apt) => apt.status === 'completed').length,
     cancelled: appointments.filter((apt) => apt.status === 'cancelled').length,
     'no-show': appointments.filter((apt) => apt.status === 'no-show').length,
-  };
-
-  // Average appointment value
-  const avgAppointmentValue =
-    completedAppointments > 0 ? totalRevenue / completedAppointments : 0;
-
-  // Customer retention (customers with more than 1 appointment)
-  const customersWithMultipleAppointments = customers.filter((customer) => {
-    const customerAppointments = appointments.filter(
-      (apt) => apt.customerId === customer.id
-    );
-    return customerAppointments.length > 1;
-  });
-
-  const retentionRate =
-    totalCustomers > 0
-      ? (customersWithMultipleAppointments.length / totalCustomers) * 100
-      : 0;
+  }), [appointments]);
 
   return (
     <div className="space-y-6">
@@ -121,27 +137,27 @@ const Statistics: React.FC = () => {
         <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white">
           <DollarSign size={32} className="mb-3" />
           <p className="text-sm opacity-90">Fatturato Totale</p>
-          <p className="text-3xl font-bold mt-2">€{totalRevenue.toFixed(2)}</p>
+          <p className="text-3xl font-bold mt-2">€{stats.totalRevenue.toFixed(2)}</p>
           <p className="text-sm opacity-75 mt-2">
-            Media: €{avgAppointmentValue.toFixed(2)}/appuntamento
+            Media: €{stats.avgAppointmentValue.toFixed(2)}/appuntamento
           </p>
         </div>
 
         <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white">
           <Users size={32} className="mb-3" />
           <p className="text-sm opacity-90">Clienti Totali</p>
-          <p className="text-3xl font-bold mt-2">{totalCustomers}</p>
+          <p className="text-3xl font-bold mt-2">{stats.totalCustomers}</p>
           <p className="text-sm opacity-75 mt-2">
-            Retention: {retentionRate.toFixed(1)}%
+            Retention: {stats.retentionRate.toFixed(1)}%
           </p>
         </div>
 
         <div className="card bg-gradient-to-br from-purple-500 to-purple-600 text-white">
           <Calendar size={32} className="mb-3" />
           <p className="text-sm opacity-90">Appuntamenti Totali</p>
-          <p className="text-3xl font-bold mt-2">{totalAppointments}</p>
+          <p className="text-3xl font-bold mt-2">{stats.totalAppointments}</p>
           <p className="text-sm opacity-75 mt-2">
-            Completati: {completedAppointments}
+            Completati: {stats.completedAppointments}
           </p>
         </div>
 
@@ -149,10 +165,10 @@ const Statistics: React.FC = () => {
           <TrendingUp size={32} className="mb-3" />
           <p className="text-sm opacity-90">Questo Mese</p>
           <p className="text-3xl font-bold mt-2">
-            €{thisMonthRevenue.toFixed(2)}
+            €{stats.thisMonthRevenue.toFixed(2)}
           </p>
           <p className="text-sm opacity-75 mt-2">
-            {thisMonthAppointments.length} appuntamenti
+            {stats.thisMonthAppointments.length} appuntamenti
           </p>
         </div>
       </div>
@@ -164,13 +180,13 @@ const Statistics: React.FC = () => {
           Servizi Più Richiesti
         </h2>
 
-        {topServices.length === 0 ? (
+        {serviceStats.length === 0 ? (
           <p className="text-gray-500 text-center py-8">
             Nessun dato disponibile
           </p>
         ) : (
           <div className="space-y-4">
-            {topServices.map((item, index) => (
+            {serviceStats.map((item, index) => (
               <div key={item.service.id} className="flex items-center">
                 <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold mr-4">
                   {index + 1}
@@ -188,7 +204,7 @@ const Statistics: React.FC = () => {
                     <div
                       className="bg-primary-600 h-2 rounded-full"
                       style={{
-                        width: `${(item.count / totalAppointments) * 100}%`,
+                        width: `${(item.count / stats.totalAppointments) * 100}%`,
                       }}
                     />
                   </div>
@@ -211,13 +227,13 @@ const Statistics: React.FC = () => {
           Performance del Personale
         </h2>
 
-        {topStaff.length === 0 ? (
+        {staffStats.length === 0 ? (
           <p className="text-gray-500 text-center py-8">
             Nessun dato disponibile
           </p>
         ) : (
           <div className="space-y-4">
-            {topStaff.map((item, index) => (
+            {staffStats.map((item, index) => (
               <div key={item.member.id} className="flex items-center">
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center font-bold mr-4"
@@ -301,27 +317,27 @@ const Statistics: React.FC = () => {
       {/* Monthly Summary */}
       <div className="card bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
         <h2 className="text-xl font-bold mb-4">
-          Riepilogo {format(now, 'MMMM yyyy', { locale: it })}
+          Riepilogo {format(stats.now, 'MMMM yyyy', { locale: it })}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-sm opacity-90">Appuntamenti</p>
             <p className="text-3xl font-bold mt-1">
-              {thisMonthAppointments.length}
+              {stats.thisMonthAppointments.length}
             </p>
           </div>
           <div>
             <p className="text-sm opacity-90">Fatturato</p>
             <p className="text-3xl font-bold mt-1">
-              €{thisMonthRevenue.toFixed(2)}
+              €{stats.thisMonthRevenue.toFixed(2)}
             </p>
           </div>
           <div>
             <p className="text-sm opacity-90">Valore Medio</p>
             <p className="text-3xl font-bold mt-1">
               €
-              {thisMonthAppointments.length > 0
-                ? (thisMonthRevenue / thisMonthAppointments.length).toFixed(2)
+              {stats.thisMonthAppointments.length > 0
+                ? (stats.thisMonthRevenue / stats.thisMonthAppointments.length).toFixed(2)
                 : '0.00'}
             </p>
           </div>

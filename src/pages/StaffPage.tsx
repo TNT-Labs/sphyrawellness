@@ -2,9 +2,13 @@ import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Staff } from '../types';
 import { Plus, Search, Edit, Trash2, UserCheck, Mail, Phone } from 'lucide-react';
+import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
+import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useToast } from '../contexts/ToastContext';
 
 const StaffPage: React.FC = () => {
   const { staff, addStaff, updateStaff, deleteStaff, services } = useApp();
+  const { showSuccess, showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -72,20 +76,38 @@ const StaffPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingStaff(null);
+
+  // ESC key to close modal
+  useEscapeKey(handleCloseModal, isModalOpen);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate email
+    if (!isValidEmail(formData.email)) {
+      showError('Inserisci un indirizzo email valido');
+      return;
+    }
+
+    // Validate phone
+    if (!isValidPhone(formData.phone)) {
+      showError('Inserisci un numero di telefono valido (es: +39 333 1234567)');
+      return;
+    }
+
     const staffData: Staff = {
-      id: editingStaff?.id || Date.now().toString(),
+      id: editingStaff?.id || generateId(),
       ...formData,
+      phone: formatPhoneNumber(formData.phone),
     };
 
     if (editingStaff) {
       updateStaff(staffData);
+      showSuccess('Membro aggiornato con successo!');
     } else {
       addStaff(staffData);
+      showSuccess('Membro aggiunto con successo!');
     }
 
     handleCloseModal();
