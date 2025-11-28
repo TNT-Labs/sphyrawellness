@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
+import { Appointment } from '../types';
 import { Calendar, Users, TrendingUp, Clock, Bell, BellOff } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
+import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const Dashboard: React.FC = () => {
   const { customers, appointments, payments, services, staff } = useApp();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
   // Statistics
   const todayAppointments = appointments.filter((apt) =>
@@ -53,6 +57,16 @@ const Dashboard: React.FC = () => {
   const getStaffName = (staffId: string) => {
     const member = staff.find((s) => s.id === staffId);
     return member ? `${member.firstName} ${member.lastName}` : 'N/A';
+  };
+
+  const handleAppointmentClick = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedAppointment(null);
   };
 
   const stats = [
@@ -149,7 +163,9 @@ const Dashboard: React.FC = () => {
             {upcomingAppointments.map((apt) => (
               <div
                 key={apt.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                onClick={() => handleAppointmentClick(apt)}
+                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                title="Clicca per visualizzare i dettagli"
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
@@ -226,6 +242,13 @@ const Dashboard: React.FC = () => {
           </p>
         </Link>
       </div>
+
+      {/* Appointment Modal */}
+      <AppointmentModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        editingAppointment={selectedAppointment}
+      />
     </div>
   );
 };
