@@ -121,6 +121,15 @@ export const loadReminders = (): Reminder[] => {
 // Settings
 const DEFAULT_SETTINGS: AppSettings = {
   idleTimeout: 5, // 5 minutes by default
+  sync: {
+    enabled: false,
+    serverUrl: '',
+    username: '',
+    password: '',
+    databaseName: 'sphyra-wellness',
+    syncMode: 'continuous',
+    retryOnError: true,
+  },
 };
 
 export const saveSettings = (settings: AppSettings): void => {
