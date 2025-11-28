@@ -8,6 +8,7 @@ import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react'
 import { generateId } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteService } from '../utils/db';
+import { logger } from '../utils/logger';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService, serviceCategories } = useApp();
@@ -96,7 +97,7 @@ const Services: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       showError('Errore durante il salvataggio del servizio');
-      console.error(error);
+      logger.error('Error saving service:', error);
     }
   };
 
@@ -122,7 +123,7 @@ const Services: React.FC = () => {
         showSuccess('Servizio eliminato con successo!');
       } catch (error) {
         showError('Errore durante l\'eliminazione del servizio');
-        console.error(error);
+        logger.error('Error saving service:', error);
       }
     }
   };

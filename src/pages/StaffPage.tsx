@@ -7,6 +7,7 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { canDeleteStaff } from '../utils/db';
+import { logger } from '../utils/logger';
 
 const StaffPage: React.FC = () => {
   const { staff, addStaff, updateStaff, deleteStaff, staffRoles, serviceCategories } = useApp();
@@ -111,7 +112,7 @@ const StaffPage: React.FC = () => {
       handleCloseModal();
     } catch (error) {
       showError('Errore durante il salvataggio del membro dello staff');
-      console.error(error);
+      logger.error('Error with staff operation:', error);
     }
   };
 
@@ -141,7 +142,7 @@ const StaffPage: React.FC = () => {
         showSuccess('Membro dello staff eliminato con successo');
       } catch (error) {
         showError('Errore durante l\'eliminazione del membro dello staff');
-        console.error(error);
+        logger.error('Error with staff operation:', error);
       }
     }
   };

@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { StaffRole, ServiceCategory, SyncConfig, SyncStatus } from '../types';
+import { logger } from '../utils/logger';
 
 const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -105,7 +106,7 @@ const Settings: React.FC = () => {
       showSuccess('Backup esportato con successo!');
     } catch (error) {
       showError('Errore durante l\'esportazione del backup');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -135,7 +136,7 @@ const Settings: React.FC = () => {
         window.location.reload();
       } catch (error) {
         showError('Errore durante l\'importazione del backup');
-        console.error(error);
+        logger.error(error);
       }
     };
     input.click();
@@ -159,7 +160,7 @@ const Settings: React.FC = () => {
       window.location.reload();
     } catch (error) {
       showError('Errore durante il ripristino del backup');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -179,7 +180,7 @@ const Settings: React.FC = () => {
       showSuccess('Backup eliminato');
     } catch (error) {
       showError('Errore durante l\'eliminazione del backup');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -202,7 +203,7 @@ const Settings: React.FC = () => {
       window.location.reload();
     } catch (error) {
       showError('Errore durante la cancellazione dei dati');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -218,7 +219,7 @@ const Settings: React.FC = () => {
       }
     } catch (error) {
       showError('Errore durante la richiesta di persistenza');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -257,7 +258,7 @@ const Settings: React.FC = () => {
       showSuccess('Ruolo aggiunto');
     } catch (error) {
       showError('Errore durante l\'aggiunta del ruolo');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -282,7 +283,7 @@ const Settings: React.FC = () => {
       showSuccess('Ruolo aggiornato');
     } catch (error) {
       showError('Errore durante l\'aggiornamento del ruolo');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -301,7 +302,7 @@ const Settings: React.FC = () => {
       showSuccess('Ruolo eliminato');
     } catch (error) {
       showError('Errore durante l\'eliminazione del ruolo');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -311,7 +312,7 @@ const Settings: React.FC = () => {
       showSuccess(role.isActive ? 'Ruolo disattivato' : 'Ruolo attivato');
     } catch (error) {
       showError('Errore durante l\'aggiornamento del ruolo');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -336,7 +337,7 @@ const Settings: React.FC = () => {
       showSuccess('Categoria aggiunta');
     } catch (error) {
       showError('Errore durante l\'aggiunta della categoria');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -362,7 +363,7 @@ const Settings: React.FC = () => {
       showSuccess('Categoria aggiornata');
     } catch (error) {
       showError('Errore durante l\'aggiornamento della categoria');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -381,7 +382,7 @@ const Settings: React.FC = () => {
       showSuccess('Categoria eliminata');
     } catch (error) {
       showError('Errore durante l\'eliminazione della categoria');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -391,7 +392,7 @@ const Settings: React.FC = () => {
       showSuccess(category.isActive ? 'Categoria disattivata' : 'Categoria attivata');
     } catch (error) {
       showError('Errore durante l\'aggiornamento della categoria');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -441,7 +442,7 @@ const Settings: React.FC = () => {
       }
     } catch (error) {
       showError('Errore durante il salvataggio della configurazione di sincronizzazione');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -465,7 +466,7 @@ const Settings: React.FC = () => {
       }
     } catch (error) {
       showError('Errore durante l\'attivazione/disattivazione della sincronizzazione');
-      console.error(error);
+      logger.error(error);
     }
   };
 
@@ -475,7 +476,7 @@ const Settings: React.FC = () => {
       showSuccess('Sincronizzazione manuale completata');
     } catch (error) {
       showError('Errore durante la sincronizzazione manuale');
-      console.error(error);
+      logger.error(error);
     }
   };
 
