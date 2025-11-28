@@ -39,6 +39,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        globIgnores: ['**/offline.html'], // Exclude offline.html from automatic caching
         navigateFallback: null, // Disable automatic offline fallback
         runtimeCaching: [
           {
@@ -56,7 +57,7 @@ export default defineConfig({
             }
           }
         ],
-        // Include offline page
+        // Include offline page manually with explicit revision
         additionalManifestEntries: [
           { url: '/sphyrawellness/offline.html', revision: null }
         ]
