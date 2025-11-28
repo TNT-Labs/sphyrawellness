@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Customer, Service, Staff, Appointment, Payment, Reminder } from '../types';
+import { logger } from './logger';
 
 // Define database schema
 interface SphyraDB extends DBSchema {
@@ -95,7 +96,7 @@ export async function initDB(): Promise<IDBPDatabase<SphyraDB>> {
 
     return dbInstance;
   } catch (error) {
-    console.error('Failed to initialize database:', error);
+    logger.error('Failed to initialize database:', error);
     throw error;
   }
 }

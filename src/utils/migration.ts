@@ -7,6 +7,7 @@ import {
   loadPayments,
   loadReminders,
 } from './storage';
+import { logger } from './logger';
 
 const MIGRATION_KEY = 'sphyra_migrated_to_indexeddb';
 
@@ -35,11 +36,11 @@ export async function migrateFromLocalStorage(): Promise<{
   try {
     // Check if already migrated
     if (isMigrationComplete()) {
-      console.log('Migration already completed, skipping...');
+      logger.log('Migration already completed, skipping...');
       return { success: true, itemsMigrated: 0 };
     }
 
-    console.log('Starting migration from localStorage to IndexedDB...');
+    logger.log('Starting migration from localStorage to IndexedDB...');
 
     // Load all data from localStorage
     const customers = loadCustomers();
@@ -58,12 +59,12 @@ export async function migrateFromLocalStorage(): Promise<{
       reminders.length;
 
     if (totalItems === 0) {
-      console.log('No data to migrate from localStorage');
+      logger.log('No data to migrate from localStorage');
       markMigrationComplete();
       return { success: true, itemsMigrated: 0 };
     }
 
-    console.log(`Found ${totalItems} items to migrate`);
+    logger.log(`Found ${totalItems} items to migrate`);
 
     // Import all data into IndexedDB
     await importAllData({
@@ -75,7 +76,7 @@ export async function migrateFromLocalStorage(): Promise<{
       reminders,
     });
 
-    console.log('Migration completed successfully!');
+    logger.log('Migration completed successfully!');
     markMigrationComplete();
 
     return {
@@ -83,7 +84,7 @@ export async function migrateFromLocalStorage(): Promise<{
       itemsMigrated: totalItems,
     };
   } catch (error) {
-    console.error('Migration failed:', error);
+    logger.error('Migration failed:', error);
     return {
       success: false,
       itemsMigrated: 0,
@@ -97,5 +98,5 @@ export async function migrateFromLocalStorage(): Promise<{
  */
 export function resetMigrationStatus(): void {
   localStorage.removeItem(MIGRATION_KEY);
-  console.log('Migration status reset');
+  logger.log('Migration status reset');
 }
