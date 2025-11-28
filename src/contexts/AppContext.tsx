@@ -8,58 +8,72 @@ import {
   Reminder,
 } from '../types';
 import {
-  loadCustomers,
-  saveCustomers,
-  loadServices,
-  saveServices,
-  loadStaff,
-  saveStaff,
-  loadAppointments,
-  saveAppointments,
-  loadPayments,
-  savePayments,
-  loadReminders,
-  saveReminders,
-  initializeDemoData,
-} from '../utils/storage';
+  initDB,
+  getAllCustomers,
+  addCustomer as dbAddCustomer,
+  updateCustomer as dbUpdateCustomer,
+  deleteCustomer as dbDeleteCustomer,
+  getAllServices,
+  addService as dbAddService,
+  updateService as dbUpdateService,
+  deleteService as dbDeleteService,
+  getAllStaff,
+  addStaff as dbAddStaff,
+  updateStaff as dbUpdateStaff,
+  deleteStaff as dbDeleteStaff,
+  getAllAppointments,
+  addAppointment as dbAddAppointment,
+  updateAppointment as dbUpdateAppointment,
+  deleteAppointment as dbDeleteAppointment,
+  getAllPayments,
+  addPayment as dbAddPayment,
+  getAllReminders,
+  addReminder as dbAddReminder,
+} from '../utils/db';
+import { migrateFromLocalStorage } from '../utils/migration';
+import { initializeDemoData } from '../utils/storage';
 
 interface AppContextType {
+  // Loading state
+  isLoading: boolean;
+
   // Customers
   customers: Customer[];
-  addCustomer: (customer: Customer) => void;
-  updateCustomer: (customer: Customer) => void;
-  deleteCustomer: (id: string) => void;
+  addCustomer: (customer: Customer) => Promise<void>;
+  updateCustomer: (customer: Customer) => Promise<void>;
+  deleteCustomer: (id: string) => Promise<void>;
 
   // Services
   services: Service[];
-  addService: (service: Service) => void;
-  updateService: (service: Service) => void;
-  deleteService: (id: string) => void;
+  addService: (service: Service) => Promise<void>;
+  updateService: (service: Service) => Promise<void>;
+  deleteService: (id: string) => Promise<void>;
 
   // Staff
   staff: Staff[];
-  addStaff: (member: Staff) => void;
-  updateStaff: (member: Staff) => void;
-  deleteStaff: (id: string) => void;
+  addStaff: (member: Staff) => Promise<void>;
+  updateStaff: (member: Staff) => Promise<void>;
+  deleteStaff: (id: string) => Promise<void>;
 
   // Appointments
   appointments: Appointment[];
-  addAppointment: (appointment: Appointment) => void;
-  updateAppointment: (appointment: Appointment) => void;
-  deleteAppointment: (id: string) => void;
+  addAppointment: (appointment: Appointment) => Promise<void>;
+  updateAppointment: (appointment: Appointment) => Promise<void>;
+  deleteAppointment: (id: string) => Promise<void>;
 
   // Payments
   payments: Payment[];
-  addPayment: (payment: Payment) => void;
+  addPayment: (payment: Payment) => Promise<void>;
 
   // Reminders
   reminders: Reminder[];
-  addReminder: (reminder: Reminder) => void;
+  addReminder: (reminder: Reminder) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean) => ReactNode) }> = ({ children }) => {
+  const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -67,110 +81,162 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
 
-  // Initialize data on mount
+  // Initialize database and load data
   useEffect(() => {
-    initializeDemoData();
-    setCustomers(loadCustomers());
-    setServices(loadServices());
-    setStaff(loadStaff());
-    setAppointments(loadAppointments());
-    setPayments(loadPayments());
-    setReminders(loadReminders());
+    const initializeApp = async () => {
+      try {
+        setIsLoading(true);
+
+        // Initialize IndexedDB
+        await initDB();
+        console.log('✓ IndexedDB initialized');
+
+        // Migrate data from localStorage if needed
+        const migrationResult = await migrateFromLocalStorage();
+        if (migrationResult.success && migrationResult.itemsMigrated > 0) {
+          console.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
+        }
+
+        // Load all data from IndexedDB
+        const [
+          loadedCustomers,
+          loadedServices,
+          loadedStaff,
+          loadedAppointments,
+          loadedPayments,
+          loadedReminders,
+        ] = await Promise.all([
+          getAllCustomers(),
+          getAllServices(),
+          getAllStaff(),
+          getAllAppointments(),
+          getAllPayments(),
+          getAllReminders(),
+        ]);
+
+        // If no data exists, initialize with demo data
+        if (
+          loadedCustomers.length === 0 &&
+          loadedServices.length === 0 &&
+          loadedStaff.length === 0
+        ) {
+          console.log('No data found, initializing demo data...');
+          initializeDemoData();
+
+          // Trigger migration again to load demo data into IndexedDB
+          await migrateFromLocalStorage();
+
+          // Reload data
+          const [demoCustomers, demoServices, demoStaff] = await Promise.all([
+            getAllCustomers(),
+            getAllServices(),
+            getAllStaff(),
+          ]);
+
+          setCustomers(demoCustomers);
+          setServices(demoServices);
+          setStaff(demoStaff);
+        } else {
+          setCustomers(loadedCustomers);
+          setServices(loadedServices);
+          setStaff(loadedStaff);
+        }
+
+        setAppointments(loadedAppointments);
+        setPayments(loadedPayments);
+        setReminders(loadedReminders);
+
+        console.log('✓ App data loaded successfully');
+      } catch (error) {
+        console.error('Failed to initialize app:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   // Customers
-  const addCustomer = (customer: Customer) => {
-    const updated = [...customers, customer];
-    setCustomers(updated);
-    saveCustomers(updated);
+  const addCustomer = async (customer: Customer) => {
+    await dbAddCustomer(customer);
+    setCustomers((prev) => [...prev, customer]);
   };
 
-  const updateCustomer = (customer: Customer) => {
-    const updated = customers.map((c) => (c.id === customer.id ? customer : c));
-    setCustomers(updated);
-    saveCustomers(updated);
+  const updateCustomer = async (customer: Customer) => {
+    await dbUpdateCustomer(customer);
+    setCustomers((prev) => prev.map((c) => (c.id === customer.id ? customer : c)));
   };
 
-  const deleteCustomer = (id: string) => {
-    const updated = customers.filter((c) => c.id !== id);
-    setCustomers(updated);
-    saveCustomers(updated);
+  const deleteCustomer = async (id: string) => {
+    await dbDeleteCustomer(id);
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
   };
 
   // Services
-  const addService = (service: Service) => {
-    const updated = [...services, service];
-    setServices(updated);
-    saveServices(updated);
+  const addService = async (service: Service) => {
+    await dbAddService(service);
+    setServices((prev) => [...prev, service]);
   };
 
-  const updateService = (service: Service) => {
-    const updated = services.map((s) => (s.id === service.id ? service : s));
-    setServices(updated);
-    saveServices(updated);
+  const updateService = async (service: Service) => {
+    await dbUpdateService(service);
+    setServices((prev) => prev.map((s) => (s.id === service.id ? service : s)));
   };
 
-  const deleteService = (id: string) => {
-    const updated = services.filter((s) => s.id !== id);
-    setServices(updated);
-    saveServices(updated);
+  const deleteService = async (id: string) => {
+    await dbDeleteService(id);
+    setServices((prev) => prev.filter((s) => s.id !== id));
   };
 
   // Staff
-  const addStaff = (member: Staff) => {
-    const updated = [...staff, member];
-    setStaff(updated);
-    saveStaff(updated);
+  const addStaff = async (member: Staff) => {
+    await dbAddStaff(member);
+    setStaff((prev) => [...prev, member]);
   };
 
-  const updateStaff = (member: Staff) => {
-    const updated = staff.map((s) => (s.id === member.id ? member : s));
-    setStaff(updated);
-    saveStaff(updated);
+  const updateStaff = async (member: Staff) => {
+    await dbUpdateStaff(member);
+    setStaff((prev) => prev.map((s) => (s.id === member.id ? member : s)));
   };
 
-  const deleteStaff = (id: string) => {
-    const updated = staff.filter((s) => s.id !== id);
-    setStaff(updated);
-    saveStaff(updated);
+  const deleteStaff = async (id: string) => {
+    await dbDeleteStaff(id);
+    setStaff((prev) => prev.filter((s) => s.id !== id));
   };
 
   // Appointments
-  const addAppointment = (appointment: Appointment) => {
-    const updated = [...appointments, appointment];
-    setAppointments(updated);
-    saveAppointments(updated);
+  const addAppointment = async (appointment: Appointment) => {
+    await dbAddAppointment(appointment);
+    setAppointments((prev) => [...prev, appointment]);
   };
 
-  const updateAppointment = (appointment: Appointment) => {
-    const updated = appointments.map((a) =>
-      a.id === appointment.id ? appointment : a
+  const updateAppointment = async (appointment: Appointment) => {
+    await dbUpdateAppointment(appointment);
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === appointment.id ? appointment : a))
     );
-    setAppointments(updated);
-    saveAppointments(updated);
   };
 
-  const deleteAppointment = (id: string) => {
-    const updated = appointments.filter((a) => a.id !== id);
-    setAppointments(updated);
-    saveAppointments(updated);
+  const deleteAppointment = async (id: string) => {
+    await dbDeleteAppointment(id);
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
   };
 
   // Payments
-  const addPayment = (payment: Payment) => {
-    const updated = [...payments, payment];
-    setPayments(updated);
-    savePayments(updated);
+  const addPayment = async (payment: Payment) => {
+    await dbAddPayment(payment);
+    setPayments((prev) => [...prev, payment]);
   };
 
   // Reminders
-  const addReminder = (reminder: Reminder) => {
-    const updated = [...reminders, reminder];
-    setReminders(updated);
-    saveReminders(updated);
+  const addReminder = async (reminder: Reminder) => {
+    await dbAddReminder(reminder);
+    setReminders((prev) => [...prev, reminder]);
   };
 
   const value: AppContextType = {
+    isLoading,
     customers,
     addCustomer,
     updateCustomer,
@@ -193,7 +259,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addReminder,
   };
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  return (
+    <AppContext.Provider value={value}>
+      {typeof children === 'function' ? children(isLoading) : children}
+    </AppContext.Provider>
+  );
 };
 
 export const useApp = (): AppContextType => {

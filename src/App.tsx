@@ -26,26 +26,45 @@ const PageLoader: React.FC = () => (
   </div>
 );
 
+// Global loading screen
+const GlobalLoader: React.FC = () => (
+  <div className="fixed inset-0 bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center z-50">
+    <div className="text-center">
+      <div className="mb-6">
+        <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent"></div>
+      </div>
+      <h1 className="text-3xl font-bold text-white mb-2">Sphyra Wellness</h1>
+      <p className="text-primary-100">Caricamento dati...</p>
+    </div>
+  </div>
+);
+
 const App: React.FC = () => {
   return (
     <ToastProvider>
       <AppProvider>
-        <Router basename="/sphyrawellness">
-          <Layout>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/calendario" element={<CalendarPage />} />
-                <Route path="/clienti" element={<Customers />} />
-                <Route path="/servizi" element={<Services />} />
-                <Route path="/personale" element={<StaffPage />} />
-                <Route path="/pagamenti" element={<Payments />} />
-                <Route path="/reminder" element={<Reminders />} />
-                <Route path="/statistiche" element={<Statistics />} />
-              </Routes>
-            </Suspense>
-          </Layout>
-        </Router>
+        {(isLoading) => (
+          isLoading ? (
+            <GlobalLoader />
+          ) : (
+            <Router basename="/sphyrawellness">
+              <Layout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/calendario" element={<CalendarPage />} />
+                    <Route path="/clienti" element={<Customers />} />
+                    <Route path="/servizi" element={<Services />} />
+                    <Route path="/personale" element={<StaffPage />} />
+                    <Route path="/pagamenti" element={<Payments />} />
+                    <Route path="/reminder" element={<Reminders />} />
+                    <Route path="/statistiche" element={<Statistics />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </Router>
+          )
+        )}
       </AppProvider>
     </ToastProvider>
   );
