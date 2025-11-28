@@ -23,6 +23,7 @@ const CalendarPage: React.FC = () => {
     customers,
     services,
     staff,
+    staffRoles,
   } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
@@ -72,6 +73,11 @@ const CalendarPage: React.FC = () => {
     return member?.color || '#ec4899';
   };
 
+  const getStaffRoleName = (roleId: string) => {
+    const role = staffRoles.find((r) => r.id === roleId);
+    return role?.name || roleId;
+  };
+
   const handleOpenModal = (appointment?: Appointment, selectedDate?: Date) => {
     if (appointment) {
       setEditingAppointment(appointment);
@@ -109,6 +115,60 @@ const CalendarPage: React.FC = () => {
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
 
+  const checkAppointmentConflicts = (
+    date: string,
+    startTime: string,
+    endTime: string,
+    customerId: string,
+    staffId: string,
+    excludeAppointmentId?: string
+  ) => {
+    // Filtra gli appuntamenti per la stessa data (escludi quello corrente in caso di modifica)
+    const dayAppointments = appointments.filter(
+      (apt) => apt.date === date && apt.id !== excludeAppointmentId
+    );
+
+    // Converti gli orari in minuti per facilitare il confronto
+    const timeToMinutes = (time: string) => {
+      const [hours, minutes] = time.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const newStartMinutes = timeToMinutes(startTime);
+    const newEndMinutes = timeToMinutes(endTime);
+
+    // Controlla sovrapposizioni per ogni appuntamento nello stesso giorno
+    for (const apt of dayAppointments) {
+      const aptStartMinutes = timeToMinutes(apt.startTime);
+      const aptEndMinutes = timeToMinutes(apt.endTime);
+
+      // Verifica sovrapposizione oraria
+      const hasTimeOverlap =
+        newStartMinutes < aptEndMinutes && newEndMinutes > aptStartMinutes;
+
+      if (hasTimeOverlap) {
+        // Verifica se coinvolge lo stesso cliente o lo stesso staff
+        const hasSameCustomer = apt.customerId === customerId;
+        const hasSameStaff = apt.staffId === staffId;
+
+        if (hasSameCustomer || hasSameStaff) {
+          const conflictCustomer = customers.find((c) => c.id === apt.customerId);
+          const conflictStaff = staff.find((s) => s.id === apt.staffId);
+          const conflictService = services.find((s) => s.id === apt.serviceId);
+
+          return {
+            hasConflict: true,
+            message: hasSameCustomer
+              ? `Il cliente ${conflictCustomer?.firstName} ${conflictCustomer?.lastName} ha già un appuntamento alle ${apt.startTime} - ${apt.endTime}`
+              : `L'operatore ${conflictStaff?.firstName} ${conflictStaff?.lastName} ha già un appuntamento alle ${apt.startTime} - ${apt.endTime} (${conflictService?.name})`,
+          };
+        }
+      }
+    }
+
+    return { hasConflict: false };
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -121,6 +181,21 @@ const CalendarPage: React.FC = () => {
     const endTime = calculateEndTime(formData.startTime, service.duration);
     if (!endTime) {
       showError('Errore nel calcolo dell\'ora di fine. Verifica l\'orario inserito.');
+      return;
+    }
+
+    // Verifica sovrapposizioni con altri appuntamenti
+    const conflictCheck = checkAppointmentConflicts(
+      formData.date,
+      formData.startTime,
+      endTime,
+      formData.customerId,
+      formData.staffId,
+      editingAppointment?.id
+    );
+
+    if (conflictCheck.hasConflict) {
+      showError(conflictCheck.message || 'Appuntamento in conflitto con un altro appuntamento');
       return;
     }
 
@@ -394,7 +469,7 @@ const CalendarPage: React.FC = () => {
                       .filter((s) => s.isActive)
                       .map((member) => (
                         <option key={member.id} value={member.id}>
-                          {member.firstName} {member.lastName} - {member.role}
+                          {member.firstName} {member.lastName} - {getStaffRoleName(member.role)}
                         </option>
                       ))}
                   </select>
