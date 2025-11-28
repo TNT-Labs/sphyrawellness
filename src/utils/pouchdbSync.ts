@@ -1,5 +1,5 @@
 import PouchDB from 'pouchdb-browser';
-import PouchDBFind from 'pouchdb-find';
+import pouchdbFind from 'pouchdb-find';
 import {
   Customer,
   Service,
@@ -30,37 +30,11 @@ function isIndexedDBAvailable(): boolean {
   }
 }
 
-// Register PouchDB plugins with error handling
-// This handles different module formats that can occur in dev vs production builds
+// Register PouchDB plugins
+// Use the default export directly - Vite handles the module format correctly
 try {
-  let pluginToRegister: any = null;
-
-  // Try different ways the module might be exported
-  if (typeof PouchDBFind === 'function') {
-    // Direct function export (most common in production)
-    pluginToRegister = PouchDBFind;
-  } else if (PouchDBFind && typeof PouchDBFind === 'object') {
-    // Check for default export
-    if (typeof (PouchDBFind as any).default === 'function') {
-      pluginToRegister = (PouchDBFind as any).default;
-    }
-    // Check for named export
-    else if (typeof (PouchDBFind as any).plugin === 'function') {
-      pluginToRegister = (PouchDBFind as any).plugin;
-    }
-    // Check if the object itself has plugin properties
-    else if ((PouchDBFind as any).default && typeof (PouchDBFind as any).default.default === 'function') {
-      pluginToRegister = (PouchDBFind as any).default.default;
-    }
-  }
-
-  if (pluginToRegister && typeof pluginToRegister === 'function') {
-    PouchDB.plugin(pluginToRegister);
-    logger.info('PouchDB-Find plugin registered successfully');
-  } else {
-    logger.error('PouchDB-Find plugin could not be loaded - invalid format:', typeof PouchDBFind);
-    console.error('PouchDBFind value:', PouchDBFind);
-  }
+  PouchDB.plugin(pouchdbFind);
+  logger.info('PouchDB-Find plugin registered successfully');
 } catch (error) {
   logger.error('Failed to register PouchDB-Find plugin:', error);
   // This error is critical - the app won't work without the find plugin
