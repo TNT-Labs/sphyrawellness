@@ -6,6 +6,8 @@ import {
   loadAppointments,
   loadPayments,
   loadReminders,
+  loadStaffRoles,
+  loadServiceCategories,
 } from './storage';
 import { logger } from './logger';
 
@@ -49,6 +51,8 @@ export async function migrateFromLocalStorage(): Promise<{
     const appointments = loadAppointments();
     const payments = loadPayments();
     const reminders = loadReminders();
+    const staffRoles = loadStaffRoles();
+    const serviceCategories = loadServiceCategories();
 
     const totalItems =
       customers.length +
@@ -56,7 +60,9 @@ export async function migrateFromLocalStorage(): Promise<{
       staff.length +
       appointments.length +
       payments.length +
-      reminders.length;
+      reminders.length +
+      staffRoles.length +
+      serviceCategories.length;
 
     if (totalItems === 0) {
       logger.log('No data to migrate from localStorage');
@@ -74,6 +80,8 @@ export async function migrateFromLocalStorage(): Promise<{
       appointments,
       payments,
       reminders,
+      staffRoles,
+      serviceCategories,
     });
 
     logger.log('Migration completed successfully!');

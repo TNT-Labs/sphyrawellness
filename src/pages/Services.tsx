@@ -10,7 +10,7 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteService } from '../utils/db';
 
 const Services: React.FC = () => {
-  const { services, addService, updateService, deleteService } = useApp();
+  const { services, addService, updateService, deleteService, serviceCategories } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,27 +29,20 @@ const Services: React.FC = () => {
     color: '#ec4899',
   });
 
-  const categories = [
-    'Mani',
-    'Piedi',
-    'Viso',
-    'Corpo',
-    'Massaggi',
-    'Epilazione',
-    'Trattamenti Speciali',
-    'Altro',
-  ];
+  // Filter only active categories
+  const activeCategories = serviceCategories.filter(c => c.isActive);
 
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
       const searchLower = debouncedSearchTerm.toLowerCase();
+      const categoryName = serviceCategories.find(c => c.id === service.category)?.name || '';
       return (
         service.name.toLowerCase().includes(searchLower) ||
-        service.category.toLowerCase().includes(searchLower) ||
+        categoryName.toLowerCase().includes(searchLower) ||
         service.description.toLowerCase().includes(searchLower)
       );
     });
-  }, [services, debouncedSearchTerm]);
+  }, [services, debouncedSearchTerm, serviceCategories]);
 
   const handleOpenModal = (service?: Service) => {
     if (service) {
@@ -180,28 +173,34 @@ const Services: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service) => (
-            <div
-              key={service.id}
-              className="card hover:shadow-lg transition-shadow border-l-4"
-              style={{ borderLeftColor: service.color }}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center">
-                  <div
-                    className="w-12 h-12 rounded-full flex items-center justify-center"
-                    style={{ backgroundColor: `${service.color}20` }}
-                  >
-                    <Scissors size={24} style={{ color: service.color }} />
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="font-semibold text-gray-900">{service.name}</h3>
-                    <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full mt-1">
-                      {service.category}
-                    </span>
+          {filteredServices.map((service) => {
+            const category = serviceCategories.find(c => c.id === service.category);
+            const displayColor = category?.color || service.color || '#ec4899';
+            return (
+              <div
+                key={service.id}
+                className="card hover:shadow-lg transition-shadow border-l-4"
+                style={{ borderLeftColor: displayColor }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center">
+                    <div
+                      className="w-12 h-12 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: `${displayColor}20` }}
+                    >
+                      <Scissors size={24} style={{ color: displayColor }} />
+                    </div>
+                    <div className="ml-3">
+                      <h3 className="font-semibold text-gray-900">{service.name}</h3>
+                      <span
+                        className="inline-block px-2 py-1 text-white text-xs rounded-full mt-1"
+                        style={{ backgroundColor: displayColor }}
+                      >
+                        {category?.name || 'N/A'}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
               <p className="text-sm text-gray-600 mb-4 line-clamp-2">
                 {service.description}
@@ -235,7 +234,8 @@ const Services: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -268,18 +268,29 @@ const Services: React.FC = () => {
                   <select
                     required
                     value={formData.category}
-                    onChange={(e) =>
-                      setFormData({ ...formData, category: e.target.value })
-                    }
+                    onChange={(e) => {
+                      const categoryId = e.target.value;
+                      const category = serviceCategories.find(c => c.id === categoryId);
+                      setFormData({
+                        ...formData,
+                        category: categoryId,
+                        color: category?.color || formData.color,
+                      });
+                    }}
                     className="input"
                   >
                     <option value="">Seleziona una categoria</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
+                    {activeCategories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
                       </option>
                     ))}
                   </select>
+                  {formData.category && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      Il colore della categoria verrà utilizzato per il servizio
+                    </p>
+                  )}
                 </div>
 
                 <div>

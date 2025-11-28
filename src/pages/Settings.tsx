@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock } from 'lucide-react';
+import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
@@ -9,15 +9,28 @@ import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/s
 import { loadSettings, saveSettings } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { useApp } from '../contexts/AppContext';
+import { StaffRole, ServiceCategory } from '../types';
 
 const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const { confirm: confirmWithInput, ConfirmationDialog: ConfirmationDialogWithInput } = useConfirmWithInput();
+  const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getDBStats>> | null>(null);
   const [backups, setBackups] = useState<ReturnType<typeof getAvailableBackups>>([]);
   const [storageInfo, setStorageInfo] = useState<Awaited<ReturnType<typeof getStoragePersistenceInfo>> | null>(null);
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
+
+  // Staff Roles state
+  const [isAddingRole, setIsAddingRole] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [roleFormData, setRoleFormData] = useState({ name: '' });
+
+  // Service Categories state
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [categoryFormData, setCategoryFormData] = useState({ name: '', color: '#3b82f6' });
 
   useEffect(() => {
     loadStats();
@@ -193,6 +206,188 @@ const Settings: React.FC = () => {
     showSuccess('Impostazione salvata');
   };
 
+  // Staff Roles handlers
+  const handleAddRole = async () => {
+    if (!roleFormData.name.trim()) {
+      showError('Il nome del ruolo è obbligatorio');
+      return;
+    }
+
+    const newRole: StaffRole = {
+      id: `role-${Date.now()}`,
+      name: roleFormData.name.trim(),
+      isActive: true,
+    };
+
+    try {
+      await addStaffRole(newRole);
+      setRoleFormData({ name: '' });
+      setIsAddingRole(false);
+      showSuccess('Ruolo aggiunto');
+    } catch (error) {
+      showError('Errore durante l\'aggiunta del ruolo');
+      console.error(error);
+    }
+  };
+
+  const handleEditRole = async () => {
+    if (!editingRoleId || !roleFormData.name.trim()) {
+      showError('Il nome del ruolo è obbligatorio');
+      return;
+    }
+
+    const existingRole = staffRoles.find(r => r.id === editingRoleId);
+    if (!existingRole) return;
+
+    const updatedRole: StaffRole = {
+      ...existingRole,
+      name: roleFormData.name.trim(),
+    };
+
+    try {
+      await updateStaffRole(updatedRole);
+      setRoleFormData({ name: '' });
+      setEditingRoleId(null);
+      showSuccess('Ruolo aggiornato');
+    } catch (error) {
+      showError('Errore durante l\'aggiornamento del ruolo');
+      console.error(error);
+    }
+  };
+
+  const handleDeleteRole = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Elimina Ruolo',
+      message: 'Eliminare questo ruolo? Il personale con questo ruolo dovrà essere aggiornato manualmente.',
+      confirmText: 'Elimina',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await deleteStaffRole(id);
+      showSuccess('Ruolo eliminato');
+    } catch (error) {
+      showError('Errore durante l\'eliminazione del ruolo');
+      console.error(error);
+    }
+  };
+
+  const handleToggleRoleActive = async (role: StaffRole) => {
+    try {
+      await updateStaffRole({ ...role, isActive: !role.isActive });
+      showSuccess(role.isActive ? 'Ruolo disattivato' : 'Ruolo attivato');
+    } catch (error) {
+      showError('Errore durante l\'aggiornamento del ruolo');
+      console.error(error);
+    }
+  };
+
+  // Service Categories handlers
+  const handleAddCategory = async () => {
+    if (!categoryFormData.name.trim()) {
+      showError('Il nome della categoria è obbligatorio');
+      return;
+    }
+
+    const newCategory: ServiceCategory = {
+      id: `cat-${Date.now()}`,
+      name: categoryFormData.name.trim(),
+      color: categoryFormData.color,
+      isActive: true,
+    };
+
+    try {
+      await addServiceCategory(newCategory);
+      setCategoryFormData({ name: '', color: '#3b82f6' });
+      setIsAddingCategory(false);
+      showSuccess('Categoria aggiunta');
+    } catch (error) {
+      showError('Errore durante l\'aggiunta della categoria');
+      console.error(error);
+    }
+  };
+
+  const handleEditCategory = async () => {
+    if (!editingCategoryId || !categoryFormData.name.trim()) {
+      showError('Il nome della categoria è obbligatorio');
+      return;
+    }
+
+    const existingCategory = serviceCategories.find(c => c.id === editingCategoryId);
+    if (!existingCategory) return;
+
+    const updatedCategory: ServiceCategory = {
+      ...existingCategory,
+      name: categoryFormData.name.trim(),
+      color: categoryFormData.color,
+    };
+
+    try {
+      await updateServiceCategory(updatedCategory);
+      setCategoryFormData({ name: '', color: '#3b82f6' });
+      setEditingCategoryId(null);
+      showSuccess('Categoria aggiornata');
+    } catch (error) {
+      showError('Errore durante l\'aggiornamento della categoria');
+      console.error(error);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const confirmed = await confirm({
+      title: 'Elimina Categoria',
+      message: 'Eliminare questa categoria? I servizi e le specializzazioni con questa categoria dovranno essere aggiornati manualmente.',
+      confirmText: 'Elimina',
+      variant: 'danger',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await deleteServiceCategory(id);
+      showSuccess('Categoria eliminata');
+    } catch (error) {
+      showError('Errore durante l\'eliminazione della categoria');
+      console.error(error);
+    }
+  };
+
+  const handleToggleCategoryActive = async (category: ServiceCategory) => {
+    try {
+      await updateServiceCategory({ ...category, isActive: !category.isActive });
+      showSuccess(category.isActive ? 'Categoria disattivata' : 'Categoria attivata');
+    } catch (error) {
+      showError('Errore durante l\'aggiornamento della categoria');
+      console.error(error);
+    }
+  };
+
+  const startEditRole = (role: StaffRole) => {
+    setRoleFormData({ name: role.name });
+    setEditingRoleId(role.id);
+    setIsAddingRole(false);
+  };
+
+  const startEditCategory = (category: ServiceCategory) => {
+    setCategoryFormData({ name: category.name, color: category.color });
+    setEditingCategoryId(category.id);
+    setIsAddingCategory(false);
+  };
+
+  const cancelRoleForm = () => {
+    setRoleFormData({ name: '' });
+    setEditingRoleId(null);
+    setIsAddingRole(false);
+  };
+
+  const cancelCategoryForm = () => {
+    setCategoryFormData({ name: '', color: '#3b82f6' });
+    setEditingCategoryId(null);
+    setIsAddingCategory(false);
+  };
+
   return (
     <>
       <ConfirmationDialog />
@@ -256,6 +451,218 @@ const Settings: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* Staff Roles Management */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <Users className="text-primary-600 mr-2" size={24} />
+              <h2 className="text-xl font-bold text-gray-900">Ruoli Personale</h2>
+            </div>
+            <button
+              onClick={() => {
+                setIsAddingRole(true);
+                setEditingRoleId(null);
+              }}
+              className="btn-primary text-sm"
+            >
+              <Plus size={16} className="inline mr-1" />
+              Aggiungi Ruolo
+            </button>
+          </div>
+
+          {/* Add/Edit Role Form */}
+          {(isAddingRole || editingRoleId) && (
+            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+              <h3 className="font-semibold text-gray-900 mb-3">
+                {editingRoleId ? 'Modifica Ruolo' : 'Nuovo Ruolo'}
+              </h3>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Nome ruolo"
+                  value={roleFormData.name}
+                  onChange={(e) => setRoleFormData({ name: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+                <button
+                  onClick={editingRoleId ? handleEditRole : handleAddRole}
+                  className="btn-primary"
+                >
+                  {editingRoleId ? 'Salva' : 'Aggiungi'}
+                </button>
+                <button
+                  onClick={cancelRoleForm}
+                  className="btn-secondary"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Roles List */}
+          <div className="space-y-2">
+            {staffRoles.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Nessun ruolo configurato</p>
+            ) : (
+              staffRoles.map((role) => (
+                <div
+                  key={role.id}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    role.isActive ? 'bg-gray-50' : 'bg-gray-100 opacity-60'
+                  }`}
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{role.name}</p>
+                    <p className="text-sm text-gray-600">
+                      {role.isActive ? 'Attivo' : 'Disattivato'}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleToggleRoleActive(role)}
+                      className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                        role.isActive
+                          ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                          : 'bg-green-50 text-green-600 hover:bg-green-100'
+                      }`}
+                    >
+                      {role.isActive ? 'Disattiva' : 'Attiva'}
+                    </button>
+                    <button
+                      onClick={() => startEditRole(role)}
+                      className="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold"
+                    >
+                      <Edit size={16} className="inline" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRole(role.id)}
+                      className="px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold"
+                    >
+                      <Trash2 size={16} className="inline" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Service Categories Management */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <Tag className="text-primary-600 mr-2" size={24} />
+              <h2 className="text-xl font-bold text-gray-900">Categorie Servizi</h2>
+            </div>
+            <button
+              onClick={() => {
+                setIsAddingCategory(true);
+                setEditingCategoryId(null);
+              }}
+              className="btn-primary text-sm"
+            >
+              <Plus size={16} className="inline mr-1" />
+              Aggiungi Categoria
+            </button>
+          </div>
+
+          {/* Add/Edit Category Form */}
+          {(isAddingCategory || editingCategoryId) && (
+            <div className="bg-blue-50 p-4 rounded-lg mb-4">
+              <h3 className="font-semibold text-gray-900 mb-3">
+                {editingCategoryId ? 'Modifica Categoria' : 'Nuova Categoria'}
+              </h3>
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  placeholder="Nome categoria"
+                  value={categoryFormData.name}
+                  onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+                <div className="flex items-center gap-2">
+                  <label htmlFor="category-color" className="text-sm font-semibold text-gray-700">
+                    Colore:
+                  </label>
+                  <input
+                    id="category-color"
+                    type="color"
+                    value={categoryFormData.color}
+                    onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
+                    className="w-12 h-10 rounded cursor-pointer"
+                  />
+                </div>
+                <button
+                  onClick={editingCategoryId ? handleEditCategory : handleAddCategory}
+                  className="btn-primary"
+                >
+                  {editingCategoryId ? 'Salva' : 'Aggiungi'}
+                </button>
+                <button
+                  onClick={cancelCategoryForm}
+                  className="btn-secondary"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Categories List */}
+          <div className="space-y-2">
+            {serviceCategories.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">Nessuna categoria configurata</p>
+            ) : (
+              serviceCategories.map((category) => (
+                <div
+                  key={category.id}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    category.isActive ? 'bg-gray-50' : 'bg-gray-100 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-6 h-6 rounded"
+                      style={{ backgroundColor: category.color }}
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900">{category.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {category.isActive ? 'Attiva' : 'Disattivata'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleToggleCategoryActive(category)}
+                      className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                        category.isActive
+                          ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                          : 'bg-green-50 text-green-600 hover:bg-green-100'
+                      }`}
+                    >
+                      {category.isActive ? 'Disattiva' : 'Attiva'}
+                    </button>
+                    <button
+                      onClick={() => startEditCategory(category)}
+                      className="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold"
+                    >
+                      <Edit size={16} className="inline" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      className="px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold"
+                    >
+                      <Trash2 size={16} className="inline" />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 

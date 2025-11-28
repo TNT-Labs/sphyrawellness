@@ -10,6 +10,19 @@ export interface Customer {
   createdAt: string;
 }
 
+export interface StaffRole {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface ServiceCategory {
+  id: string;
+  name: string;
+  color: string;
+  isActive: boolean;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -27,7 +40,7 @@ export interface Staff {
   email: string;
   phone: string;
   role: string;
-  specializations: string[];
+  specializations: string[]; // Array of category IDs
   color: string;
   isActive: boolean;
 }

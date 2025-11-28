@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Customer, Service, Staff, Appointment, Payment, Reminder } from '../types';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
 
 // Define database schema
@@ -34,10 +34,18 @@ interface SphyraDB extends DBSchema {
     value: Reminder;
     indexes: { 'by-appointment': string };
   };
+  staffRoles: {
+    key: string;
+    value: StaffRole;
+  };
+  serviceCategories: {
+    key: string;
+    value: ServiceCategory;
+  };
 }
 
 const DB_NAME = 'sphyra-wellness-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<SphyraDB> | null = null;
 
@@ -90,6 +98,16 @@ export async function initDB(): Promise<IDBPDatabase<SphyraDB>> {
         if (!db.objectStoreNames.contains('reminders')) {
           const reminderStore = db.createObjectStore('reminders', { keyPath: 'id' });
           reminderStore.createIndex('by-appointment', 'appointmentId');
+        }
+
+        // Create staff roles store (v2)
+        if (!db.objectStoreNames.contains('staffRoles')) {
+          db.createObjectStore('staffRoles', { keyPath: 'id' });
+        }
+
+        // Create service categories store (v2)
+        if (!db.objectStoreNames.contains('serviceCategories')) {
+          db.createObjectStore('serviceCategories', { keyPath: 'id' });
         }
       },
     });
@@ -429,6 +447,64 @@ export async function canDeleteService(serviceId: string): Promise<{
 }
 
 // ============================================
+// CRUD Operations for Staff Roles
+// ============================================
+
+export async function getAllStaffRoles(): Promise<StaffRole[]> {
+  const db = await getDB();
+  return await db.getAll('staffRoles');
+}
+
+export async function getStaffRole(id: string): Promise<StaffRole | undefined> {
+  const db = await getDB();
+  return await db.get('staffRoles', id);
+}
+
+export async function addStaffRole(role: StaffRole): Promise<void> {
+  const db = await getDB();
+  await db.add('staffRoles', role);
+}
+
+export async function updateStaffRole(role: StaffRole): Promise<void> {
+  const db = await getDB();
+  await db.put('staffRoles', role);
+}
+
+export async function deleteStaffRole(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('staffRoles', id);
+}
+
+// ============================================
+// CRUD Operations for Service Categories
+// ============================================
+
+export async function getAllServiceCategories(): Promise<ServiceCategory[]> {
+  const db = await getDB();
+  return await db.getAll('serviceCategories');
+}
+
+export async function getServiceCategory(id: string): Promise<ServiceCategory | undefined> {
+  const db = await getDB();
+  return await db.get('serviceCategories', id);
+}
+
+export async function addServiceCategory(category: ServiceCategory): Promise<void> {
+  const db = await getDB();
+  await db.add('serviceCategories', category);
+}
+
+export async function updateServiceCategory(category: ServiceCategory): Promise<void> {
+  const db = await getDB();
+  await db.put('serviceCategories', category);
+}
+
+export async function deleteServiceCategory(id: string): Promise<void> {
+  const db = await getDB();
+  await db.delete('serviceCategories', id);
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
@@ -440,7 +516,7 @@ export async function canDeleteService(serviceId: string): Promise<{
 export async function clearAllData(): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    ['customers', 'services', 'staff', 'appointments', 'payments', 'reminders'],
+    ['customers', 'services', 'staff', 'appointments', 'payments', 'reminders', 'staffRoles', 'serviceCategories'],
     'readwrite'
   );
 
@@ -451,6 +527,8 @@ export async function clearAllData(): Promise<void> {
     tx.objectStore('appointments').clear(),
     tx.objectStore('payments').clear(),
     tx.objectStore('reminders').clear(),
+    tx.objectStore('staffRoles').clear(),
+    tx.objectStore('serviceCategories').clear(),
   ]);
 
   await tx.done;
@@ -467,16 +545,20 @@ export async function getDBStats(): Promise<{
   appointments: number;
   payments: number;
   reminders: number;
+  staffRoles: number;
+  serviceCategories: number;
 }> {
   const db = await getDB();
 
-  const [customers, services, staff, appointments, payments, reminders] = await Promise.all([
+  const [customers, services, staff, appointments, payments, reminders, staffRoles, serviceCategories] = await Promise.all([
     db.count('customers'),
     db.count('services'),
     db.count('staff'),
     db.count('appointments'),
     db.count('payments'),
     db.count('reminders'),
+    db.count('staffRoles'),
+    db.count('serviceCategories'),
   ]);
 
   return {
@@ -486,6 +568,8 @@ export async function getDBStats(): Promise<{
     appointments,
     payments,
     reminders,
+    staffRoles,
+    serviceCategories,
   };
 }
 
@@ -499,14 +583,18 @@ export async function exportAllData(): Promise<{
   appointments: Appointment[];
   payments: Payment[];
   reminders: Reminder[];
+  staffRoles: StaffRole[];
+  serviceCategories: ServiceCategory[];
 }> {
-  const [customers, services, staff, appointments, payments, reminders] = await Promise.all([
+  const [customers, services, staff, appointments, payments, reminders, staffRoles, serviceCategories] = await Promise.all([
     getAllCustomers(),
     getAllServices(),
     getAllStaff(),
     getAllAppointments(),
     getAllPayments(),
     getAllReminders(),
+    getAllStaffRoles(),
+    getAllServiceCategories(),
   ]);
 
   return {
@@ -516,6 +604,8 @@ export async function exportAllData(): Promise<{
     appointments,
     payments,
     reminders,
+    staffRoles,
+    serviceCategories,
   };
 }
 
@@ -529,10 +619,12 @@ export async function importAllData(data: {
   appointments?: Appointment[];
   payments?: Payment[];
   reminders?: Reminder[];
+  staffRoles?: StaffRole[];
+  serviceCategories?: ServiceCategory[];
 }): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    ['customers', 'services', 'staff', 'appointments', 'payments', 'reminders'],
+    ['customers', 'services', 'staff', 'appointments', 'payments', 'reminders', 'staffRoles', 'serviceCategories'],
     'readwrite'
   );
 
@@ -581,6 +673,22 @@ export async function importAllData(data: {
     const reminderStore = tx.objectStore('reminders');
     for (const reminder of data.reminders) {
       await reminderStore.put(reminder);
+    }
+  }
+
+  // Import staff roles
+  if (data.staffRoles) {
+    const rolesStore = tx.objectStore('staffRoles');
+    for (const role of data.staffRoles) {
+      await rolesStore.put(role);
+    }
+  }
+
+  // Import service categories
+  if (data.serviceCategories) {
+    const categoriesStore = tx.objectStore('serviceCategories');
+    for (const category of data.serviceCategories) {
+      await categoriesStore.put(category);
     }
   }
 
