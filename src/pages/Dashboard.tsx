@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { Calendar, Users, DollarSign, TrendingUp, Clock } from 'lucide-react';
+import { Calendar, Users, TrendingUp, Clock } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -13,7 +13,15 @@ const Dashboard: React.FC = () => {
     isToday(parseISO(apt.date))
   );
 
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+  // Clienti unici che hanno appuntamenti oggi
+  const todayCustomers = new Set(
+    todayAppointments.map((apt) => apt.customerId)
+  ).size;
+
+  // Servizi unici erogati oggi
+  const todayServices = new Set(
+    todayAppointments.map((apt) => apt.serviceId)
+  ).size;
 
   const upcomingAppointments = appointments
     .filter((apt) => {
@@ -52,24 +60,16 @@ const Dashboard: React.FC = () => {
       link: '/calendario',
     },
     {
-      name: 'Clienti Totali',
-      value: customers.length,
+      name: 'Clienti Oggi',
+      value: todayCustomers,
       icon: Users,
       color: 'text-green-600',
       bg: 'bg-green-100',
       link: '/clienti',
     },
     {
-      name: 'Fatturato Totale',
-      value: `€${totalRevenue.toFixed(2)}`,
-      icon: DollarSign,
-      color: 'text-purple-600',
-      bg: 'bg-purple-100',
-      link: '/pagamenti',
-    },
-    {
-      name: 'Servizi Attivi',
-      value: services.length,
+      name: 'Servizi Oggi',
+      value: todayServices,
       icon: TrendingUp,
       color: 'text-pink-600',
       bg: 'bg-pink-100',
@@ -88,7 +88,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (

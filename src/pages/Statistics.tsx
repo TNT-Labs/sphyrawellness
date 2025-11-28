@@ -12,7 +12,7 @@ import { parseISO, format, startOfMonth, endOfMonth, isWithinInterval } from 'da
 import { it } from 'date-fns/locale';
 
 const Statistics: React.FC = () => {
-  const { appointments, payments, customers, services, staff } = useApp();
+  const { appointments, payments, customers, services, staff, serviceCategories } = useApp();
 
   // Memoize expensive calculations
   const stats = useMemo(() => {
@@ -69,6 +69,38 @@ const Statistics: React.FC = () => {
       now,
     };
   }, [appointments, payments, customers]);
+
+  // Category statistics - memoized
+  const categoryStats = useMemo(() => {
+    const stats = serviceCategories.map((category) => {
+      // Get all services in this category
+      const categoryServices = services.filter(
+        (service) => service.category === category.id
+      );
+      const categoryServiceIds = categoryServices.map((s) => s.id);
+
+      // Count appointments for services in this category
+      const categoryAppointments = appointments.filter((apt) =>
+        categoryServiceIds.includes(apt.serviceId)
+      );
+
+      // Calculate revenue for this category
+      const revenue = payments
+        .filter((p) => {
+          const apt = appointments.find((a) => a.id === p.appointmentId);
+          return apt && categoryServiceIds.includes(apt.serviceId);
+        })
+        .reduce((sum, p) => sum + p.amount, 0);
+
+      return {
+        category,
+        count: categoryAppointments.length,
+        revenue,
+      };
+    });
+
+    return stats.sort((a, b) => b.count - a.count).slice(0, 5);
+  }, [serviceCategories, services, appointments, payments]);
 
   // Service statistics - memoized
   const serviceStats = useMemo(() => {
@@ -171,6 +203,60 @@ const Statistics: React.FC = () => {
             {stats.thisMonthAppointments.length} appuntamenti
           </p>
         </div>
+      </div>
+
+      {/* Top Categories */}
+      <div className="card">
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+          <TrendingUp className="mr-2 text-purple-600" size={24} />
+          Categorie Più Richieste
+        </h2>
+
+        {categoryStats.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">
+            Nessun dato disponibile
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {categoryStats.map((item, index) => (
+              <div key={item.category.id} className="flex items-center">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold mr-4"
+                  style={{
+                    backgroundColor: `${item.category.color}20`,
+                    color: item.category.color,
+                  }}
+                >
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold text-gray-900">
+                      {item.category.name}
+                    </h3>
+                    <span className="text-sm text-gray-600">
+                      {item.count} prenotazioni
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="h-2 rounded-full"
+                      style={{
+                        width: `${(item.count / stats.totalAppointments) * 100}%`,
+                        backgroundColor: item.category.color,
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="ml-4 text-right">
+                  <span className="font-bold text-gray-900">
+                    €{item.revenue.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Top Services */}
