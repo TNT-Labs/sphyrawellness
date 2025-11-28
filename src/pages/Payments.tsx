@@ -10,7 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 
 const Payments: React.FC = () => {
   const { payments, addPayment, appointments, customers, services } = useApp();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -82,12 +82,12 @@ const Payments: React.FC = () => {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+  };
 
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const paymentData: Payment = {
@@ -96,9 +96,14 @@ const Payments: React.FC = () => {
       notes: formData.notes || undefined,
     };
 
-    addPayment(paymentData);
+    try {
+      await addPayment(paymentData);
       showSuccess('Pagamento aggiunto con successo!');
-    handleCloseModal();
+      handleCloseModal();
+    } catch (error) {
+      showError('Errore durante la registrazione del pagamento');
+      console.error(error);
+    }
   };
 
   const handleAppointmentChange = (appointmentId: string) => {

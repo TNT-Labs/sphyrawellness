@@ -104,12 +104,12 @@ const CalendarPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingAppointment(null);
+  };
 
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const service = services.find((s) => s.id === formData.serviceId);
@@ -137,15 +137,19 @@ const CalendarPage: React.FC = () => {
       createdAt: editingAppointment?.createdAt || new Date().toISOString(),
     };
 
-    if (editingAppointment) {
-      updateAppointment(appointmentData);
-      showSuccess('Appuntamento aggiornato con successo!');
-    } else {
-      addAppointment(appointmentData);
-      showSuccess('Appuntamento aggiunto con successo!');
+    try {
+      if (editingAppointment) {
+        await updateAppointment(appointmentData);
+        showSuccess('Appuntamento aggiornato con successo!');
+      } else {
+        await addAppointment(appointmentData);
+        showSuccess('Appuntamento aggiunto con successo!');
+      }
+      handleCloseModal();
+    } catch (error) {
+      showError('Errore durante il salvataggio dell\'appuntamento');
+      console.error(error);
     }
-
-    handleCloseModal();
   };
 
   const handleDelete = async (id: string) => {
@@ -164,8 +168,13 @@ const CalendarPage: React.FC = () => {
     });
 
     if (confirmed) {
-      deleteAppointment(id);
-      showSuccess('Appuntamento eliminato con successo');
+      try {
+        await deleteAppointment(id);
+        showSuccess('Appuntamento eliminato con successo');
+      } catch (error) {
+        showError('Errore durante l\'eliminazione dell\'appuntamento');
+        console.error(error);
+      }
     }
   };
 

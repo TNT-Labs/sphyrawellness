@@ -242,7 +242,7 @@ const Statistics: React.FC = () => {
                     <div
                       className="h-2 rounded-full"
                       style={{
-                        width: `${(item.count / stats.totalAppointments) * 100}%`,
+                        width: `${stats.totalAppointments > 0 ? (item.count / stats.totalAppointments) * 100 : 0}%`,
                         backgroundColor: item.category.color,
                       }}
                     />
@@ -290,7 +290,7 @@ const Statistics: React.FC = () => {
                     <div
                       className="bg-primary-600 h-2 rounded-full"
                       style={{
-                        width: `${(item.count / stats.totalAppointments) * 100}%`,
+                        width: `${stats.totalAppointments > 0 ? (item.count / stats.totalAppointments) * 100 : 0}%`,
                       }}
                     />
                   </div>
@@ -343,7 +343,7 @@ const Statistics: React.FC = () => {
                     <div
                       className="h-2 rounded-full"
                       style={{
-                        width: `${(item.completed / Math.max(item.count, 1)) * 100}%`,
+                        width: `${item.count > 0 ? (item.completed / item.count) * 100 : 0}%`,
                         backgroundColor: item.member.color,
                       }}
                     />

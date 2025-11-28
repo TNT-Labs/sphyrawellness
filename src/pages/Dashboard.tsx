@@ -25,8 +25,13 @@ const Dashboard: React.FC = () => {
 
   const upcomingAppointments = appointments
     .filter((apt) => {
-      const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
-      return aptDateTime >= new Date() && apt.status === 'scheduled';
+      if (!apt.date || !apt.startTime) return false;
+      try {
+        const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
+        return aptDateTime >= new Date() && apt.status === 'scheduled';
+      } catch (error) {
+        return false;
+      }
     })
     .sort((a, b) => {
       const dateA = parseISO(`${a.date}T${a.startTime}`);
