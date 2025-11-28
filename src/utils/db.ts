@@ -286,11 +286,156 @@ export async function deleteReminder(id: string): Promise<void> {
 }
 
 // ============================================
+// Relationship Check Functions
+// ============================================
+
+/**
+ * Check if a customer has appointments
+ */
+export async function getCustomerAppointments(customerId: string): Promise<Appointment[]> {
+  const db = await getDB();
+  const tx = db.transaction('appointments', 'readonly');
+  const index = tx.store.index('by-customer');
+  return await index.getAll(customerId);
+}
+
+/**
+ * Check if staff has appointments
+ */
+export async function getStaffAppointments(staffId: string): Promise<Appointment[]> {
+  const db = await getDB();
+  const tx = db.transaction('appointments', 'readonly');
+  const index = tx.store.index('by-staff');
+  return await index.getAll(staffId);
+}
+
+/**
+ * Check if service has appointments
+ */
+export async function getServiceAppointments(serviceId: string): Promise<{
+  count: number;
+  futureCount: number;
+}> {
+  const db = await getDB();
+  const allAppointments = await db.getAll('appointments');
+  const serviceAppointments = allAppointments.filter((apt) => apt.serviceId === serviceId);
+  const today = new Date().toISOString().split('T')[0];
+  const futureAppointments = serviceAppointments.filter((apt) => apt.date >= today);
+
+  return {
+    count: serviceAppointments.length,
+    futureCount: futureAppointments.length,
+  };
+}
+
+/**
+ * Get future appointments for a customer
+ */
+export async function getCustomerFutureAppointments(customerId: string): Promise<Appointment[]> {
+  const appointments = await getCustomerAppointments(customerId);
+  const today = new Date().toISOString().split('T')[0];
+  return appointments.filter((apt) => apt.date >= today && apt.status !== 'cancelled');
+}
+
+/**
+ * Get future appointments for staff
+ */
+export async function getStaffFutureAppointments(staffId: string): Promise<Appointment[]> {
+  const appointments = await getStaffAppointments(staffId);
+  const today = new Date().toISOString().split('T')[0];
+  return appointments.filter((apt) => apt.date >= today && apt.status !== 'cancelled');
+}
+
+/**
+ * Get payments for an appointment
+ */
+export async function getAppointmentPayments(appointmentId: string): Promise<Payment[]> {
+  const db = await getDB();
+  const tx = db.transaction('payments', 'readonly');
+  const index = tx.store.index('by-appointment');
+  return await index.getAll(appointmentId);
+}
+
+/**
+ * Check if it's safe to delete a customer (no future appointments)
+ */
+export async function canDeleteCustomer(customerId: string): Promise<{
+  canDelete: boolean;
+  reason?: string;
+  futureAppointments: number;
+}> {
+  const futureAppointments = await getCustomerFutureAppointments(customerId);
+
+  if (futureAppointments.length > 0) {
+    return {
+      canDelete: false,
+      reason: `Il cliente ha ${futureAppointments.length} appuntamento${futureAppointments.length > 1 ? 'i' : ''} futur${futureAppointments.length > 1 ? 'i' : 'o'}`,
+      futureAppointments: futureAppointments.length,
+    };
+  }
+
+  return {
+    canDelete: true,
+    futureAppointments: 0,
+  };
+}
+
+/**
+ * Check if it's safe to delete staff (no future appointments)
+ */
+export async function canDeleteStaff(staffId: string): Promise<{
+  canDelete: boolean;
+  reason?: string;
+  futureAppointments: number;
+}> {
+  const futureAppointments = await getStaffFutureAppointments(staffId);
+
+  if (futureAppointments.length > 0) {
+    return {
+      canDelete: false,
+      reason: `Il membro ha ${futureAppointments.length} appuntamento${futureAppointments.length > 1 ? 'i' : ''} futur${futureAppointments.length > 1 ? 'i' : 'o'}`,
+      futureAppointments: futureAppointments.length,
+    };
+  }
+
+  return {
+    canDelete: true,
+    futureAppointments: 0,
+  };
+}
+
+/**
+ * Check if it's safe to delete a service
+ */
+export async function canDeleteService(serviceId: string): Promise<{
+  canDelete: boolean;
+  reason?: string;
+  futureAppointments: number;
+}> {
+  const { futureCount } = await getServiceAppointments(serviceId);
+
+  if (futureCount > 0) {
+    return {
+      canDelete: false,
+      reason: `Il servizio ha ${futureCount} appuntamento${futureCount > 1 ? 'i' : ''} futur${futureCount > 1 ? 'i' : 'o'}`,
+      futureAppointments: futureCount,
+    };
+  }
+
+  return {
+    canDelete: true,
+    futureAppointments: 0,
+  };
+}
+
+// ============================================
 // Utility Functions
 // ============================================
 
 /**
  * Clear all data from the database
+ * WARNING: This is a destructive operation that cannot be undone!
+ * Use clearAllDataWithConfirmation() instead for UI operations
  */
 export async function clearAllData(): Promise<void> {
   const db = await getDB();
@@ -309,6 +454,7 @@ export async function clearAllData(): Promise<void> {
   ]);
 
   await tx.done;
+  logger.log('⚠️ All data cleared from database');
 }
 
 /**

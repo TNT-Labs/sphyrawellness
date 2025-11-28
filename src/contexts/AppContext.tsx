@@ -33,6 +33,8 @@ import {
 import { migrateFromLocalStorage } from '../utils/migration';
 import { initializeDemoData } from '../utils/storage';
 import { logger } from '../utils/logger';
+import { initAutoBackup } from '../utils/autoBackup';
+import { initStoragePersistence } from '../utils/storagePersistence';
 
 interface AppContextType {
   // Loading state
@@ -92,6 +94,9 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
         await initDB();
         logger.log('✓ IndexedDB initialized');
 
+        // Request storage persistence to prevent data loss
+        await initStoragePersistence();
+
         // Migrate data from localStorage if needed
         const migrationResult = await migrateFromLocalStorage();
         if (migrationResult.success && migrationResult.itemsMigrated > 0) {
@@ -148,6 +153,9 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
         setReminders(loadedReminders);
 
         logger.log('✓ App data loaded successfully');
+
+        // Initialize auto-backup system
+        await initAutoBackup();
       } catch (error) {
         logger.error('Failed to initialize app:', error);
       } finally {

@@ -7,10 +7,11 @@ import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react';
 import { generateId } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { canDeleteService } from '../utils/db';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService } = useApp();
-  const { showSuccess } = useToast();
+  const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -103,6 +104,14 @@ const Services: React.FC = () => {
   };
 
   const handleDelete = async (service: Service) => {
+    // Check if service has future appointments
+    const canDelete = await canDeleteService(service.id);
+
+    if (!canDelete.canDelete) {
+      showError(`Impossibile eliminare: ${canDelete.reason}. Cancella prima gli appuntamenti futuri.`);
+      return;
+    }
+
     const confirmed = await confirm({
       title: 'Elimina Servizio',
       message: `Sei sicuro di voler eliminare "${service.name}"? Questa azione non può essere annullata.`,
