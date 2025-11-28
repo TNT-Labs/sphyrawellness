@@ -194,9 +194,23 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <select
                   required
                   value={formData.serviceId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, serviceId: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const newServiceId = e.target.value;
+                    const newService = services.find(s => s.id === newServiceId);
+                    const currentStaff = staff.find(s => s.id === formData.staffId);
+
+                    // Se l'operatore corrente non ha la specializzazione per il nuovo servizio, resettalo
+                    let newStaffId = formData.staffId;
+                    if (newService && currentStaff && !currentStaff.specializations.includes(newService.category)) {
+                      newStaffId = '';
+                    }
+
+                    setFormData({
+                      ...formData,
+                      serviceId: newServiceId,
+                      staffId: newStaffId
+                    });
+                  }}
                   className="input"
                 >
                   <option value="">Seleziona un servizio</option>
@@ -220,13 +234,35 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 >
                   <option value="">Seleziona un operatore</option>
                   {staff
-                    .filter((s) => s.isActive)
+                    .filter((s) => {
+                      if (!s.isActive) return false;
+
+                      // Se un servizio è selezionato, mostra solo operatori con la specializzazione corretta
+                      if (formData.serviceId) {
+                        const selectedService = services.find(srv => srv.id === formData.serviceId);
+                        if (selectedService) {
+                          return s.specializations.includes(selectedService.category);
+                        }
+                      }
+
+                      // Se nessun servizio è selezionato, mostra tutti gli operatori attivi
+                      return true;
+                    })
                     .map((member) => (
                       <option key={member.id} value={member.id}>
                         {member.firstName} {member.lastName} - {getStaffRoleName(member.role)}
                       </option>
                     ))}
                 </select>
+                {formData.serviceId && staff.filter((s) => {
+                  if (!s.isActive) return false;
+                  const selectedService = services.find(srv => srv.id === formData.serviceId);
+                  return selectedService && s.specializations.includes(selectedService.category);
+                }).length === 0 && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    Nessun operatore disponibile con la specializzazione richiesta per questo servizio
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
