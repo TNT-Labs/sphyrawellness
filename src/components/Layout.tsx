@@ -10,6 +10,7 @@ import {
   DollarSign,
   BarChart3,
   Settings,
+  BookOpen,
   Menu,
   X,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Pagamenti', href: '/pagamenti', icon: DollarSign },
     { name: 'Reminder', href: '/reminder', icon: Bell },
     { name: 'Statistiche', href: '/statistiche', icon: BarChart3 },
+    { name: 'Manuale', href: '/manuale', icon: BookOpen },
     { name: 'Impostazioni', href: '/impostazioni', icon: Settings },
   ];
 
