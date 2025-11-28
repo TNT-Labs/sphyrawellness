@@ -1,5 +1,5 @@
 import PouchDB from 'pouchdb-browser';
-import * as PouchDBFindModule from 'pouchdb-find';
+import PouchDBFind from 'pouchdb-find';
 import {
   Customer,
   Service,
@@ -15,8 +15,6 @@ import {
 import { logger } from './logger';
 
 // Register PouchDB plugins
-// Use default export or the module itself depending on how it's exported
-const PouchDBFind = (PouchDBFindModule as any).default || PouchDBFindModule;
 PouchDB.plugin(PouchDBFind);
 
 // Document types in PouchDB
