@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Eager load Dashboard (most visited page)
 import Dashboard from './pages/Dashboard';
@@ -41,32 +42,34 @@ const GlobalLoader: React.FC = () => (
 
 const App: React.FC = () => {
   return (
-    <ToastProvider>
-      <AppProvider>
-        {(isLoading) => (
-          isLoading ? (
-            <GlobalLoader />
-          ) : (
-            <Router basename="/sphyrawellness">
-              <Layout>
-                <Suspense fallback={<PageLoader />}>
-                  <Routes>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/calendario" element={<CalendarPage />} />
-                    <Route path="/clienti" element={<Customers />} />
-                    <Route path="/servizi" element={<Services />} />
-                    <Route path="/personale" element={<StaffPage />} />
-                    <Route path="/pagamenti" element={<Payments />} />
-                    <Route path="/reminder" element={<Reminders />} />
-                    <Route path="/statistiche" element={<Statistics />} />
-                  </Routes>
-                </Suspense>
-              </Layout>
-            </Router>
-          )
-        )}
-      </AppProvider>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <AppProvider>
+          {(isLoading) => (
+            isLoading ? (
+              <GlobalLoader />
+            ) : (
+              <Router basename="/sphyrawellness">
+                <Layout>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/calendario" element={<CalendarPage />} />
+                      <Route path="/clienti" element={<Customers />} />
+                      <Route path="/servizi" element={<Services />} />
+                      <Route path="/personale" element={<StaffPage />} />
+                      <Route path="/pagamenti" element={<Payments />} />
+                      <Route path="/reminder" element={<Reminders />} />
+                      <Route path="/statistiche" element={<Statistics />} />
+                    </Routes>
+                  </Suspense>
+                </Layout>
+              </Router>
+            )
+          )}
+        </AppProvider>
+      </ToastProvider>
+    </ErrorBoundary>
   );
 };
 

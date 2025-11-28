@@ -32,6 +32,7 @@ import {
 } from '../utils/db';
 import { migrateFromLocalStorage } from '../utils/migration';
 import { initializeDemoData } from '../utils/storage';
+import { logger } from '../utils/logger';
 
 interface AppContextType {
   // Loading state
@@ -89,12 +90,12 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
 
         // Initialize IndexedDB
         await initDB();
-        console.log('✓ IndexedDB initialized');
+        logger.log('✓ IndexedDB initialized');
 
         // Migrate data from localStorage if needed
         const migrationResult = await migrateFromLocalStorage();
         if (migrationResult.success && migrationResult.itemsMigrated > 0) {
-          console.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
+          logger.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
         }
 
         // Load all data from IndexedDB
@@ -120,7 +121,7 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
           loadedServices.length === 0 &&
           loadedStaff.length === 0
         ) {
-          console.log('No data found, initializing demo data...');
+          logger.log('No data found, initializing demo data...');
           initializeDemoData();
 
           // Trigger migration again to load demo data into IndexedDB
@@ -146,9 +147,9 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
         setPayments(loadedPayments);
         setReminders(loadedReminders);
 
-        console.log('✓ App data loaded successfully');
+        logger.log('✓ App data loaded successfully');
       } catch (error) {
-        console.error('Failed to initialize app:', error);
+        logger.error('Failed to initialize app:', error);
       } finally {
         setIsLoading(false);
       }
