@@ -39,9 +39,7 @@ import {
   addServiceCategory as dbAddServiceCategory,
   updateServiceCategory as dbUpdateServiceCategory,
   deleteServiceCategory as dbDeleteServiceCategory,
-  startSync,
 } from '../utils/db';
-import { loadSettings } from '../utils/storage';
 import { migrateFromLocalStorage } from '../utils/migration';
 import { initializeDemoData } from '../utils/storage';
 import { logger } from '../utils/logger';
@@ -205,21 +203,6 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
           initAutoBackup().catch((error) => {
             logger.error('Failed to initialize auto-backup:', error);
           });
-        }
-
-        // Step 7: Initialize sync if enabled (non-blocking)
-        const settings = loadSettings();
-        if (settings.sync.enabled && isMounted) {
-          startSync(settings.sync)
-            .then(() => {
-              if (isMounted) {
-                logger.log('✓ Database sync started');
-              }
-            })
-            .catch((error) => {
-              logger.error('Failed to start sync:', error);
-              // Don't throw - app should still work without sync
-            });
         }
       } catch (error) {
         logger.error('Failed to initialize app:', error);

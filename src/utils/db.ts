@@ -1,24 +1,19 @@
 /**
- * Database module - now uses PouchDB for local storage and CouchDB sync
- * This module delegates all operations to pouchdbSync.ts while maintaining
- * the same public interface for backward compatibility
+ * Database module - uses native IndexedDB for local storage
+ * This module delegates all operations to indexedDB.ts
  */
 
-import * as PouchDBSync from './pouchdbSync';
+import * as IndexedDB from './indexedDB';
 import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
-import { migrateIndexedDBToPouchDB } from './migrateToPouchDB';
 
 /**
- * Initialize database and run migration if needed
+ * Initialize database
  */
 export async function initDB(): Promise<void> {
   try {
-    // Initialize PouchDB
-    await PouchDBSync.initPouchDB();
-
-    // Migrate data from IndexedDB if needed
-    await migrateIndexedDBToPouchDB();
+    // Initialize IndexedDB
+    await IndexedDB.initIndexedDB();
 
     logger.info('Database initialized successfully');
   } catch (error) {
@@ -31,81 +26,81 @@ export async function initDB(): Promise<void> {
 // CRUD Operations for Customers
 // ============================================
 
-export const getAllCustomers = PouchDBSync.getAllCustomers;
-export const getCustomer = PouchDBSync.getCustomer;
-export const addCustomer = PouchDBSync.addCustomer;
-export const updateCustomer = PouchDBSync.updateCustomer;
-export const deleteCustomer = PouchDBSync.deleteCustomer;
+export const getAllCustomers = IndexedDB.getAllCustomers;
+export const getCustomer = IndexedDB.getCustomer;
+export const addCustomer = IndexedDB.addCustomer;
+export const updateCustomer = IndexedDB.updateCustomer;
+export const deleteCustomer = IndexedDB.deleteCustomer;
 
 // ============================================
 // CRUD Operations for Services
 // ============================================
 
-export const getAllServices = PouchDBSync.getAllServices;
-export const getService = PouchDBSync.getService;
-export const addService = PouchDBSync.addService;
-export const updateService = PouchDBSync.updateService;
-export const deleteService = PouchDBSync.deleteService;
+export const getAllServices = IndexedDB.getAllServices;
+export const getService = IndexedDB.getService;
+export const addService = IndexedDB.addService;
+export const updateService = IndexedDB.updateService;
+export const deleteService = IndexedDB.deleteService;
 
 // ============================================
 // CRUD Operations for Staff
 // ============================================
 
-export const getAllStaff = PouchDBSync.getAllStaff;
-export const getStaff = PouchDBSync.getStaff;
-export const addStaff = PouchDBSync.addStaff;
-export const updateStaff = PouchDBSync.updateStaff;
-export const deleteStaff = PouchDBSync.deleteStaff;
+export const getAllStaff = IndexedDB.getAllStaff;
+export const getStaff = IndexedDB.getStaff;
+export const addStaff = IndexedDB.addStaff;
+export const updateStaff = IndexedDB.updateStaff;
+export const deleteStaff = IndexedDB.deleteStaff;
 
 // ============================================
 // CRUD Operations for Appointments
 // ============================================
 
-export const getAllAppointments = PouchDBSync.getAllAppointments;
-export const getAppointment = PouchDBSync.getAppointment;
-export const addAppointment = PouchDBSync.addAppointment;
-export const updateAppointment = PouchDBSync.updateAppointment;
-export const deleteAppointment = PouchDBSync.deleteAppointment;
+export const getAllAppointments = IndexedDB.getAllAppointments;
+export const getAppointment = IndexedDB.getAppointment;
+export const addAppointment = IndexedDB.addAppointment;
+export const updateAppointment = IndexedDB.updateAppointment;
+export const deleteAppointment = IndexedDB.deleteAppointment;
 
 // ============================================
 // CRUD Operations for Payments
 // ============================================
 
-export const getAllPayments = PouchDBSync.getAllPayments;
-export const getPayment = PouchDBSync.getPayment;
-export const addPayment = PouchDBSync.addPayment;
-export const updatePayment = PouchDBSync.updatePayment;
-export const deletePayment = PouchDBSync.deletePayment;
+export const getAllPayments = IndexedDB.getAllPayments;
+export const getPayment = IndexedDB.getPayment;
+export const addPayment = IndexedDB.addPayment;
+export const updatePayment = IndexedDB.updatePayment;
+export const deletePayment = IndexedDB.deletePayment;
 
 // ============================================
 // CRUD Operations for Reminders
 // ============================================
 
-export const getAllReminders = PouchDBSync.getAllReminders;
-export const getReminder = PouchDBSync.getReminder;
-export const addReminder = PouchDBSync.addReminder;
-export const updateReminder = PouchDBSync.updateReminder;
-export const deleteReminder = PouchDBSync.deleteReminder;
+export const getAllReminders = IndexedDB.getAllReminders;
+export const getReminder = IndexedDB.getReminder;
+export const addReminder = IndexedDB.addReminder;
+export const updateReminder = IndexedDB.updateReminder;
+export const deleteReminder = IndexedDB.deleteReminder;
 
 // ============================================
 // CRUD Operations for Staff Roles
 // ============================================
 
-export const getAllStaffRoles = PouchDBSync.getAllStaffRoles;
-export const getStaffRole = PouchDBSync.getStaffRole;
-export const addStaffRole = PouchDBSync.addStaffRole;
-export const updateStaffRole = PouchDBSync.updateStaffRole;
-export const deleteStaffRole = PouchDBSync.deleteStaffRole;
+export const getAllStaffRoles = IndexedDB.getAllStaffRoles;
+export const getStaffRole = IndexedDB.getStaffRole;
+export const addStaffRole = IndexedDB.addStaffRole;
+export const updateStaffRole = IndexedDB.updateStaffRole;
+export const deleteStaffRole = IndexedDB.deleteStaffRole;
 
 // ============================================
 // CRUD Operations for Service Categories
 // ============================================
 
-export const getAllServiceCategories = PouchDBSync.getAllServiceCategories;
-export const getServiceCategory = PouchDBSync.getServiceCategory;
-export const addServiceCategory = PouchDBSync.addServiceCategory;
-export const updateServiceCategory = PouchDBSync.updateServiceCategory;
-export const deleteServiceCategory = PouchDBSync.deleteServiceCategory;
+export const getAllServiceCategories = IndexedDB.getAllServiceCategories;
+export const getServiceCategory = IndexedDB.getServiceCategory;
+export const addServiceCategory = IndexedDB.addServiceCategory;
+export const updateServiceCategory = IndexedDB.updateServiceCategory;
+export const deleteServiceCategory = IndexedDB.deleteServiceCategory;
 
 // ============================================
 // Utility Functions
@@ -124,7 +119,7 @@ export async function getDatabaseStats(): Promise<{
   staffRoles: number;
   serviceCategories: number;
 }> {
-  return await PouchDBSync.getDatabaseStats();
+  return await IndexedDB.getDatabaseStats();
 }
 
 /**
@@ -140,7 +135,7 @@ export async function exportAllData(): Promise<{
   staffRoles: StaffRole[];
   serviceCategories: ServiceCategory[];
 }> {
-  return await PouchDBSync.exportData();
+  return await IndexedDB.exportData();
 }
 
 /**
@@ -156,14 +151,14 @@ export async function importAllData(data: {
   staffRoles?: StaffRole[];
   serviceCategories?: ServiceCategory[];
 }): Promise<void> {
-  await PouchDBSync.importData(data);
+  await IndexedDB.importData(data);
 }
 
 /**
  * Clear all data from database
  */
 export async function clearAllData(): Promise<void> {
-  await PouchDBSync.clearAllData();
+  await IndexedDB.clearAllData();
 }
 
 // ============================================
@@ -177,22 +172,16 @@ export {
   getCustomerFutureAppointments,
   getStaffFutureAppointments,
   getAppointmentPayments,
-} from './pouchdbSync';
+} from './indexedDB';
 
 // ============================================
 // Validation Functions
 // ============================================
 
-export { canDeleteCustomer, canDeleteStaff, canDeleteService } from './pouchdbSync';
+export { canDeleteCustomer, canDeleteStaff, canDeleteService } from './indexedDB';
 
 // ============================================
 // Alias for backward compatibility
 // ============================================
 
-export { getDatabaseStats as getDBStats } from './pouchdbSync';
-
-// ============================================
-// Sync Functions (new)
-// ============================================
-
-export { startSync, stopSync, syncOnce, getSyncStatus, onSyncStatusChange } from './pouchdbSync';
+export { getDatabaseStats as getDBStats };

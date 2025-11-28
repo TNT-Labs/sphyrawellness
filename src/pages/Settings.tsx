@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, X, Cloud, RefreshCw, Server, Play, Pause } from 'lucide-react';
+import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
-import { exportAllData, clearAllData, getDBStats, importAllData, startSync, stopSync, syncOnce, getSyncStatus, onSyncStatusChange } from '../utils/db';
+import { exportAllData, clearAllData, getDBStats, importAllData } from '../utils/db';
 import { getAvailableBackups, restoreFromBackup, deleteBackup } from '../utils/autoBackup';
 import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/storagePersistence';
 import { loadSettings, saveSettings } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
-import { StaffRole, ServiceCategory, SyncConfig, SyncStatus } from '../types';
+import { StaffRole, ServiceCategory } from '../types';
 import { logger } from '../utils/logger';
 
 const Settings: React.FC = () => {
@@ -33,19 +33,6 @@ const Settings: React.FC = () => {
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [categoryFormData, setCategoryFormData] = useState({ name: '', color: '#3b82f6' });
 
-  // Sync state
-  const [syncConfig, setSyncConfig] = useState<SyncConfig>({
-    enabled: false,
-    serverUrl: '',
-    username: '',
-    password: '',
-    databaseName: 'sphyra-wellness',
-    syncMode: 'continuous',
-    retryOnError: true,
-  });
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>({ isActive: false });
-  const [showPassword, setShowPassword] = useState(false);
-
   useEffect(() => {
     loadStats();
     loadBackups();
@@ -56,23 +43,7 @@ const Settings: React.FC = () => {
   const loadAppSettings = () => {
     const settings = loadSettings();
     setIdleTimeout(settings.idleTimeout);
-    setSyncConfig(settings.sync);
   };
-
-  // Subscribe to sync status updates
-  useEffect(() => {
-    // Load initial sync status
-    setSyncStatus(getSyncStatus());
-
-    // Subscribe to updates
-    const unsubscribe = onSyncStatusChange((status) => {
-      setSyncStatus(status);
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
 
   const loadStats = async () => {
     const dbStats = await getDBStats();
@@ -420,66 +391,6 @@ const Settings: React.FC = () => {
     setIsAddingCategory(false);
   };
 
-  // Sync management functions
-  const handleSyncConfigChange = (field: keyof SyncConfig, value: any) => {
-    setSyncConfig(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleSaveSyncConfig = async () => {
-    try {
-      // Save to settings
-      const settings = loadSettings();
-      settings.sync = syncConfig;
-      saveSettings(settings);
-
-      // If sync is enabled, start it
-      if (syncConfig.enabled) {
-        await startSync(syncConfig);
-        showSuccess('Sincronizzazione avviata con successo!');
-      } else {
-        await stopSync();
-        showSuccess('Sincronizzazione disabilitata');
-      }
-    } catch (error) {
-      showError('Errore durante il salvataggio della configurazione di sincronizzazione');
-      logger.error(error);
-    }
-  };
-
-  const handleToggleSync = async () => {
-    try {
-      const newEnabled = !syncConfig.enabled;
-      const newConfig = { ...syncConfig, enabled: newEnabled };
-      setSyncConfig(newConfig);
-
-      // Save to settings
-      const settings = loadSettings();
-      settings.sync = newConfig;
-      saveSettings(settings);
-
-      if (newEnabled) {
-        await startSync(newConfig);
-        showSuccess('Sincronizzazione avviata');
-      } else {
-        await stopSync();
-        showSuccess('Sincronizzazione disabilitata');
-      }
-    } catch (error) {
-      showError('Errore durante l\'attivazione/disattivazione della sincronizzazione');
-      logger.error(error);
-    }
-  };
-
-  const handleManualSync = async () => {
-    try {
-      await syncOnce(syncConfig);
-      showSuccess('Sincronizzazione manuale completata');
-    } catch (error) {
-      showError('Errore durante la sincronizzazione manuale');
-      logger.error(error);
-    }
-  };
-
   return (
     <>
       <ConfirmationDialog />
@@ -542,224 +453,6 @@ const Settings: React.FC = () => {
                   </p>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-
-        {/* Database Synchronization */}
-        <div className="card">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <Cloud className="text-primary-600 mr-2" size={24} />
-              <h2 className="text-xl font-bold text-gray-900">Sincronizzazione Database</h2>
-            </div>
-            {syncConfig.enabled && (
-              <button
-                onClick={handleManualSync}
-                disabled={syncStatus.isActive && syncConfig.syncMode === 'continuous'}
-                className="btn-secondary text-sm flex items-center gap-2"
-              >
-                <RefreshCw size={16} className={syncStatus.isActive ? 'animate-spin' : ''} />
-                Sincronizza Ora
-              </button>
-            )}
-          </div>
-
-          <div className="space-y-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-start gap-3">
-                <Server className="text-blue-600 mt-0.5" size={20} />
-                <div className="flex-1">
-                  <h3 className="font-semibold text-blue-900 mb-1">Sincronizzazione Multi-Dispositivo</h3>
-                  <p className="text-sm text-blue-800">
-                    Configura la sincronizzazione con un server CouchDB per utilizzare l'applicazione su più dispositivi.
-                    Puoi configurare questi parametri ora e attivare la sincronizzazione quando il server sarà pronto.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Sync Status */}
-            {syncConfig.enabled && (
-              <div className={`p-4 rounded-lg ${syncStatus.isActive ? 'bg-green-50' : syncStatus.lastError ? 'bg-red-50' : 'bg-gray-50'}`}>
-                <div className="flex items-center gap-3">
-                  {syncStatus.isActive ? (
-                    <>
-                      <RefreshCw className="text-green-600 animate-spin" size={20} />
-                      <div className="flex-1">
-                        <p className="font-semibold text-green-900">Sincronizzazione attiva</p>
-                        {syncStatus.lastSync && (
-                          <p className="text-sm text-green-700">
-                            Ultimo aggiornamento: {format(new Date(syncStatus.lastSync), 'PPp', { locale: it })}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  ) : syncStatus.lastError ? (
-                    <>
-                      <AlertCircle className="text-red-600" size={20} />
-                      <div className="flex-1">
-                        <p className="font-semibold text-red-900">Errore di sincronizzazione</p>
-                        <p className="text-sm text-red-700">{syncStatus.lastError}</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="text-gray-600" size={20} />
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">Sincronizzazione in pausa</p>
-                        {syncStatus.lastSync && (
-                          <p className="text-sm text-gray-700">
-                            Ultimo aggiornamento: {format(new Date(syncStatus.lastSync), 'PPp', { locale: it })}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Enable/Disable Toggle */}
-            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900 mb-1">Abilita Sincronizzazione</h3>
-                <p className="text-sm text-gray-600">
-                  Attiva la sincronizzazione automatica con il server CouchDB
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={syncConfig.enabled}
-                  onChange={handleToggleSync}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
-              </label>
-            </div>
-
-            {/* Configuration Form */}
-            <div className="space-y-4 p-4 border border-gray-200 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">Configurazione Server</h3>
-
-              {/* Server URL */}
-              <div>
-                <label htmlFor="serverUrl" className="block text-sm font-medium text-gray-700 mb-1">
-                  URL Server CouchDB *
-                </label>
-                <input
-                  type="text"
-                  id="serverUrl"
-                  value={syncConfig.serverUrl}
-                  onChange={(e) => handleSyncConfigChange('serverUrl', e.target.value)}
-                  placeholder="https://couchdb.example.com:5984"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Indirizzo completo del server CouchDB (incluso protocollo e porta)
-                </p>
-              </div>
-
-              {/* Database Name */}
-              <div>
-                <label htmlFor="databaseName" className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome Database *
-                </label>
-                <input
-                  type="text"
-                  id="databaseName"
-                  value={syncConfig.databaseName}
-                  onChange={(e) => handleSyncConfigChange('databaseName', e.target.value)}
-                  placeholder="sphyra-wellness"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Nome del database sul server CouchDB
-                </p>
-              </div>
-
-              {/* Username */}
-              <div>
-                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  value={syncConfig.username}
-                  onChange={(e) => handleSyncConfigChange('username', e.target.value)}
-                  placeholder="admin"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    id="password"
-                    value={syncConfig.password}
-                    onChange={(e) => handleSyncConfigChange('password', e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPassword ? 'Nascondi' : 'Mostra'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Sync Mode */}
-              <div>
-                <label htmlFor="syncMode" className="block text-sm font-medium text-gray-700 mb-1">
-                  Modalità Sincronizzazione
-                </label>
-                <select
-                  id="syncMode"
-                  value={syncConfig.syncMode}
-                  onChange={(e) => handleSyncConfigChange('syncMode', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="continuous">Continua (in tempo reale)</option>
-                  <option value="manual">Manuale (su richiesta)</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {syncConfig.syncMode === 'continuous'
-                    ? 'I dati verranno sincronizzati automaticamente in tempo reale'
-                    : 'La sincronizzazione avverrà solo quando richiesto manualmente'}
-                </p>
-              </div>
-
-              {/* Retry on Error */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="retryOnError"
-                  checked={syncConfig.retryOnError}
-                  onChange={(e) => handleSyncConfigChange('retryOnError', e.target.checked)}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <label htmlFor="retryOnError" className="text-sm text-gray-700">
-                  Riprova automaticamente in caso di errore
-                </label>
-              </div>
-
-              {/* Save Button */}
-              <button
-                onClick={handleSaveSyncConfig}
-                className="btn-primary w-full mt-4"
-              >
-                Salva Configurazione
-              </button>
             </div>
           </div>
         </div>
