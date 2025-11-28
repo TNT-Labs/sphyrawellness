@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
-import { Calendar, Users, TrendingUp, Clock } from 'lucide-react';
+import { Calendar, Users, TrendingUp, Clock, Bell, BellOff } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -28,7 +28,7 @@ const Dashboard: React.FC = () => {
       if (!apt.date || !apt.startTime) return false;
       try {
         const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
-        return aptDateTime >= new Date() && apt.status === 'scheduled';
+        return aptDateTime >= new Date() && (apt.status === 'scheduled' || apt.status === 'confirmed');
       } catch (error) {
         return false;
       }
@@ -152,18 +152,38 @@ const Dashboard: React.FC = () => {
                 className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
-                    {getCustomerName(apt.customerId)}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">
+                      {getCustomerName(apt.customerId)}
+                    </p>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                        apt.status === 'confirmed'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-blue-100 text-blue-700'
+                      }`}
+                    >
+                      {apt.status === 'confirmed' ? 'Confermato' : 'Programmato'}
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-600 mt-1">
                     {getServiceName(apt.serviceId)} • {getStaffName(apt.staffId)}
                   </p>
                 </div>
-                <div className="text-right">
-                  <p className="font-semibold text-gray-900">
-                    {format(parseISO(apt.date), 'dd MMM', { locale: it })}
-                  </p>
-                  <p className="text-sm text-gray-600 mt-1">{apt.startTime}</p>
+                <div className="text-right flex items-center gap-3">
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {format(parseISO(apt.date), 'dd MMM', { locale: it })}
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">{apt.startTime}</p>
+                  </div>
+                  <div className="flex items-center" title={apt.reminderSent ? 'Reminder inviato' : 'Reminder non inviato'}>
+                    {apt.reminderSent ? (
+                      <Bell size={20} className="text-green-600" />
+                    ) : (
+                      <BellOff size={20} className="text-gray-400" />
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
