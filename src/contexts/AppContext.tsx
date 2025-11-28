@@ -202,112 +202,212 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
 
   // Customers
   const addCustomer = async (customer: Customer) => {
-    await dbAddCustomer(customer);
-    setCustomers((prev) => [...prev, customer]);
+    try {
+      await dbAddCustomer(customer);
+      setCustomers((prev) => [...prev, customer]);
+    } catch (error) {
+      logger.error('Failed to add customer:', error);
+      throw error;
+    }
   };
 
   const updateCustomer = async (customer: Customer) => {
-    await dbUpdateCustomer(customer);
-    setCustomers((prev) => prev.map((c) => (c.id === customer.id ? customer : c)));
+    try {
+      await dbUpdateCustomer(customer);
+      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? customer : c)));
+    } catch (error) {
+      logger.error('Failed to update customer:', error);
+      throw error;
+    }
   };
 
   const deleteCustomer = async (id: string) => {
-    await dbDeleteCustomer(id);
-    setCustomers((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await dbDeleteCustomer(id);
+      setCustomers((prev) => prev.filter((c) => c.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete customer:', error);
+      throw error;
+    }
   };
 
   // Services
   const addService = async (service: Service) => {
-    await dbAddService(service);
-    setServices((prev) => [...prev, service]);
+    try {
+      await dbAddService(service);
+      setServices((prev) => [...prev, service]);
+    } catch (error) {
+      logger.error('Failed to add service:', error);
+      throw error;
+    }
   };
 
   const updateService = async (service: Service) => {
-    await dbUpdateService(service);
-    setServices((prev) => prev.map((s) => (s.id === service.id ? service : s)));
+    try {
+      await dbUpdateService(service);
+      setServices((prev) => prev.map((s) => (s.id === service.id ? service : s)));
+    } catch (error) {
+      logger.error('Failed to update service:', error);
+      throw error;
+    }
   };
 
   const deleteService = async (id: string) => {
-    await dbDeleteService(id);
-    setServices((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await dbDeleteService(id);
+      setServices((prev) => prev.filter((s) => s.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete service:', error);
+      throw error;
+    }
   };
 
   // Staff
   const addStaff = async (member: Staff) => {
-    await dbAddStaff(member);
-    setStaff((prev) => [...prev, member]);
+    try {
+      await dbAddStaff(member);
+      setStaff((prev) => [...prev, member]);
+    } catch (error) {
+      logger.error('Failed to add staff:', error);
+      throw error;
+    }
   };
 
   const updateStaff = async (member: Staff) => {
-    await dbUpdateStaff(member);
-    setStaff((prev) => prev.map((s) => (s.id === member.id ? member : s)));
+    try {
+      await dbUpdateStaff(member);
+      setStaff((prev) => prev.map((s) => (s.id === member.id ? member : s)));
+    } catch (error) {
+      logger.error('Failed to update staff:', error);
+      throw error;
+    }
   };
 
   const deleteStaff = async (id: string) => {
-    await dbDeleteStaff(id);
-    setStaff((prev) => prev.filter((s) => s.id !== id));
+    try {
+      await dbDeleteStaff(id);
+      setStaff((prev) => prev.filter((s) => s.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete staff:', error);
+      throw error;
+    }
   };
 
   // Appointments
   const addAppointment = async (appointment: Appointment) => {
-    await dbAddAppointment(appointment);
-    setAppointments((prev) => [...prev, appointment]);
+    try {
+      await dbAddAppointment(appointment);
+      setAppointments((prev) => [...prev, appointment]);
+    } catch (error) {
+      logger.error('Failed to add appointment:', error);
+      throw error;
+    }
   };
 
   const updateAppointment = async (appointment: Appointment) => {
-    await dbUpdateAppointment(appointment);
-    setAppointments((prev) =>
-      prev.map((a) => (a.id === appointment.id ? appointment : a))
-    );
+    try {
+      await dbUpdateAppointment(appointment);
+      setAppointments((prev) =>
+        prev.map((a) => (a.id === appointment.id ? appointment : a))
+      );
+    } catch (error) {
+      logger.error('Failed to update appointment:', error);
+      throw error;
+    }
   };
 
   const deleteAppointment = async (id: string) => {
-    await dbDeleteAppointment(id);
-    setAppointments((prev) => prev.filter((a) => a.id !== id));
+    try {
+      await dbDeleteAppointment(id);
+      setAppointments((prev) => prev.filter((a) => a.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete appointment:', error);
+      throw error;
+    }
   };
 
   // Payments
   const addPayment = async (payment: Payment) => {
-    await dbAddPayment(payment);
-    setPayments((prev) => [...prev, payment]);
+    try {
+      await dbAddPayment(payment);
+      setPayments((prev) => [...prev, payment]);
+    } catch (error) {
+      logger.error('Failed to add payment:', error);
+      throw error;
+    }
   };
 
   // Reminders
   const addReminder = async (reminder: Reminder) => {
-    await dbAddReminder(reminder);
-    setReminders((prev) => [...prev, reminder]);
+    try {
+      await dbAddReminder(reminder);
+      setReminders((prev) => [...prev, reminder]);
+    } catch (error) {
+      logger.error('Failed to add reminder:', error);
+      throw error;
+    }
   };
 
   // Staff Roles
   const addStaffRole = async (role: StaffRole) => {
-    await dbAddStaffRole(role);
-    setStaffRoles((prev) => [...prev, role]);
+    try {
+      await dbAddStaffRole(role);
+      setStaffRoles((prev) => [...prev, role]);
+    } catch (error) {
+      logger.error('Failed to add staff role:', error);
+      throw error;
+    }
   };
 
   const updateStaffRole = async (role: StaffRole) => {
-    await dbUpdateStaffRole(role);
-    setStaffRoles((prev) => prev.map((r) => (r.id === role.id ? role : r)));
+    try {
+      await dbUpdateStaffRole(role);
+      setStaffRoles((prev) => prev.map((r) => (r.id === role.id ? role : r)));
+    } catch (error) {
+      logger.error('Failed to update staff role:', error);
+      throw error;
+    }
   };
 
   const deleteStaffRole = async (id: string) => {
-    await dbDeleteStaffRole(id);
-    setStaffRoles((prev) => prev.filter((r) => r.id !== id));
+    try {
+      await dbDeleteStaffRole(id);
+      setStaffRoles((prev) => prev.filter((r) => r.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete staff role:', error);
+      throw error;
+    }
   };
 
   // Service Categories
   const addServiceCategory = async (category: ServiceCategory) => {
-    await dbAddServiceCategory(category);
-    setServiceCategories((prev) => [...prev, category]);
+    try {
+      await dbAddServiceCategory(category);
+      setServiceCategories((prev) => [...prev, category]);
+    } catch (error) {
+      logger.error('Failed to add service category:', error);
+      throw error;
+    }
   };
 
   const updateServiceCategory = async (category: ServiceCategory) => {
-    await dbUpdateServiceCategory(category);
-    setServiceCategories((prev) => prev.map((c) => (c.id === category.id ? category : c)));
+    try {
+      await dbUpdateServiceCategory(category);
+      setServiceCategories((prev) => prev.map((c) => (c.id === category.id ? category : c)));
+    } catch (error) {
+      logger.error('Failed to update service category:', error);
+      throw error;
+    }
   };
 
   const deleteServiceCategory = async (id: string) => {
-    await dbDeleteServiceCategory(id);
-    setServiceCategories((prev) => prev.filter((c) => c.id !== id));
+    try {
+      await dbDeleteServiceCategory(id);
+      setServiceCategories((prev) => prev.filter((c) => c.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete service category:', error);
+      throw error;
+    }
   };
 
   const value: AppContextType = {

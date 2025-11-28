@@ -79,7 +79,7 @@ const Customers: React.FC = () => {
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate email
@@ -104,15 +104,19 @@ const Customers: React.FC = () => {
       createdAt: editingCustomer?.createdAt || new Date().toISOString(),
     };
 
-    if (editingCustomer) {
-      updateCustomer(customerData);
-      showSuccess('Cliente aggiornato con successo!');
-    } else {
-      addCustomer(customerData);
-      showSuccess('Cliente aggiunto con successo!');
+    try {
+      if (editingCustomer) {
+        await updateCustomer(customerData);
+        showSuccess('Cliente aggiornato con successo!');
+      } else {
+        await addCustomer(customerData);
+        showSuccess('Cliente aggiunto con successo!');
+      }
+      handleCloseModal();
+    } catch (error) {
+      showError('Errore durante il salvataggio del cliente');
+      console.error(error);
     }
-
-    handleCloseModal();
   };
 
   const handleDelete = async (customer: Customer) => {
@@ -132,8 +136,13 @@ const Customers: React.FC = () => {
     });
 
     if (confirmed) {
-      deleteCustomer(customer.id);
-      showSuccess('Cliente eliminato con successo!');
+      try {
+        await deleteCustomer(customer.id);
+        showSuccess('Cliente eliminato con successo!');
+      } catch (error) {
+        showError('Errore durante l\'eliminazione del cliente');
+        console.error(error);
+      }
     }
   };
 

@@ -77,7 +77,7 @@ const Services: React.FC = () => {
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const serviceData: Service = {
@@ -85,15 +85,19 @@ const Services: React.FC = () => {
       ...formData,
     };
 
-    if (editingService) {
-      updateService(serviceData);
-      showSuccess('Servizio aggiornato con successo!');
-    } else {
-      addService(serviceData);
-      showSuccess('Servizio aggiunto con successo!');
+    try {
+      if (editingService) {
+        await updateService(serviceData);
+        showSuccess('Servizio aggiornato con successo!');
+      } else {
+        await addService(serviceData);
+        showSuccess('Servizio aggiunto con successo!');
+      }
+      handleCloseModal();
+    } catch (error) {
+      showError('Errore durante il salvataggio del servizio');
+      console.error(error);
     }
-
-    handleCloseModal();
   };
 
   const handleDelete = async (service: Service) => {
@@ -113,8 +117,13 @@ const Services: React.FC = () => {
     });
 
     if (confirmed) {
-      deleteService(service.id);
-      showSuccess('Servizio eliminato con successo!');
+      try {
+        await deleteService(service.id);
+        showSuccess('Servizio eliminato con successo!');
+      } catch (error) {
+        showError('Errore durante l\'eliminazione del servizio');
+        console.error(error);
+      }
     }
   };
 

@@ -74,12 +74,12 @@ const StaffPage: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingStaff(null);
+  };
 
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
-  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate email
@@ -100,15 +100,19 @@ const StaffPage: React.FC = () => {
       phone: formatPhoneNumber(formData.phone),
     };
 
-    if (editingStaff) {
-      updateStaff(staffData);
-      showSuccess('Membro aggiornato con successo!');
-    } else {
-      addStaff(staffData);
-      showSuccess('Membro aggiunto con successo!');
+    try {
+      if (editingStaff) {
+        await updateStaff(staffData);
+        showSuccess('Membro aggiornato con successo!');
+      } else {
+        await addStaff(staffData);
+        showSuccess('Membro aggiunto con successo!');
+      }
+      handleCloseModal();
+    } catch (error) {
+      showError('Errore durante il salvataggio del membro dello staff');
+      console.error(error);
     }
-
-    handleCloseModal();
   };
 
   const handleDelete = async (id: string) => {
@@ -132,8 +136,13 @@ const StaffPage: React.FC = () => {
     });
 
     if (confirmed) {
-      deleteStaff(id);
-      showSuccess('Membro dello staff eliminato con successo');
+      try {
+        await deleteStaff(id);
+        showSuccess('Membro dello staff eliminato con successo');
+      } catch (error) {
+        showError('Errore durante l\'eliminazione del membro dello staff');
+        console.error(error);
+      }
     }
   };
 

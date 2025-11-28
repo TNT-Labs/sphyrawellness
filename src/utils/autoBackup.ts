@@ -15,6 +15,8 @@ interface BackupMetadata {
     appointments: number;
     payments: number;
     reminders: number;
+    staffRoles: number;
+    serviceCategories: number;
   };
 }
 
@@ -56,6 +58,8 @@ export async function createAutoBackup(): Promise<void> {
         appointments: data.appointments.length,
         payments: data.payments.length,
         reminders: data.reminders.length,
+        staffRoles: data.staffRoles.length,
+        serviceCategories: data.serviceCategories.length,
       },
     };
 
