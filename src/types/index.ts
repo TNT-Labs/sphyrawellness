@@ -85,6 +85,27 @@ export interface Statistics {
   revenueByMonth: { month: string; revenue: number }[];
 }
 
+export interface SyncConfig {
+  enabled: boolean;
+  serverUrl: string;
+  username: string;
+  password: string;
+  databaseName: string;
+  syncMode: 'continuous' | 'manual';
+  retryOnError: boolean;
+}
+
+export interface SyncStatus {
+  isActive: boolean;
+  lastSync?: string;
+  lastError?: string;
+  direction?: 'push' | 'pull' | 'sync';
+  docs_read?: number;
+  docs_written?: number;
+  pending?: number;
+}
+
 export interface AppSettings {
   idleTimeout: number; // in minutes (0 = disabled)
+  sync: SyncConfig;
 }
