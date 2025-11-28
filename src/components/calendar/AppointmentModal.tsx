@@ -1,0 +1,328 @@
+import React, { useState, useEffect } from 'react';
+import { useApp } from '../../contexts/AppContext';
+import { Appointment } from '../../types';
+import { Trash2 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { generateId, calculateEndTime } from '../../utils/helpers';
+import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../hooks/useConfirm';
+import { useCalendarLogic } from '../../hooks/useCalendarLogic';
+
+interface AppointmentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  editingAppointment: Appointment | null;
+  selectedDate?: Date;
+}
+
+const AppointmentModal: React.FC<AppointmentModalProps> = ({
+  isOpen,
+  onClose,
+  editingAppointment,
+  selectedDate,
+}) => {
+  const {
+    addAppointment,
+    updateAppointment,
+    deleteAppointment,
+    customers,
+    services,
+    staff,
+  } = useApp();
+  const { showSuccess, showError } = useToast();
+  const { confirm, ConfirmationDialog } = useConfirm();
+  const { getStaffRoleName, checkAppointmentConflicts } = useCalendarLogic();
+
+  const [formData, setFormData] = useState({
+    customerId: '',
+    serviceId: '',
+    staffId: '',
+    date: format(selectedDate || new Date(), 'yyyy-MM-dd'),
+    startTime: '09:00',
+    notes: '',
+    status: 'scheduled' as Appointment['status'],
+  });
+
+  useEffect(() => {
+    if (editingAppointment) {
+      setFormData({
+        customerId: editingAppointment.customerId,
+        serviceId: editingAppointment.serviceId,
+        staffId: editingAppointment.staffId,
+        date: editingAppointment.date,
+        startTime: editingAppointment.startTime,
+        notes: editingAppointment.notes || '',
+        status: editingAppointment.status,
+      });
+    } else {
+      setFormData({
+        customerId: '',
+        serviceId: '',
+        staffId: '',
+        date: selectedDate
+          ? format(selectedDate, 'yyyy-MM-dd')
+          : format(new Date(), 'yyyy-MM-dd'),
+        startTime: '09:00',
+        notes: '',
+        status: 'scheduled',
+      });
+    }
+  }, [editingAppointment, selectedDate]);
+
+  useEscapeKey(onClose, isOpen);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const service = services.find((s) => s.id === formData.serviceId);
+    if (!service) {
+      showError('Servizio non trovato');
+      return;
+    }
+
+    const endTime = calculateEndTime(formData.startTime, service.duration);
+    if (!endTime) {
+      showError("Errore nel calcolo dell'ora di fine. Verifica l'orario inserito.");
+      return;
+    }
+
+    const conflictCheck = checkAppointmentConflicts(
+      formData.date,
+      formData.startTime,
+      endTime,
+      formData.customerId,
+      formData.staffId,
+      editingAppointment?.id
+    );
+
+    if (conflictCheck.hasConflict) {
+      showError(conflictCheck.message || 'Appuntamento in conflitto con un altro appuntamento');
+      return;
+    }
+
+    const appointmentData: Appointment = {
+      id: editingAppointment?.id || generateId(),
+      customerId: formData.customerId,
+      serviceId: formData.serviceId,
+      staffId: formData.staffId,
+      date: formData.date,
+      startTime: formData.startTime,
+      endTime: endTime,
+      status: formData.status,
+      notes: formData.notes || undefined,
+      createdAt: editingAppointment?.createdAt || new Date().toISOString(),
+    };
+
+    try {
+      if (editingAppointment) {
+        await updateAppointment(appointmentData);
+        showSuccess('Appuntamento aggiornato con successo!');
+      } else {
+        await addAppointment(appointmentData);
+        showSuccess('Appuntamento aggiunto con successo!');
+      }
+      onClose();
+    } catch (error) {
+      showError("Errore durante il salvataggio dell'appuntamento");
+      console.error(error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    const appointment = editingAppointment;
+    if (!appointment) return;
+
+    const customer = customers.find((c) => c.id === appointment.customerId);
+    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Cliente';
+
+    const confirmed = await confirm({
+      title: 'Conferma Eliminazione',
+      message: `Sei sicuro di voler eliminare l'appuntamento di ${customerName} del ${format(parseISO(appointment.date), 'dd/MM/yyyy')} alle ${appointment.startTime}? Questa azione non può essere annullata.`,
+      confirmText: 'Elimina',
+      cancelText: 'Annulla',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
+      try {
+        await deleteAppointment(id);
+        showSuccess('Appuntamento eliminato con successo');
+        onClose();
+      } catch (error) {
+        showError("Errore durante l'eliminazione dell'appuntamento");
+        console.error(error);
+      }
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              {editingAppointment
+                ? 'Modifica Appuntamento'
+                : 'Nuovo Appuntamento'}
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="label">Cliente *</label>
+                <select
+                  required
+                  value={formData.customerId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, customerId: e.target.value })
+                  }
+                  className="input"
+                >
+                  <option value="">Seleziona un cliente</option>
+                  {customers.map((customer) => (
+                    <option key={customer.id} value={customer.id}>
+                      {customer.firstName} {customer.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Servizio *</label>
+                <select
+                  required
+                  value={formData.serviceId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, serviceId: e.target.value })
+                  }
+                  className="input"
+                >
+                  <option value="">Seleziona un servizio</option>
+                  {services.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name} - €{service.price} ({service.duration} min)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Operatore *</label>
+                <select
+                  required
+                  value={formData.staffId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, staffId: e.target.value })
+                  }
+                  className="input"
+                >
+                  <option value="">Seleziona un operatore</option>
+                  {staff
+                    .filter((s) => s.isActive)
+                    .map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.firstName} {member.lastName} - {getStaffRoleName(member.role)}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Data *</label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date}
+                    onChange={(e) =>
+                      setFormData({ ...formData, date: e.target.value })
+                    }
+                    className="input"
+                  />
+                </div>
+
+                <div>
+                  <label className="label">Ora Inizio *</label>
+                  <input
+                    type="time"
+                    required
+                    value={formData.startTime}
+                    onChange={(e) =>
+                      setFormData({ ...formData, startTime: e.target.value })
+                    }
+                    className="input"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Stato</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      status: e.target.value as Appointment['status'],
+                    })
+                  }
+                  className="input"
+                >
+                  <option value="scheduled">Programmato</option>
+                  <option value="confirmed">Confermato</option>
+                  <option value="completed">Completato</option>
+                  <option value="cancelled">Cancellato</option>
+                  <option value="no-show">Non presentato</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="label">Note</label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) =>
+                    setFormData({ ...formData, notes: e.target.value })
+                  }
+                  className="input"
+                  rows={3}
+                  placeholder="Note aggiuntive sull'appuntamento..."
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="submit" className="btn-primary flex-1">
+                  {editingAppointment
+                    ? 'Salva Modifiche'
+                    : 'Crea Appuntamento'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="btn-secondary flex-1"
+                >
+                  Annulla
+                </button>
+              </div>
+
+              {editingAppointment && (
+                <button
+                  type="button"
+                  onClick={() => handleDelete(editingAppointment.id)}
+                  className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold"
+                >
+                  <Trash2 size={16} className="inline mr-1" />
+                  Elimina Appuntamento
+                </button>
+              )}
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <ConfirmationDialog />
+    </>
+  );
+};
+
+export default AppointmentModal;
