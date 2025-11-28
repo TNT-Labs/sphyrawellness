@@ -7,12 +7,27 @@ export default defineConfig({
   base: '/sphyrawellness/',
   optimizeDeps: {
     include: ['pouchdb-browser', 'pouchdb-find'],
-    exclude: []
+    exclude: [],
+    esbuildOptions: {
+      // Ensure proper module resolution for CommonJS modules
+      mainFields: ['module', 'main']
+    }
   },
   build: {
     commonjsOptions: {
       include: [/pouchdb/, /node_modules/],
-      transformMixedEsModules: true
+      transformMixedEsModules: true,
+      // Explicitly handle pouchdb-find default export
+      defaultIsModuleExports: 'auto',
+      requireReturnsDefault: 'auto'
+    },
+    rollupOptions: {
+      output: {
+        // Ensure consistent module format in chunks
+        manualChunks: {
+          'pouchdb': ['pouchdb-browser', 'pouchdb-find']
+        }
+      }
     }
   },
   plugins: [

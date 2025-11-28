@@ -1,5 +1,5 @@
 import PouchDB from 'pouchdb-browser';
-import pouchdbFind from 'pouchdb-find';
+import pouchdbFindModule from 'pouchdb-find';
 import {
   Customer,
   Service,
@@ -31,12 +31,17 @@ function isIndexedDBAvailable(): boolean {
 }
 
 // Register PouchDB plugins
-// Use the default export directly - Vite handles the module format correctly
+// Handle both ESM default export and CommonJS module format
+// In development, Vite may serve it as ESM, but in production build it may be CommonJS
+const pouchdbFind = (pouchdbFindModule as any).default || pouchdbFindModule;
+
 try {
   PouchDB.plugin(pouchdbFind);
   logger.info('PouchDB-Find plugin registered successfully');
 } catch (error) {
   logger.error('Failed to register PouchDB-Find plugin:', error);
+  logger.error('pouchdbFind type:', typeof pouchdbFind);
+  logger.error('pouchdbFind value:', pouchdbFind);
   // This error is critical - the app won't work without the find plugin
   throw new Error('Impossibile caricare il plugin PouchDB-Find. Prova a ricaricare la pagina.');
 }
