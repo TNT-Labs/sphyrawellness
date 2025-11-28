@@ -1,4 +1,4 @@
-import { Customer, Service, Staff, Appointment, Payment, Reminder } from '../types';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings } from '../types';
 import { logger } from './logger';
 
 const STORAGE_KEYS = {
@@ -8,6 +8,7 @@ const STORAGE_KEYS = {
   APPOINTMENTS: 'sphyra_appointments',
   PAYMENTS: 'sphyra_payments',
   REMINDERS: 'sphyra_reminders',
+  SETTINGS: 'sphyra_settings',
 };
 
 // Generic storage functions
@@ -113,6 +114,19 @@ export const saveReminders = (reminders: Reminder[]): void => {
 
 export const loadReminders = (): Reminder[] => {
   return loadFromStorage<Reminder[]>(STORAGE_KEYS.REMINDERS, []);
+};
+
+// Settings
+const DEFAULT_SETTINGS: AppSettings = {
+  idleTimeout: 5, // 5 minutes by default
+};
+
+export const saveSettings = (settings: AppSettings): void => {
+  saveToStorage(STORAGE_KEYS.SETTINGS, settings);
+};
+
+export const loadSettings = (): AppSettings => {
+  return loadFromStorage<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
 };
 
 // Initialize with demo data if empty

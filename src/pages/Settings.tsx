@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield } from 'lucide-react';
+import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
 import { exportAllData, clearAllData, getDBStats, importAllData } from '../utils/db';
 import { getAvailableBackups, restoreFromBackup, deleteBackup } from '../utils/autoBackup';
 import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/storagePersistence';
+import { loadSettings, saveSettings } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -16,12 +17,19 @@ const Settings: React.FC = () => {
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getDBStats>> | null>(null);
   const [backups, setBackups] = useState<ReturnType<typeof getAvailableBackups>>([]);
   const [storageInfo, setStorageInfo] = useState<Awaited<ReturnType<typeof getStoragePersistenceInfo>> | null>(null);
+  const [idleTimeout, setIdleTimeout] = useState<number>(5);
 
   useEffect(() => {
     loadStats();
     loadBackups();
     loadStorageInfo();
+    loadAppSettings();
   }, []);
+
+  const loadAppSettings = () => {
+    const settings = loadSettings();
+    setIdleTimeout(settings.idleTimeout);
+  };
 
   const loadStats = async () => {
     const dbStats = await getDBStats();
@@ -177,6 +185,14 @@ const Settings: React.FC = () => {
     return Object.values(stats).reduce((sum, count) => sum + count, 0);
   };
 
+  const handleIdleTimeoutChange = (value: number) => {
+    setIdleTimeout(value);
+    saveSettings({ idleTimeout: value });
+    // Trigger custom event so App.tsx can react immediately
+    window.dispatchEvent(new Event('settingsChanged'));
+    showSuccess('Impostazione salvata');
+  };
+
   return (
     <>
       <ConfirmationDialog />
@@ -188,6 +204,59 @@ const Settings: React.FC = () => {
           <p className="text-gray-600 mt-1">
             Gestisci backup, sicurezza e dati dell'applicazione
           </p>
+        </div>
+
+        {/* App Settings */}
+        <div className="card">
+          <div className="flex items-center mb-4">
+            <Clock className="text-primary-600 mr-2" size={24} />
+            <h2 className="text-xl font-bold text-gray-900">Impostazioni Applicazione</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label htmlFor="idleTimeout" className="block text-sm font-semibold text-gray-700 mb-2">
+                Timeout Inattività
+              </label>
+              <p className="text-sm text-gray-600 mb-3">
+                Mostra lo splash screen dopo un periodo di inattività (0 = disabilitato)
+              </p>
+              <div className="flex items-center gap-4">
+                <input
+                  type="range"
+                  id="idleTimeout"
+                  min="0"
+                  max="30"
+                  step="1"
+                  value={idleTimeout}
+                  onChange={(e) => handleIdleTimeoutChange(Number(e.target.value))}
+                  className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                />
+                <div className="w-24 text-center">
+                  <span className="text-2xl font-bold text-primary-600">{idleTimeout}</span>
+                  <span className="text-sm text-gray-600 ml-1">min</span>
+                </div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500 mt-1">
+                <span>Disabilitato</span>
+                <span>30 minuti</span>
+              </div>
+              {idleTimeout === 0 && (
+                <div className="mt-3 p-3 bg-yellow-50 rounded-lg">
+                  <p className="text-sm text-yellow-800">
+                    Lo splash screen è disabilitato. L'app non mostrerà alcuna schermata durante l'inattività.
+                  </p>
+                </div>
+              )}
+              {idleTimeout > 0 && (
+                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    Lo splash screen apparirà dopo {idleTimeout} {idleTimeout === 1 ? 'minuto' : 'minuti'} di inattività.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Database Statistics */}
