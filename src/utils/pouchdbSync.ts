@@ -14,8 +14,58 @@ import {
 } from '../types';
 import { logger } from './logger';
 
-// Register PouchDB plugins
-PouchDB.plugin(PouchDBFind);
+// Check if IndexedDB is available (may be restricted in incognito mode)
+function isIndexedDBAvailable(): boolean {
+  try {
+    if (!window.indexedDB) {
+      return false;
+    }
+    // Test if we can actually open a database
+    const testDB = window.indexedDB.open('test');
+    testDB.onerror = () => false;
+    return true;
+  } catch (e) {
+    logger.warn('IndexedDB not available:', e);
+    return false;
+  }
+}
+
+// Register PouchDB plugins with error handling
+// This handles different module formats that can occur in dev vs production builds
+try {
+  let pluginToRegister: any = null;
+
+  // Try different ways the module might be exported
+  if (typeof PouchDBFind === 'function') {
+    // Direct function export (most common in production)
+    pluginToRegister = PouchDBFind;
+  } else if (PouchDBFind && typeof PouchDBFind === 'object') {
+    // Check for default export
+    if (typeof (PouchDBFind as any).default === 'function') {
+      pluginToRegister = (PouchDBFind as any).default;
+    }
+    // Check for named export
+    else if (typeof (PouchDBFind as any).plugin === 'function') {
+      pluginToRegister = (PouchDBFind as any).plugin;
+    }
+    // Check if the object itself has plugin properties
+    else if ((PouchDBFind as any).default && typeof (PouchDBFind as any).default.default === 'function') {
+      pluginToRegister = (PouchDBFind as any).default.default;
+    }
+  }
+
+  if (pluginToRegister && typeof pluginToRegister === 'function') {
+    PouchDB.plugin(pluginToRegister);
+    logger.info('PouchDB-Find plugin registered successfully');
+  } else {
+    logger.error('PouchDB-Find plugin could not be loaded - invalid format:', typeof PouchDBFind);
+    console.error('PouchDBFind value:', PouchDBFind);
+  }
+} catch (error) {
+  logger.error('Failed to register PouchDB-Find plugin:', error);
+  // This error is critical - the app won't work without the find plugin
+  throw new Error('Impossibile caricare il plugin PouchDB-Find. Prova a ricaricare la pagina.');
+}
 
 // Document types in PouchDB
 type DocType = 'customer' | 'service' | 'staff' | 'appointment' | 'payment' | 'reminder' | 'staffRole' | 'serviceCategory';
@@ -47,7 +97,19 @@ export async function initPouchDB(): Promise<PouchDB.Database> {
   }
 
   try {
-    localDB = new PouchDB(LOCAL_DB_NAME);
+    // Check if IndexedDB is available (critical in incognito mode)
+    if (!isIndexedDBAvailable()) {
+      const errorMsg = 'IndexedDB non disponibile. In modalità incognito, alcune funzionalità potrebbero essere limitate. Prova ad aprire l\'app in una finestra normale.';
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    localDB = new PouchDB(LOCAL_DB_NAME, {
+      // Auto-compaction helps in incognito mode
+      auto_compaction: true,
+      // Increase revs limit for better sync
+      revs_limit: 2
+    });
 
     // Create indexes for efficient queries
     await createIndexes();
@@ -56,7 +118,14 @@ export async function initPouchDB(): Promise<PouchDB.Database> {
     return localDB;
   } catch (error) {
     logger.error('Failed to initialize PouchDB:', error);
-    throw error;
+
+    // Provide helpful error message for incognito mode
+    if (error instanceof Error && error.message.includes('IndexedDB')) {
+      throw error;
+    }
+
+    // Generic error with helpful message
+    throw new Error('Impossibile inizializzare il database. Verifica che il browser supporti IndexedDB e non sia in modalità incognito con restrizioni.');
   }
 }
 
