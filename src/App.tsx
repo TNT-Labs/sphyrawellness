@@ -1,9 +1,12 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
 import ErrorBoundary from './components/ErrorBoundary';
+import IdleSplashScreen from './components/IdleSplashScreen';
+import { useIdleDetection } from './hooks/useIdleDetection';
+import { loadSettings } from './utils/storage';
 
 // Eager load Dashboard (most visited page)
 import Dashboard from './pages/Dashboard';
@@ -41,35 +44,71 @@ const GlobalLoader: React.FC = () => (
   </div>
 );
 
+const AppContent: React.FC = () => {
+  const [idleTimeout, setIdleTimeout] = useState<number>(5);
+
+  useEffect(() => {
+    const settings = loadSettings();
+    setIdleTimeout(settings.idleTimeout);
+
+    // Listen for storage changes (when settings are updated)
+    const handleStorageChange = () => {
+      const newSettings = loadSettings();
+      setIdleTimeout(newSettings.idleTimeout);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    // Also listen for custom event from same tab
+    window.addEventListener('settingsChanged', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('settingsChanged', handleStorageChange);
+    };
+  }, []);
+
+  const { isIdle, resetIdle } = useIdleDetection({
+    timeoutMinutes: idleTimeout,
+    enabled: idleTimeout > 0,
+  });
+
+  return (
+    <AppProvider>
+      {(isLoading) => (
+        <>
+          {isIdle && !isLoading && <IdleSplashScreen onDismiss={resetIdle} />}
+          {isLoading ? (
+            <GlobalLoader />
+          ) : (
+            <Router basename="/sphyrawellness">
+              <Layout>
+                <Suspense fallback={<PageLoader />}>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/calendario" element={<CalendarPage />} />
+                    <Route path="/clienti" element={<Customers />} />
+                    <Route path="/servizi" element={<Services />} />
+                    <Route path="/personale" element={<StaffPage />} />
+                    <Route path="/pagamenti" element={<Payments />} />
+                    <Route path="/reminder" element={<Reminders />} />
+                    <Route path="/statistiche" element={<Statistics />} />
+                    <Route path="/impostazioni" element={<Settings />} />
+                  </Routes>
+                </Suspense>
+              </Layout>
+            </Router>
+          )}
+        </>
+      )}
+    </AppProvider>
+  );
+};
+
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <AppProvider>
-          {(isLoading) => (
-            isLoading ? (
-              <GlobalLoader />
-            ) : (
-              <Router basename="/sphyrawellness">
-                <Layout>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/calendario" element={<CalendarPage />} />
-                      <Route path="/clienti" element={<Customers />} />
-                      <Route path="/servizi" element={<Services />} />
-                      <Route path="/personale" element={<StaffPage />} />
-                      <Route path="/pagamenti" element={<Payments />} />
-                      <Route path="/reminder" element={<Reminders />} />
-                      <Route path="/statistiche" element={<Statistics />} />
-                      <Route path="/impostazioni" element={<Settings />} />
-                    </Routes>
-                  </Suspense>
-                </Layout>
-              </Router>
-            )
-          )}
-        </AppProvider>
+        <AppContent />
       </ToastProvider>
     </ErrorBoundary>
   );

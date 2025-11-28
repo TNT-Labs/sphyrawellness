@@ -71,3 +71,7 @@ export interface Statistics {
   popularServices: { serviceId: string; count: number }[];
   revenueByMonth: { month: string; revenue: number }[];
 }
+
+export interface AppSettings {
+  idleTimeout: number; // in minutes (0 = disabled)
+}
