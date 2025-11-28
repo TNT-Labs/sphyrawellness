@@ -6,6 +6,8 @@ import {
   Appointment,
   Payment,
   Reminder,
+  StaffRole,
+  ServiceCategory,
 } from '../types';
 import {
   initDB,
@@ -29,6 +31,14 @@ import {
   addPayment as dbAddPayment,
   getAllReminders,
   addReminder as dbAddReminder,
+  getAllStaffRoles,
+  addStaffRole as dbAddStaffRole,
+  updateStaffRole as dbUpdateStaffRole,
+  deleteStaffRole as dbDeleteStaffRole,
+  getAllServiceCategories,
+  addServiceCategory as dbAddServiceCategory,
+  updateServiceCategory as dbUpdateServiceCategory,
+  deleteServiceCategory as dbDeleteServiceCategory,
 } from '../utils/db';
 import { migrateFromLocalStorage } from '../utils/migration';
 import { initializeDemoData } from '../utils/storage';
@@ -71,6 +81,18 @@ interface AppContextType {
   // Reminders
   reminders: Reminder[];
   addReminder: (reminder: Reminder) => Promise<void>;
+
+  // Staff Roles
+  staffRoles: StaffRole[];
+  addStaffRole: (role: StaffRole) => Promise<void>;
+  updateStaffRole: (role: StaffRole) => Promise<void>;
+  deleteStaffRole: (id: string) => Promise<void>;
+
+  // Service Categories
+  serviceCategories: ServiceCategory[];
+  addServiceCategory: (category: ServiceCategory) => Promise<void>;
+  updateServiceCategory: (category: ServiceCategory) => Promise<void>;
+  deleteServiceCategory: (id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -83,6 +105,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [staffRoles, setStaffRoles] = useState<StaffRole[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
 
   // Initialize database and load data
   useEffect(() => {
@@ -111,6 +135,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
           loadedAppointments,
           loadedPayments,
           loadedReminders,
+          loadedStaffRoles,
+          loadedServiceCategories,
         ] = await Promise.all([
           getAllCustomers(),
           getAllServices(),
@@ -118,6 +144,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
           getAllAppointments(),
           getAllPayments(),
           getAllReminders(),
+          getAllStaffRoles(),
+          getAllServiceCategories(),
         ]);
 
         // If no data exists, initialize with demo data
@@ -133,19 +161,25 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
           await migrateFromLocalStorage();
 
           // Reload data
-          const [demoCustomers, demoServices, demoStaff] = await Promise.all([
+          const [demoCustomers, demoServices, demoStaff, demoRoles, demoCategories] = await Promise.all([
             getAllCustomers(),
             getAllServices(),
             getAllStaff(),
+            getAllStaffRoles(),
+            getAllServiceCategories(),
           ]);
 
           setCustomers(demoCustomers);
           setServices(demoServices);
           setStaff(demoStaff);
+          setStaffRoles(demoRoles);
+          setServiceCategories(demoCategories);
         } else {
           setCustomers(loadedCustomers);
           setServices(loadedServices);
           setStaff(loadedStaff);
+          setStaffRoles(loadedStaffRoles);
+          setServiceCategories(loadedServiceCategories);
         }
 
         setAppointments(loadedAppointments);
@@ -244,6 +278,38 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
     setReminders((prev) => [...prev, reminder]);
   };
 
+  // Staff Roles
+  const addStaffRole = async (role: StaffRole) => {
+    await dbAddStaffRole(role);
+    setStaffRoles((prev) => [...prev, role]);
+  };
+
+  const updateStaffRole = async (role: StaffRole) => {
+    await dbUpdateStaffRole(role);
+    setStaffRoles((prev) => prev.map((r) => (r.id === role.id ? role : r)));
+  };
+
+  const deleteStaffRole = async (id: string) => {
+    await dbDeleteStaffRole(id);
+    setStaffRoles((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  // Service Categories
+  const addServiceCategory = async (category: ServiceCategory) => {
+    await dbAddServiceCategory(category);
+    setServiceCategories((prev) => [...prev, category]);
+  };
+
+  const updateServiceCategory = async (category: ServiceCategory) => {
+    await dbUpdateServiceCategory(category);
+    setServiceCategories((prev) => prev.map((c) => (c.id === category.id ? category : c)));
+  };
+
+  const deleteServiceCategory = async (id: string) => {
+    await dbDeleteServiceCategory(id);
+    setServiceCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
   const value: AppContextType = {
     isLoading,
     customers,
@@ -266,6 +332,14 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
     addPayment,
     reminders,
     addReminder,
+    staffRoles,
+    addStaffRole,
+    updateStaffRole,
+    deleteStaffRole,
+    serviceCategories,
+    addServiceCategory,
+    updateServiceCategory,
+    deleteServiceCategory,
   };
 
   return (

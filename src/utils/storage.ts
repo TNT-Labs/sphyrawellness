@@ -1,4 +1,4 @@
-import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings } from '../types';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
 
 const STORAGE_KEYS = {
@@ -9,6 +9,8 @@ const STORAGE_KEYS = {
   PAYMENTS: 'sphyra_payments',
   REMINDERS: 'sphyra_reminders',
   SETTINGS: 'sphyra_settings',
+  STAFF_ROLES: 'sphyra_staff_roles',
+  SERVICE_CATEGORIES: 'sphyra_service_categories',
 };
 
 // Generic storage functions
@@ -129,11 +131,60 @@ export const loadSettings = (): AppSettings => {
   return loadFromStorage<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
 };
 
+// Staff Roles
+export const saveStaffRoles = (roles: StaffRole[]): void => {
+  saveToStorage(STORAGE_KEYS.STAFF_ROLES, roles);
+};
+
+export const loadStaffRoles = (): StaffRole[] => {
+  return loadFromStorage<StaffRole[]>(STORAGE_KEYS.STAFF_ROLES, []);
+};
+
+// Service Categories
+export const saveServiceCategories = (categories: ServiceCategory[]): void => {
+  saveToStorage(STORAGE_KEYS.SERVICE_CATEGORIES, categories);
+};
+
+export const loadServiceCategories = (): ServiceCategory[] => {
+  return loadFromStorage<ServiceCategory[]>(STORAGE_KEYS.SERVICE_CATEGORIES, []);
+};
+
 // Initialize with demo data if empty
 export const initializeDemoData = (): void => {
   const customers = loadCustomers();
   const services = loadServices();
   const staff = loadStaff();
+  const roles = loadStaffRoles();
+  const categories = loadServiceCategories();
+
+  // Initialize staff roles
+  if (roles.length === 0) {
+    const demoRoles: StaffRole[] = [
+      { id: 'role-1', name: 'Estetista Senior', isActive: true },
+      { id: 'role-2', name: 'Estetista', isActive: true },
+      { id: 'role-3', name: 'Massaggiatrice', isActive: true },
+      { id: 'role-4', name: 'Manicurista', isActive: true },
+      { id: 'role-5', name: 'Truccatrice', isActive: true },
+      { id: 'role-6', name: 'Receptionist', isActive: true },
+      { id: 'role-7', name: 'Manager', isActive: true },
+    ];
+    saveStaffRoles(demoRoles);
+  }
+
+  // Initialize service categories
+  if (categories.length === 0) {
+    const demoCategories: ServiceCategory[] = [
+      { id: 'cat-1', name: 'Mani', color: '#ec4899', isActive: true },
+      { id: 'cat-2', name: 'Piedi', color: '#8b5cf6', isActive: true },
+      { id: 'cat-3', name: 'Viso', color: '#10b981', isActive: true },
+      { id: 'cat-4', name: 'Corpo', color: '#3b82f6', isActive: true },
+      { id: 'cat-5', name: 'Massaggi', color: '#06b6d4', isActive: true },
+      { id: 'cat-6', name: 'Epilazione', color: '#f59e0b', isActive: true },
+      { id: 'cat-7', name: 'Trattamenti Speciali', color: '#a855f7', isActive: true },
+      { id: 'cat-8', name: 'Altro', color: '#6b7280', isActive: true },
+    ];
+    saveServiceCategories(demoCategories);
+  }
 
   if (customers.length === 0) {
     const demoCustomers: Customer[] = [
@@ -168,7 +219,7 @@ export const initializeDemoData = (): void => {
         description: 'Manicure completa con smalto semipermanente',
         duration: 60,
         price: 35,
-        category: 'Mani',
+        category: 'cat-1', // Mani
         color: '#ec4899',
       },
       {
@@ -177,7 +228,7 @@ export const initializeDemoData = (): void => {
         description: 'Pedicure estetico completo',
         duration: 60,
         price: 40,
-        category: 'Piedi',
+        category: 'cat-2', // Piedi
         color: '#8b5cf6',
       },
       {
@@ -186,7 +237,7 @@ export const initializeDemoData = (): void => {
         description: 'Massaggio corpo completo 60 minuti',
         duration: 60,
         price: 60,
-        category: 'Massaggi',
+        category: 'cat-5', // Massaggi
         color: '#06b6d4',
       },
       {
@@ -195,7 +246,7 @@ export const initializeDemoData = (): void => {
         description: 'Pulizia viso profonda con maschera',
         duration: 90,
         price: 70,
-        category: 'Viso',
+        category: 'cat-3', // Viso
         color: '#10b981',
       },
       {
@@ -204,7 +255,7 @@ export const initializeDemoData = (): void => {
         description: 'Ceretta gambe complete',
         duration: 45,
         price: 30,
-        category: 'Epilazione',
+        category: 'cat-6', // Epilazione
         color: '#f59e0b',
       },
     ];
@@ -219,8 +270,8 @@ export const initializeDemoData = (): void => {
         lastName: 'Verdi',
         email: 'laura@sphyra.com',
         phone: '+39 333 1111111',
-        role: 'Estetista Senior',
-        specializations: ['Manicure', 'Pedicure', 'Trattamenti Viso'],
+        role: 'role-1', // Estetista Senior
+        specializations: ['cat-1', 'cat-2', 'cat-3'], // Mani, Piedi, Viso
         color: '#ec4899',
         isActive: true,
       },
@@ -230,8 +281,8 @@ export const initializeDemoData = (): void => {
         lastName: 'Neri',
         email: 'sofia@sphyra.com',
         phone: '+39 333 2222222',
-        role: 'Massaggiatrice',
-        specializations: ['Massaggi', 'Trattamenti Corpo'],
+        role: 'role-3', // Massaggiatrice
+        specializations: ['cat-5', 'cat-4'], // Massaggi, Corpo
         color: '#8b5cf6',
         isActive: true,
       },

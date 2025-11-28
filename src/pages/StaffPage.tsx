@@ -9,7 +9,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { canDeleteStaff } from '../utils/db';
 
 const StaffPage: React.FC = () => {
-  const { staff, addStaff, updateStaff, deleteStaff, services } = useApp();
+  const { staff, addStaff, updateStaff, deleteStaff, staffRoles, serviceCategories } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
@@ -27,23 +27,18 @@ const StaffPage: React.FC = () => {
     isActive: true,
   });
 
-  const roles = [
-    'Estetista Senior',
-    'Estetista',
-    'Massaggiatrice',
-    'Manicurista',
-    'Truccatrice',
-    'Receptionist',
-    'Manager',
-  ];
+  // Filter only active roles and categories
+  const activeRoles = staffRoles.filter(r => r.isActive);
+  const activeCategories = serviceCategories.filter(c => c.isActive);
 
   const filteredStaff = staff.filter((member) => {
     const searchLower = searchTerm.toLowerCase();
+    const roleName = staffRoles.find(r => r.id === member.role)?.name || '';
     return (
       member.firstName.toLowerCase().includes(searchLower) ||
       member.lastName.toLowerCase().includes(searchLower) ||
       member.email.toLowerCase().includes(searchLower) ||
-      member.role.toLowerCase().includes(searchLower)
+      roleName.toLowerCase().includes(searchLower)
     );
   });
 
@@ -142,11 +137,11 @@ const StaffPage: React.FC = () => {
     }
   };
 
-  const toggleSpecialization = (serviceName: string) => {
+  const toggleSpecialization = (categoryId: string) => {
     const current = formData.specializations;
-    const updated = current.includes(serviceName)
-      ? current.filter((s) => s !== serviceName)
-      : [...current, serviceName];
+    const updated = current.includes(categoryId)
+      ? current.filter((s) => s !== categoryId)
+      : [...current, categoryId];
     setFormData({ ...formData, specializations: updated });
   };
 
@@ -222,7 +217,7 @@ const StaffPage: React.FC = () => {
                       {member.firstName} {member.lastName}
                     </h3>
                     <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full mt-1">
-                      {member.role}
+                      {staffRoles.find(r => r.id === member.role)?.name || 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -254,14 +249,19 @@ const StaffPage: React.FC = () => {
                 <div className="mb-4">
                   <p className="text-xs text-gray-500 mb-2">Specializzazioni:</p>
                   <div className="flex flex-wrap gap-1">
-                    {member.specializations.map((spec) => (
-                      <span
-                        key={spec}
-                        className="inline-block px-2 py-1 bg-primary-50 text-primary-700 text-xs rounded-full"
-                      >
-                        {spec}
-                      </span>
-                    ))}
+                    {member.specializations.map((categoryId) => {
+                      const category = serviceCategories.find(c => c.id === categoryId);
+                      if (!category) return null;
+                      return (
+                        <span
+                          key={categoryId}
+                          className="inline-block px-2 py-1 text-white text-xs rounded-full"
+                          style={{ backgroundColor: category.color }}
+                        >
+                          {category.name}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -364,29 +364,38 @@ const StaffPage: React.FC = () => {
                     className="input"
                   >
                     <option value="">Seleziona un ruolo</option>
-                    {roles.map((role) => (
-                      <option key={role} value={role}>
-                        {role}
+                    {activeRoles.map((role) => (
+                      <option key={role.id} value={role.id}>
+                        {role.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="label">Specializzazioni</label>
+                  <label className="label">Specializzazioni (Categorie)</label>
+                  <p className="text-sm text-gray-600 mb-2">
+                    Seleziona le categorie di servizi per cui questo membro è specializzato
+                  </p>
                   <div className="border border-gray-300 rounded-md p-3 max-h-40 overflow-y-auto">
-                    {services.map((service) => (
+                    {activeCategories.map((category) => (
                       <label
-                        key={service.id}
+                        key={category.id}
                         className="flex items-center py-2 cursor-pointer hover:bg-gray-50"
                       >
                         <input
                           type="checkbox"
-                          checked={formData.specializations.includes(service.name)}
-                          onChange={() => toggleSpecialization(service.name)}
+                          checked={formData.specializations.includes(category.id)}
+                          onChange={() => toggleSpecialization(category.id)}
                           className="mr-2"
                         />
-                        <span className="text-sm">{service.name}</span>
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-4 h-4 rounded"
+                            style={{ backgroundColor: category.color }}
+                          />
+                          <span className="text-sm">{category.name}</span>
+                        </div>
                       </label>
                     ))}
                   </div>
