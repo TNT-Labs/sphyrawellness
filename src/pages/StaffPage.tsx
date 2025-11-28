@@ -5,10 +5,13 @@ import { Plus, Search, Edit, Trash2, UserCheck, Mail, Phone } from 'lucide-react
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../hooks/useConfirm';
+import { canDeleteStaff } from '../utils/db';
 
 const StaffPage: React.FC = () => {
   const { staff, addStaff, updateStaff, deleteStaff, services } = useApp();
   const { showSuccess, showError } = useToast();
+  const { confirm, ConfirmationDialog } = useConfirm();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
@@ -113,9 +116,29 @@ const StaffPage: React.FC = () => {
     handleCloseModal();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questo membro dello staff?')) {
+  const handleDelete = async (id: string) => {
+    const member = staff.find((s) => s.id === id);
+    if (!member) return;
+
+    // Check if staff has future appointments
+    const canDelete = await canDeleteStaff(id);
+
+    if (!canDelete.canDelete) {
+      showError(`Impossibile eliminare: ${canDelete.reason}. Cancella prima gli appuntamenti futuri.`);
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: 'Conferma Eliminazione',
+      message: `Sei sicuro di voler eliminare ${member.firstName} ${member.lastName}? Questa azione non può essere annullata.`,
+      confirmText: 'Elimina',
+      cancelText: 'Annulla',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
       deleteStaff(id);
+      showSuccess('Membro dello staff eliminato con successo');
     }
   };
 
@@ -419,6 +442,9 @@ const StaffPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog />
     </div>
   );
 };

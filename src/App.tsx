@@ -16,6 +16,7 @@ const StaffPage = lazy(() => import('./pages/StaffPage'));
 const Payments = lazy(() => import('./pages/Payments'));
 const Reminders = lazy(() => import('./pages/Reminders'));
 const Statistics = lazy(() => import('./pages/Statistics'));
+const Settings = lazy(() => import('./pages/Settings'));
 
 // Loading fallback component
 const PageLoader: React.FC = () => (
@@ -61,6 +62,7 @@ const App: React.FC = () => {
                       <Route path="/pagamenti" element={<Payments />} />
                       <Route path="/reminder" element={<Reminders />} />
                       <Route path="/statistiche" element={<Statistics />} />
+                      <Route path="/impostazioni" element={<Settings />} />
                     </Routes>
                   </Suspense>
                 </Layout>

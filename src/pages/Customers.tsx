@@ -8,6 +8,7 @@ import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
+import { canDeleteCustomer } from '../utils/db';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
@@ -115,6 +116,14 @@ const Customers: React.FC = () => {
   };
 
   const handleDelete = async (customer: Customer) => {
+    // Check if customer has future appointments
+    const canDelete = await canDeleteCustomer(customer.id);
+
+    if (!canDelete.canDelete) {
+      showError(`Impossibile eliminare: ${canDelete.reason}. Cancella prima gli appuntamenti futuri.`);
+      return;
+    }
+
     const confirmed = await confirm({
       title: 'Elimina Cliente',
       message: `Sei sicuro di voler eliminare ${customer.firstName} ${customer.lastName}? Questa azione non può essere annullata.`,

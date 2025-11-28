@@ -9,6 +9,7 @@ import {
   Bell,
   DollarSign,
   BarChart3,
+  Settings,
   Menu,
   X,
 } from 'lucide-react';
@@ -30,6 +31,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Pagamenti', href: '/pagamenti', icon: DollarSign },
     { name: 'Reminder', href: '/reminder', icon: Bell },
     { name: 'Statistiche', href: '/statistiche', icon: BarChart3 },
+    { name: 'Impostazioni', href: '/impostazioni', icon: Settings },
   ];
 
   const isActive = (href: string) => {

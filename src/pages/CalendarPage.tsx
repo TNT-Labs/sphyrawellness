@@ -12,6 +12,7 @@ import { it } from 'date-fns/locale';
 import { generateId, calculateEndTime } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../hooks/useConfirm';
 
 const CalendarPage: React.FC = () => {
   const {
@@ -24,6 +25,7 @@ const CalendarPage: React.FC = () => {
     staff,
   } = useApp();
   const { showSuccess, showError } = useToast();
+  const { confirm, ConfirmationDialog } = useConfirm();
 
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -146,9 +148,24 @@ const CalendarPage: React.FC = () => {
     handleCloseModal();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questo appuntamento?')) {
+  const handleDelete = async (id: string) => {
+    const appointment = appointments.find((a) => a.id === id);
+    if (!appointment) return;
+
+    const customer = customers.find((c) => c.id === appointment.customerId);
+    const customerName = customer ? `${customer.firstName} ${customer.lastName}` : 'Cliente';
+
+    const confirmed = await confirm({
+      title: 'Conferma Eliminazione',
+      message: `Sei sicuro di voler eliminare l'appuntamento di ${customerName} del ${format(parseISO(appointment.date), 'dd/MM/yyyy')} alle ${appointment.startTime}? Questa azione non può essere annullata.`,
+      confirmText: 'Elimina',
+      cancelText: 'Annulla',
+      variant: 'danger',
+    });
+
+    if (confirmed) {
       deleteAppointment(id);
+      showSuccess('Appuntamento eliminato con successo');
     }
   };
 
@@ -468,6 +485,9 @@ const CalendarPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog />
     </div>
   );
 };
