@@ -5,6 +5,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/sphyrawellness/',
+  optimizeDeps: {
+    include: ['pouchdb-browser', 'pouchdb-find'],
+    exclude: []
+  },
+  build: {
+    commonjsOptions: {
+      include: [/pouchdb/, /node_modules/],
+      transformMixedEsModules: true
+    }
+  },
   plugins: [
     react(),
     VitePWA({

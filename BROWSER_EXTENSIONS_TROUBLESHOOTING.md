@@ -98,7 +98,7 @@ To verify that errors are from extensions and not the app:
 
 ## Actual App Errors vs Extension Errors
 
-### ✅ Fixed: PouchDB Plugin Import Error
+### ✅ Fixed: PouchDB Plugin Import Error (Including Incognito Mode)
 
 **Previous Error:**
 ```
@@ -106,21 +106,45 @@ Uncaught TypeError: Class extends value [object Object] is not a constructor or 
     at pouchdb-browser.js:427
 ```
 
+**Root Cause:**
+This error occurred because Vite bundles CommonJS and ES modules differently in development vs production builds, and especially in Chrome's incognito mode where module loading can be more restrictive. The `pouchdb-find` plugin was being imported as an object instead of a function.
+
 **Fix Applied:**
-Changed from dynamic import handling to direct import in `src/utils/pouchdbSync.ts`:
+
+1. **Enhanced Vite Configuration** (`vite.config.ts`):
+   - Added explicit optimization for PouchDB modules
+   - Configured CommonJS transformation for mixed module formats
 
 ```typescript
-// Before (incorrect)
-import * as PouchDBFindModule from 'pouchdb-find';
-const PouchDBFind = (PouchDBFindModule as any).default || PouchDBFindModule;
-PouchDB.plugin(PouchDBFind);
-
-// After (correct)
-import PouchDBFind from 'pouchdb-find';
-PouchDB.plugin(PouchDBFind);
+optimizeDeps: {
+  include: ['pouchdb-browser', 'pouchdb-find'],
+  exclude: []
+},
+build: {
+  commonjsOptions: {
+    include: [/pouchdb/, /node_modules/],
+    transformMixedEsModules: true
+  }
+}
 ```
 
-This was an actual app error and has been resolved.
+2. **Robust Plugin Loading** (`src/utils/pouchdbSync.ts`):
+   - Added comprehensive module format detection
+   - Handles default exports, named exports, and nested exports
+   - Added IndexedDB availability check for incognito mode
+   - Provides clear error messages when initialization fails
+
+```typescript
+// Handles different ways the module might be exported
+let pluginToRegister: any = null;
+if (typeof PouchDBFind === 'function') {
+  pluginToRegister = PouchDBFind;
+} else if (PouchDBFind && typeof PouchDBFind === 'object') {
+  // Check for various export formats...
+}
+```
+
+**Impact:** Fixed in both normal and incognito modes. The app now properly detects when running in incognito mode with restricted IndexedDB and provides helpful error messages.
 
 ---
 
