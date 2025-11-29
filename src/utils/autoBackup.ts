@@ -1,5 +1,6 @@
 import { exportAllData } from './db';
 import { logger } from './logger';
+import { handleError, hasEnoughStorage, safeJsonParse, ErrorType } from './errorHandling';
 
 const BACKUP_KEY_PREFIX = 'sphyra_backup_';
 const LAST_BACKUP_KEY = 'sphyra_last_backup_date';
@@ -35,7 +36,38 @@ function shouldCreateBackup(): boolean {
 }
 
 /**
- * Create a backup of all data
+ * Validate backup data integrity
+ */
+function validateBackupData(data: any): boolean {
+  try {
+    // Check if all required fields exist
+    const requiredFields = [
+      'customers',
+      'services',
+      'staff',
+      'appointments',
+      'payments',
+      'reminders',
+      'staffRoles',
+      'serviceCategories',
+    ];
+
+    for (const field of requiredFields) {
+      if (!Array.isArray(data[field])) {
+        logger.error(`Backup validation failed: ${field} is not an array`);
+        return false;
+      }
+    }
+
+    return true;
+  } catch (error) {
+    logger.error('Backup validation error:', error);
+    return false;
+  }
+}
+
+/**
+ * Create a backup of all data with enhanced error handling
  */
 export async function createAutoBackup(): Promise<void> {
   try {
@@ -45,6 +77,12 @@ export async function createAutoBackup(): Promise<void> {
     }
 
     const data = await exportAllData();
+
+    // Validate data before creating backup
+    if (!validateBackupData(data)) {
+      throw new Error('Backup data validation failed');
+    }
+
     const today = new Date().toISOString().split('T')[0];
     const timestamp = Date.now();
 
@@ -63,37 +101,71 @@ export async function createAutoBackup(): Promise<void> {
       },
     };
 
-    // Save backup data
     const backupKey = `${BACKUP_KEY_PREFIX}${today}`;
+    const serializedData = JSON.stringify(data);
+    const serializedMeta = JSON.stringify(backup);
+
+    // Estimate required storage space (rough estimate)
+    const requiredBytes = serializedData.length + serializedMeta.length;
+
+    // Check if we have enough storage
+    const hasSpace = await hasEnoughStorage(requiredBytes);
+    if (!hasSpace) {
+      logger.warn('Low storage space detected, cleaning old backups first');
+      cleanOldBackups();
+    }
+
+    // Save backup data
     try {
-      localStorage.setItem(backupKey, JSON.stringify(data));
-      localStorage.setItem(`${backupKey}_meta`, JSON.stringify(backup));
+      localStorage.setItem(backupKey, serializedData);
+      localStorage.setItem(`${backupKey}_meta`, serializedMeta);
+
+      // Verify backup was saved correctly
+      const savedData = localStorage.getItem(backupKey);
+      if (!savedData || savedData !== serializedData) {
+        throw new Error('Backup verification failed');
+      }
+
       localStorage.setItem(LAST_BACKUP_KEY, today);
+      logger.log(`✓ Auto-backup created and verified for ${today}`);
 
-      logger.log(`✓ Auto-backup created for ${today}`);
-
-      // Clean old backups
+      // Clean old backups after successful save
       cleanOldBackups();
     } catch (storageError) {
       if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
         logger.error('Cannot create backup: localStorage quota exceeded');
+
         // Try to free space by removing old backups
         cleanOldBackups();
-        // Retry once
+
+        // Retry once after cleanup
         try {
-          localStorage.setItem(backupKey, JSON.stringify(data));
-          localStorage.setItem(`${backupKey}_meta`, JSON.stringify(backup));
+          localStorage.setItem(backupKey, serializedData);
+          localStorage.setItem(`${backupKey}_meta`, serializedMeta);
+
+          // Verify backup again
+          const savedData = localStorage.getItem(backupKey);
+          if (!savedData || savedData !== serializedData) {
+            throw new Error('Backup verification failed after retry');
+          }
+
           localStorage.setItem(LAST_BACKUP_KEY, today);
           logger.log(`✓ Auto-backup created for ${today} (after cleanup)`);
         } catch (retryError) {
-          logger.error('Backup failed even after cleanup - storage quota exceeded');
+          handleError(retryError, {
+            context: 'Backup non riuscito',
+          });
+          throw retryError;
         }
       } else {
         throw storageError;
       }
     }
   } catch (error) {
-    logger.error('Failed to create auto-backup:', error);
+    handleError(error, {
+      context: 'Creazione backup automatico',
+    });
+    throw error;
   }
 }
 
@@ -147,7 +219,7 @@ export function getAvailableBackups(): BackupMetadata[] {
 }
 
 /**
- * Restore data from a backup
+ * Restore data from a backup with validation
  */
 export function restoreFromBackup(date: string): any {
   const backupKey = `${BACKUP_KEY_PREFIX}${date}`;
@@ -157,7 +229,19 @@ export function restoreFromBackup(date: string): any {
     throw new Error(`Backup not found for date: ${date}`);
   }
 
-  return JSON.parse(backupData);
+  // Safely parse backup data
+  const parsed = safeJsonParse(backupData);
+  if (!parsed) {
+    throw new Error('Failed to parse backup data - possibly corrupted');
+  }
+
+  // Validate backup structure
+  if (!validateBackupData(parsed)) {
+    throw new Error('Backup data validation failed - backup may be corrupted');
+  }
+
+  logger.log(`✓ Successfully restored backup from ${date}`);
+  return parsed;
 }
 
 /**
