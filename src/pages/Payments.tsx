@@ -4,7 +4,7 @@ import { Payment } from '../types';
 import { DollarSign, Plus, CreditCard, Banknote, Building2, Search } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { generateId } from '../utils/helpers';
+import { generateId, validateAmount } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
 import { logger } from '../utils/logger';
@@ -354,17 +354,37 @@ const Payments: React.FC = () => {
                       type="number"
                       required
                       min="0"
+                      max="99999.99"
                       step="0.01"
                       value={formData.amount}
                       onChange={(e) => {
-                        const newAmount = parseFloat(e.target.value);
+                        const validated = validateAmount(e.target.value, {
+                          min: 0,
+                          max: 99999.99,
+                          allowZero: false,
+                        });
                         setFormData({
                           ...formData,
-                          amount: isNaN(newAmount) ? 0 : Math.max(0, newAmount),
+                          amount: validated,
+                        });
+                      }}
+                      onBlur={(e) => {
+                        // Validate on blur to ensure proper formatting
+                        const validated = validateAmount(e.target.value, {
+                          min: 0,
+                          max: 99999.99,
+                          allowZero: false,
+                        });
+                        setFormData({
+                          ...formData,
+                          amount: validated,
                         });
                       }}
                       className="input"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Massimo €99,999.99
+                    </p>
                   </div>
 
                   <div>

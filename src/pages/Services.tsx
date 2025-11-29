@@ -5,7 +5,7 @@ import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react';
-import { generateId } from '../utils/helpers';
+import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteService } from '../utils/db';
 import { logger } from '../utils/logger';
@@ -324,16 +324,37 @@ const Services: React.FC = () => {
                       type="number"
                       required
                       min="15"
+                      max="480"
                       step="15"
                       value={formData.duration}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const validated = validateDuration(e.target.value, {
+                          min: 15,
+                          max: 480,
+                          step: 15,
+                        });
                         setFormData({
                           ...formData,
-                          duration: parseInt(e.target.value),
-                        })
-                      }
+                          duration: validated,
+                        });
+                      }}
+                      onBlur={(e) => {
+                        // Validate on blur to ensure proper rounding
+                        const validated = validateDuration(e.target.value, {
+                          min: 15,
+                          max: 480,
+                          step: 15,
+                        });
+                        setFormData({
+                          ...formData,
+                          duration: validated,
+                        });
+                      }}
                       className="input"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Multiplo di 15 minuti (max 8 ore)
+                    </p>
                   </div>
 
                   <div>
@@ -342,16 +363,37 @@ const Services: React.FC = () => {
                       type="number"
                       required
                       min="0"
+                      max="99999.99"
                       step="0.01"
                       value={formData.price}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const validated = validateAmount(e.target.value, {
+                          min: 0,
+                          max: 99999.99,
+                          allowZero: true,
+                        });
                         setFormData({
                           ...formData,
-                          price: parseFloat(e.target.value),
-                        })
-                      }
+                          price: validated,
+                        });
+                      }}
+                      onBlur={(e) => {
+                        // Validate on blur to ensure proper formatting
+                        const validated = validateAmount(e.target.value, {
+                          min: 0,
+                          max: 99999.99,
+                          allowZero: true,
+                        });
+                        setFormData({
+                          ...formData,
+                          price: validated,
+                        });
+                      }}
                       className="input"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Massimo €99,999.99
+                    </p>
                   </div>
                 </div>
 

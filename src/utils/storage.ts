@@ -1,5 +1,6 @@
 import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
+import { safeJsonParse } from './errorHandling';
 
 const STORAGE_KEYS = {
   CUSTOMERS: 'sphyra_customers',
@@ -17,15 +18,31 @@ const STORAGE_KEYS = {
 export const saveToStorage = <T>(key: string, data: T): boolean => {
   try {
     const serialized = JSON.stringify(data);
+
+    // Validate serialization produced valid JSON
+    if (!serialized || serialized === 'undefined') {
+      logger.error(`Cannot save invalid data for key: ${key}`);
+      return false;
+    }
+
     localStorage.setItem(key, serialized);
+
+    // Verify data was saved correctly
+    const verification = localStorage.getItem(key);
+    if (verification !== serialized) {
+      logger.error(`Data verification failed for key: ${key}`);
+      return false;
+    }
+
     return true;
   } catch (error) {
     if (error instanceof Error) {
       if (error.name === 'QuotaExceededError') {
-        logger.error('LocalStorage quota exceeded. Cannot save data.');
-        // In a real app, notify user to clear data or upgrade
+        logger.error(`LocalStorage quota exceeded. Cannot save data for key: ${key}`);
+        logger.error('Consider exporting data and clearing old entries.');
+        // In production, this should trigger a user notification
       } else {
-        logger.error('Error saving to storage:', error.message);
+        logger.error(`Error saving to storage (key: ${key}):`, error.message);
       }
     }
     return false;
@@ -39,26 +56,29 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
       return defaultValue;
     }
 
-    const parsed = JSON.parse(item);
+    // Use safe JSON parse
+    const parsed = safeJsonParse<T>(item);
 
     // Basic validation: ensure parsed data has expected structure
     if (parsed === null || parsed === undefined) {
-      logger.warn(`Invalid data in localStorage for key: ${key}`);
+      logger.warn(`Invalid data in localStorage for key: ${key}. Using default value.`);
+      // Clear corrupted data
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        logger.error('Failed to remove corrupted data:', e);
+      }
       return defaultValue;
     }
 
     return parsed;
   } catch (error) {
-    if (error instanceof SyntaxError) {
-      logger.error(`Corrupted data in localStorage for key: ${key}. Returning default.`);
-      // Clear corrupted data
-      try {
-        localStorage.removeItem(key);
-      } catch (e) {
-        // Ignore if we can't remove
-      }
-    } else {
-      logger.error('Error loading from storage:', error);
+    logger.error(`Error loading from storage (key: ${key}):`, error);
+    // Try to clear corrupted data
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      // Ignore cleanup errors
     }
     return defaultValue;
   }

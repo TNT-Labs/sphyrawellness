@@ -85,3 +85,123 @@ export const formatPhoneNumber = (phone: string): string => {
   }
   return phone;
 };
+
+/**
+ * Validate and sanitize monetary amount
+ * @param value Input value (string or number)
+ * @param options Validation options
+ * @returns Valid number or 0 if invalid
+ */
+export const validateAmount = (
+  value: string | number,
+  options: {
+    min?: number;
+    max?: number;
+    allowZero?: boolean;
+  } = {}
+): number => {
+  const { min = 0, max = 999999.99, allowZero = true } = options;
+
+  // Convert to number
+  let amount: number;
+  if (typeof value === 'string') {
+    // Remove any non-numeric characters except dot and minus
+    const cleaned = value.replace(/[^0-9.-]/g, '');
+    amount = parseFloat(cleaned);
+  } else {
+    amount = value;
+  }
+
+  // Check if valid number
+  if (isNaN(amount) || !isFinite(amount)) {
+    return 0;
+  }
+
+  // Apply min constraint
+  if (amount < min) {
+    return min;
+  }
+
+  // Apply max constraint
+  if (amount > max) {
+    return max;
+  }
+
+  // Check zero constraint
+  if (!allowZero && amount === 0) {
+    return min > 0 ? min : 0.01;
+  }
+
+  // Round to 2 decimal places
+  return Math.round(amount * 100) / 100;
+};
+
+/**
+ * Format amount as currency string
+ * @param amount Numeric amount
+ * @param options Formatting options
+ * @returns Formatted currency string
+ */
+export const formatCurrency = (
+  amount: number,
+  options: {
+    currency?: string;
+    locale?: string;
+    showSymbol?: boolean;
+  } = {}
+): string => {
+  const { currency = 'EUR', locale = 'it-IT', showSymbol = true } = options;
+
+  if (showSymbol) {
+    return new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+};
+
+/**
+ * Validate and sanitize duration in minutes
+ * @param value Input value (string or number)
+ * @param options Validation options
+ * @returns Valid duration in minutes or minimum value
+ */
+export const validateDuration = (
+  value: string | number,
+  options: {
+    min?: number;
+    max?: number;
+    step?: number;
+  } = {}
+): number => {
+  const { min = 15, max = 480, step = 15 } = options;
+
+  // Convert to number
+  let duration: number;
+  if (typeof value === 'string') {
+    const cleaned = value.replace(/[^0-9]/g, '');
+    duration = parseInt(cleaned, 10);
+  } else {
+    duration = Math.round(value);
+  }
+
+  // Check if valid number
+  if (isNaN(duration) || !isFinite(duration) || duration < min) {
+    return min;
+  }
+
+  // Apply max constraint
+  if (duration > max) {
+    return max;
+  }
+
+  // Round to nearest step
+  return Math.round(duration / step) * step;
+};

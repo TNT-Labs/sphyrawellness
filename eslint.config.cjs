@@ -38,7 +38,16 @@ module.exports = [
       'react-hooks': reactHooksPlugin,
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'destructuredArrayIgnorePattern': '^_'
+      }],
+      'no-unused-vars': ['warn', {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'destructuredArrayIgnorePattern': '^_'
+      }],
       'react/react-in-jsx-scope': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
@@ -51,6 +60,13 @@ module.exports = [
     },
   },
   {
-    ignores: ['dist/**', 'node_modules/**', '*.config.js', '*.config.ts'],
+    files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
+    rules: {
+      'no-undef': 'off', // Node.js globals
+      'no-unused-vars': 'warn',
+    }
+  },
+  {
+    ignores: ['dist/**', 'node_modules/**', '*.config.js', '*.config.ts', 'scripts/**'],
   },
 ];
