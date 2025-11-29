@@ -356,12 +356,13 @@ const Payments: React.FC = () => {
                       min="0"
                       step="0.01"
                       value={formData.amount}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newAmount = parseFloat(e.target.value);
                         setFormData({
                           ...formData,
-                          amount: parseFloat(e.target.value),
-                        })
-                      }
+                          amount: isNaN(newAmount) ? 0 : Math.max(0, newAmount),
+                        });
+                      }}
                       className="input"
                     />
                   </div>

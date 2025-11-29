@@ -65,14 +65,33 @@ export async function createAutoBackup(): Promise<void> {
 
     // Save backup data
     const backupKey = `${BACKUP_KEY_PREFIX}${today}`;
-    localStorage.setItem(backupKey, JSON.stringify(data));
-    localStorage.setItem(`${backupKey}_meta`, JSON.stringify(backup));
-    localStorage.setItem(LAST_BACKUP_KEY, today);
+    try {
+      localStorage.setItem(backupKey, JSON.stringify(data));
+      localStorage.setItem(`${backupKey}_meta`, JSON.stringify(backup));
+      localStorage.setItem(LAST_BACKUP_KEY, today);
 
-    logger.log(`✓ Auto-backup created for ${today}`);
+      logger.log(`✓ Auto-backup created for ${today}`);
 
-    // Clean old backups
-    cleanOldBackups();
+      // Clean old backups
+      cleanOldBackups();
+    } catch (storageError) {
+      if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+        logger.error('Cannot create backup: localStorage quota exceeded');
+        // Try to free space by removing old backups
+        cleanOldBackups();
+        // Retry once
+        try {
+          localStorage.setItem(backupKey, JSON.stringify(data));
+          localStorage.setItem(`${backupKey}_meta`, JSON.stringify(backup));
+          localStorage.setItem(LAST_BACKUP_KEY, today);
+          logger.log(`✓ Auto-backup created for ${today} (after cleanup)`);
+        } catch (retryError) {
+          logger.error('Backup failed even after cleanup - storage quota exceeded');
+        }
+      } else {
+        throw storageError;
+      }
+    }
   } catch (error) {
     logger.error('Failed to create auto-backup:', error);
   }

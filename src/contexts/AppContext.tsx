@@ -206,7 +206,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
         }
       } catch (error) {
         logger.error('Failed to initialize app:', error);
-        // TODO: Show user-friendly error message instead of silent failure
+        // Show error notification to user
+        alert('Errore durante l\'inizializzazione dell\'applicazione. Ricarica la pagina. Se il problema persiste, prova a svuotare la cache del browser.');
       } finally {
         if (isMounted) {
           setIsLoading(false);
