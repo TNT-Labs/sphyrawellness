@@ -45,6 +45,7 @@ import { initializeDemoData } from '../utils/storage';
 import { logger } from '../utils/logger';
 import { initAutoBackup } from '../utils/autoBackup';
 import { initStoragePersistence } from '../utils/storagePersistence';
+import { initializeSync } from '../utils/pouchdbSync';
 
 interface AppContextType {
   // Loading state
@@ -202,6 +203,13 @@ export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean)
         if (isMounted) {
           initAutoBackup().catch((error) => {
             logger.error('Failed to initialize auto-backup:', error);
+          });
+        }
+
+        // Step 7: Initialize CouchDB sync if enabled (non-blocking)
+        if (isMounted) {
+          initializeSync().catch((error) => {
+            logger.error('Failed to initialize sync:', error);
           });
         }
       } catch (error) {

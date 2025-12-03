@@ -141,6 +141,7 @@ export const loadReminders = (): Reminder[] => {
 // Settings
 const DEFAULT_SETTINGS: AppSettings = {
   idleTimeout: 5, // 5 minutes by default
+  syncEnabled: false, // CouchDB sync disabled by default
 };
 
 export const saveSettings = (settings: AppSettings): void => {

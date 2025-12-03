@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, X } from 'lucide-react';
+import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, X, Cloud, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
@@ -10,8 +10,9 @@ import { loadSettings, saveSettings } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
-import { StaffRole, ServiceCategory } from '../types';
+import { StaffRole, ServiceCategory, SyncStatus } from '../types';
 import { logger } from '../utils/logger';
+import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
 
 const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -22,6 +23,15 @@ const Settings: React.FC = () => {
   const [backups, setBackups] = useState<ReturnType<typeof getAvailableBackups>>([]);
   const [storageInfo, setStorageInfo] = useState<Awaited<ReturnType<typeof getStoragePersistenceInfo>> | null>(null);
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
+
+  // CouchDB Sync state
+  const [syncEnabled, setSyncEnabled] = useState<boolean>(false);
+  const [couchdbUrl, setCouchdbUrl] = useState<string>('');
+  const [couchdbUsername, setCouchdbUsername] = useState<string>('');
+  const [couchdbPassword, setCouchdbPassword] = useState<string>('');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(getSyncStatus());
+  const [isTestingConnection, setIsTestingConnection] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   // Staff Roles state
   const [isAddingRole, setIsAddingRole] = useState(false);
@@ -38,11 +48,24 @@ const Settings: React.FC = () => {
     loadBackups();
     loadStorageInfo();
     loadAppSettings();
+
+    // Subscribe to sync status changes
+    const unsubscribe = onSyncStatusChange((status) => {
+      setSyncStatus(status);
+    });
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const loadAppSettings = () => {
     const settings = loadSettings();
     setIdleTimeout(settings.idleTimeout);
+    setSyncEnabled(settings.syncEnabled || false);
+    setCouchdbUrl(settings.couchdbUrl || '');
+    setCouchdbUsername(settings.couchdbUsername || '');
+    setCouchdbPassword(settings.couchdbPassword || '');
   };
 
   const loadStats = async () => {
@@ -207,6 +230,117 @@ const Settings: React.FC = () => {
     // Trigger custom event so App.tsx can react immediately
     window.dispatchEvent(new Event('settingsChanged'));
     showSuccess('Impostazione salvata');
+  };
+
+  // CouchDB Sync handlers
+  const handleToggleSync = async (enabled: boolean) => {
+    setSyncEnabled(enabled);
+    const settings = loadSettings();
+    settings.syncEnabled = enabled;
+    saveSettings(settings);
+
+    if (enabled && settings.couchdbUrl) {
+      const success = await startSync();
+      if (success) {
+        showSuccess('Sincronizzazione avviata');
+      } else {
+        showError('Errore durante l\'avvio della sincronizzazione');
+        setSyncEnabled(false);
+        settings.syncEnabled = false;
+        saveSettings(settings);
+      }
+    } else if (!enabled) {
+      await stopSync();
+      showSuccess('Sincronizzazione disabilitata');
+    }
+
+    window.dispatchEvent(new Event('settingsChanged'));
+  };
+
+  const handleSaveCouchDBSettings = () => {
+    const settings = loadSettings();
+    settings.couchdbUrl = couchdbUrl.trim();
+    settings.couchdbUsername = couchdbUsername.trim();
+    settings.couchdbPassword = couchdbPassword;
+    saveSettings(settings);
+    showSuccess('Impostazioni CouchDB salvate');
+    window.dispatchEvent(new Event('settingsChanged'));
+  };
+
+  const handleTestConnection = async () => {
+    if (!couchdbUrl.trim()) {
+      showError('Inserisci l\'URL del server CouchDB');
+      return;
+    }
+
+    setIsTestingConnection(true);
+    try {
+      const result = await testCouchDBConnection(
+        couchdbUrl.trim(),
+        couchdbUsername.trim() || undefined,
+        couchdbPassword || undefined
+      );
+
+      if (result.success) {
+        showSuccess('Connessione riuscita!');
+      } else {
+        showError(`Connessione fallita: ${result.error}`);
+      }
+    } catch (error) {
+      showError('Errore durante il test di connessione');
+      logger.error(error);
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!couchdbUrl.trim()) {
+      showError('Configura prima l\'URL del server CouchDB');
+      return;
+    }
+
+    try {
+      const success = await performOneTimeSync();
+      if (success) {
+        showSuccess('Sincronizzazione completata');
+      } else {
+        showError('Errore durante la sincronizzazione');
+      }
+    } catch (error) {
+      showError('Errore durante la sincronizzazione');
+      logger.error(error);
+    }
+  };
+
+  const getSyncStatusColor = () => {
+    switch (syncStatus.status) {
+      case 'syncing':
+        return 'text-blue-600';
+      case 'idle':
+        return 'text-green-600';
+      case 'error':
+        return 'text-red-600';
+      case 'paused':
+        return 'text-yellow-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
+  const getSyncStatusText = () => {
+    switch (syncStatus.status) {
+      case 'syncing':
+        return 'Sincronizzazione in corso...';
+      case 'idle':
+        return 'Sincronizzato';
+      case 'error':
+        return `Errore: ${syncStatus.error || 'Sconosciuto'}`;
+      case 'paused':
+        return 'In pausa';
+      default:
+        return 'Non attivo';
+    }
   };
 
   // Staff Roles handlers
@@ -453,6 +587,161 @@ const Settings: React.FC = () => {
                   </p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* CouchDB Sync Settings */}
+        <div className="card">
+          <div className="flex items-center mb-4">
+            <Cloud className="text-primary-600 mr-2" size={24} />
+            <h2 className="text-xl font-bold text-gray-900">Sincronizzazione CouchDB</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+              <AlertCircle className="text-blue-600 flex-shrink-0 mt-1" size={20} />
+              <div>
+                <p className="font-semibold text-blue-900">Sincronizzazione Multi-Dispositivo</p>
+                <p className="text-sm text-blue-700">
+                  Abilita la sincronizzazione con CouchDB per mantenere i tuoi dati aggiornati su tutti i dispositivi.
+                  Puoi configurare il server in seguito senza dover programmare nulla.
+                </p>
+              </div>
+            </div>
+
+            {/* Enable/Disable Sync */}
+            <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div>
+                <p className="font-semibold text-gray-900">Abilita Sincronizzazione</p>
+                <p className="text-sm text-gray-600">Attiva la sincronizzazione automatica con CouchDB</p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={syncEnabled}
+                  onChange={(e) => handleToggleSync(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-600"></div>
+              </label>
+            </div>
+
+            {/* Sync Status */}
+            {syncEnabled && (
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  {syncStatus.status === 'syncing' && <RefreshCw className="animate-spin text-blue-600" size={20} />}
+                  {syncStatus.status === 'idle' && <CheckCircle className="text-green-600" size={20} />}
+                  {syncStatus.status === 'error' && <AlertCircle className="text-red-600" size={20} />}
+                  {!syncStatus.isActive && <WifiOff className="text-gray-400" size={20} />}
+                  <div>
+                    <p className={`font-semibold ${getSyncStatusColor()}`}>
+                      {getSyncStatusText()}
+                    </p>
+                    {syncStatus.lastSync && (
+                      <p className="text-sm text-gray-600">
+                        Ultima sincronizzazione: {format(new Date(syncStatus.lastSync), 'dd/MM/yyyy HH:mm', { locale: it })}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* CouchDB Configuration */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-900">Configurazione Server</h3>
+
+              <div>
+                <label htmlFor="couchdb-url" className="block text-sm font-semibold text-gray-700 mb-1">
+                  URL Server CouchDB
+                </label>
+                <input
+                  id="couchdb-url"
+                  type="url"
+                  placeholder="https://your-couchdb-server.com:5984"
+                  value={couchdbUrl}
+                  onChange={(e) => setCouchdbUrl(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Esempio: https://admin:password@localhost:5984 oppure https://username.cloudant.com
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="couchdb-username" className="block text-sm font-semibold text-gray-700 mb-1">
+                    Username (opzionale)
+                  </label>
+                  <input
+                    id="couchdb-username"
+                    type="text"
+                    placeholder="admin"
+                    value={couchdbUsername}
+                    onChange={(e) => setCouchdbUsername(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="couchdb-password" className="block text-sm font-semibold text-gray-700 mb-1">
+                    Password (opzionale)
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="couchdb-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••"
+                      value={couchdbPassword}
+                      onChange={(e) => setCouchdbPassword(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword ? 'Nascondi' : 'Mostra'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleSaveCouchDBSettings}
+                  className="btn-primary"
+                >
+                  Salva Configurazione
+                </button>
+                <button
+                  onClick={handleTestConnection}
+                  disabled={isTestingConnection || !couchdbUrl.trim()}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  {isTestingConnection ? (
+                    <>
+                      <RefreshCw className="animate-spin" size={16} />
+                      Test in corso...
+                    </>
+                  ) : (
+                    <>
+                      <Wifi size={16} />
+                      Testa Connessione
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleManualSync}
+                  disabled={syncStatus.status === 'syncing' || !couchdbUrl.trim()}
+                  className="btn-secondary flex items-center gap-2"
+                >
+                  <RefreshCw size={16} />
+                  Sincronizza Ora
+                </button>
+              </div>
             </div>
           </div>
         </div>
