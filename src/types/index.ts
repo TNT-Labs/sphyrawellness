@@ -87,4 +87,16 @@ export interface Statistics {
 
 export interface AppSettings {
   idleTimeout: number; // in minutes (0 = disabled)
+  syncEnabled: boolean; // enable/disable CouchDB sync
+  couchdbUrl?: string; // CouchDB server URL
+  couchdbUsername?: string; // CouchDB username
+  couchdbPassword?: string; // CouchDB password
+}
+
+export interface SyncStatus {
+  isActive: boolean;
+  lastSync?: string; // ISO timestamp
+  status: 'idle' | 'syncing' | 'error' | 'paused';
+  error?: string;
+  direction?: 'push' | 'pull' | 'both';
 }
