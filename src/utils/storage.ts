@@ -1,6 +1,7 @@
 import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
 import { safeJsonParse } from './errorHandling';
+import { secureStore, secureRetrieve, isEncryptionAvailable } from './encryption';
 
 const STORAGE_KEYS = {
   CUSTOMERS: 'sphyra_customers',
@@ -12,6 +13,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'sphyra_settings',
   STAFF_ROLES: 'sphyra_staff_roles',
   SERVICE_CATEGORIES: 'sphyra_service_categories',
+  COUCHDB_PASSWORD: 'sphyra_couchdb_password', // Encrypted storage
 };
 
 // Generic storage functions
@@ -65,8 +67,8 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
       // Clear corrupted data
       try {
         localStorage.removeItem(key);
-      } catch (e) {
-        logger.error('Failed to remove corrupted data:', e);
+      } catch (_e) {
+        logger.error('Failed to remove corrupted data:', _e);
       }
       return defaultValue;
     }
@@ -77,7 +79,7 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
     // Try to clear corrupted data
     try {
       localStorage.removeItem(key);
-    } catch (e) {
+    } catch (_e) {
       // Ignore cleanup errors
     }
     return defaultValue;
@@ -144,12 +146,70 @@ const DEFAULT_SETTINGS: AppSettings = {
   syncEnabled: false, // CouchDB sync disabled by default
 };
 
-export const saveSettings = (settings: AppSettings): void => {
-  saveToStorage(STORAGE_KEYS.SETTINGS, settings);
+/**
+ * Save settings with secure password storage
+ */
+export const saveSettings = async (settings: AppSettings): Promise<boolean> => {
+  try {
+    // Extract password before saving
+    const { couchdbPassword, ...settingsWithoutPassword } = settings;
+
+    // Save settings without password
+    const saved = saveToStorage(STORAGE_KEYS.SETTINGS, settingsWithoutPassword);
+
+    // Save password separately with encryption if available
+    if (couchdbPassword) {
+      if (isEncryptionAvailable()) {
+        await secureStore(STORAGE_KEYS.COUCHDB_PASSWORD, couchdbPassword);
+        logger.log('CouchDB password stored securely with encryption');
+      } else {
+        logger.warn('Encryption not available, password will be stored in plaintext');
+        saveToStorage(STORAGE_KEYS.COUCHDB_PASSWORD, couchdbPassword);
+      }
+    }
+
+    return saved;
+  } catch (error) {
+    logger.error('Failed to save settings:', error);
+    return false;
+  }
 };
 
+/**
+ * Load settings (synchronous)
+ * Note: Password is not included for security (use loadSettingsWithPassword for that)
+ */
 export const loadSettings = (): AppSettings => {
   return loadFromStorage<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+};
+
+/**
+ * Load settings with encrypted password (async)
+ * Use this when you need the decrypted password
+ */
+export const loadSettingsWithPassword = async (): Promise<AppSettings> => {
+  try {
+    const settings = loadFromStorage<AppSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+
+    // Try to load encrypted password
+    if (isEncryptionAvailable()) {
+      const password = await secureRetrieve(STORAGE_KEYS.COUCHDB_PASSWORD);
+      if (password) {
+        settings.couchdbPassword = password;
+      }
+    } else {
+      // Fallback to plaintext storage
+      const password = loadFromStorage<string>(STORAGE_KEYS.COUCHDB_PASSWORD, '');
+      if (password) {
+        settings.couchdbPassword = password;
+      }
+    }
+
+    return settings;
+  } catch (error) {
+    logger.error('Failed to load settings with password:', error);
+    return DEFAULT_SETTINGS;
+  }
 };
 
 // Staff Roles

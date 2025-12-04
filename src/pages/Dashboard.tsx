@@ -8,7 +8,7 @@ import { it } from 'date-fns/locale';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const Dashboard: React.FC = () => {
-  const { customers, appointments, payments, services, staff } = useApp();
+  const { customers, appointments, services, staff } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
@@ -33,7 +33,7 @@ const Dashboard: React.FC = () => {
       try {
         const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
         return aptDateTime >= new Date() && (apt.status === 'scheduled' || apt.status === 'confirmed');
-      } catch (error) {
+      } catch (_error) {
         return false;
       }
     })

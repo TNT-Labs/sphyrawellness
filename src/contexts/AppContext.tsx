@@ -53,52 +53,52 @@ interface AppContextType {
 
   // Customers
   customers: Customer[];
-  addCustomer: (customer: Customer) => Promise<void>;
-  updateCustomer: (customer: Customer) => Promise<void>;
-  deleteCustomer: (id: string) => Promise<void>;
+  addCustomer: (_customer: Customer) => Promise<void>;
+  updateCustomer: (_customer: Customer) => Promise<void>;
+  deleteCustomer: (_id: string) => Promise<void>;
 
   // Services
   services: Service[];
-  addService: (service: Service) => Promise<void>;
-  updateService: (service: Service) => Promise<void>;
-  deleteService: (id: string) => Promise<void>;
+  addService: (_service: Service) => Promise<void>;
+  updateService: (_service: Service) => Promise<void>;
+  deleteService: (_id: string) => Promise<void>;
 
   // Staff
   staff: Staff[];
-  addStaff: (member: Staff) => Promise<void>;
-  updateStaff: (member: Staff) => Promise<void>;
-  deleteStaff: (id: string) => Promise<void>;
+  addStaff: (_member: Staff) => Promise<void>;
+  updateStaff: (_member: Staff) => Promise<void>;
+  deleteStaff: (_id: string) => Promise<void>;
 
   // Appointments
   appointments: Appointment[];
-  addAppointment: (appointment: Appointment) => Promise<void>;
-  updateAppointment: (appointment: Appointment) => Promise<void>;
-  deleteAppointment: (id: string) => Promise<void>;
+  addAppointment: (_appointment: Appointment) => Promise<void>;
+  updateAppointment: (_appointment: Appointment) => Promise<void>;
+  deleteAppointment: (_id: string) => Promise<void>;
 
   // Payments
   payments: Payment[];
-  addPayment: (payment: Payment) => Promise<void>;
+  addPayment: (_payment: Payment) => Promise<void>;
 
   // Reminders
   reminders: Reminder[];
-  addReminder: (reminder: Reminder) => Promise<void>;
+  addReminder: (_reminder: Reminder) => Promise<void>;
 
   // Staff Roles
   staffRoles: StaffRole[];
-  addStaffRole: (role: StaffRole) => Promise<void>;
-  updateStaffRole: (role: StaffRole) => Promise<void>;
-  deleteStaffRole: (id: string) => Promise<void>;
+  addStaffRole: (_role: StaffRole) => Promise<void>;
+  updateStaffRole: (_role: StaffRole) => Promise<void>;
+  deleteStaffRole: (_id: string) => Promise<void>;
 
   // Service Categories
   serviceCategories: ServiceCategory[];
-  addServiceCategory: (category: ServiceCategory) => Promise<void>;
-  updateServiceCategory: (category: ServiceCategory) => Promise<void>;
-  deleteServiceCategory: (id: string) => Promise<void>;
+  addServiceCategory: (_category: ServiceCategory) => Promise<void>;
+  updateServiceCategory: (_category: ServiceCategory) => Promise<void>;
+  deleteServiceCategory: (_id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: ReactNode | ((isLoading: boolean) => ReactNode) }> = ({ children }) => {
+export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean) => ReactNode) }> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [services, setServices] = useState<Service[]>([]);
