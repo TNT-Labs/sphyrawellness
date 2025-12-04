@@ -8,7 +8,7 @@
 import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 import { logger } from './logger';
-import { loadSettings } from './storage';
+import { loadSettingsWithPassword } from './storage';
 import type { SyncStatus } from '../types';
 
 // Enable PouchDB Find plugin for queries
@@ -96,7 +96,7 @@ function initializeLocalDatabases(): void {
  */
 export async function startSync(): Promise<boolean> {
   try {
-    const settings = loadSettings();
+    const settings = await loadSettingsWithPassword();
 
     if (!settings.syncEnabled) {
       logger.warn('Sync is disabled in settings');
@@ -267,7 +267,7 @@ export async function testCouchDBConnection(
  */
 export async function performOneTimeSync(): Promise<boolean> {
   try {
-    const settings = loadSettings();
+    const settings = await loadSettingsWithPassword();
 
     if (!settings.couchdbUrl) {
       logger.error('CouchDB URL is not configured');
@@ -347,7 +347,7 @@ export async function closeDatabases(): Promise<void> {
  */
 export async function initializeSync(): Promise<void> {
   try {
-    const settings = loadSettings();
+    const settings = await loadSettingsWithPassword();
 
     if (settings.syncEnabled && settings.couchdbUrl) {
       logger.log('Auto-starting sync based on settings');

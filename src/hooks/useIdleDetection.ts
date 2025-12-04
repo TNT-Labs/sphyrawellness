@@ -17,7 +17,7 @@ export const useIdleDetection = ({
   enabled = true,
 }: UseIdleDetectionOptions) => {
   const [isIdle, setIsIdle] = useState(false);
-  const timeoutRef = useRef<number | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
 
   // Reset idle timer

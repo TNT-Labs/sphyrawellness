@@ -1,6 +1,6 @@
 import { exportAllData } from './db';
 import { logger } from './logger';
-import { handleError, hasEnoughStorage, safeJsonParse, ErrorType } from './errorHandling';
+import { handleError, hasEnoughStorage, safeJsonParse } from './errorHandling';
 
 const BACKUP_KEY_PREFIX = 'sphyra_backup_';
 const LAST_BACKUP_KEY = 'sphyra_last_backup_date';
@@ -255,7 +255,7 @@ export function deleteBackup(date: string): void {
 }
 
 // Store interval ID for cleanup
-let backupIntervalId: number | null = null;
+let backupIntervalId: ReturnType<typeof setInterval> | null = null;
 
 // Backup interval constant (6 hours)
 const BACKUP_INTERVAL_MS = 6 * 60 * 60 * 1000;

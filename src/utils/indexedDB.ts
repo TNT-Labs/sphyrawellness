@@ -41,7 +41,7 @@ function isIndexedDBAvailable(): boolean {
       return false;
     }
     return true;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
