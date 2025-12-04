@@ -8,6 +8,32 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
+    // Optimize dependency pre-bundling for CommonJS modules
+    optimizeDeps: {
+      include: ['pouchdb-browser', 'pouchdb-find'],
+      esbuildOptions: {
+        // Ensure proper module resolution for mixed ESM/CommonJS dependencies
+        mainFields: ['module', 'main']
+      }
+    },
+    // Build configuration for production
+    build: {
+      // Handle CommonJS modules during production build
+      commonjsOptions: {
+        include: [/pouchdb/, /node_modules/],
+        transformMixedEsModules: true,
+        defaultIsModuleExports: 'auto',
+        requireReturnsDefault: 'auto'
+      },
+      // Optimize chunk splitting for better caching
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'pouchdb': ['pouchdb-browser', 'pouchdb-find']
+          }
+        }
+      }
+    },
     plugins: [
       react(),
       VitePWA({
