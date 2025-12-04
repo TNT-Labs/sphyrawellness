@@ -66,26 +66,23 @@ const AppContent: React.FC = () => {
       {(isLoading) => (
         <>
           {isIdle && !isLoading && <IdleSplashScreen onDismiss={resetIdle} />}
-          {isLoading ? (
-            <GlobalLoader />
-          ) : (
-            <Router basename="/sphyrawellness">
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/calendario" element={<CalendarPage />} />
-                  <Route path="/clienti" element={<Customers />} />
-                  <Route path="/servizi" element={<Services />} />
-                  <Route path="/personale" element={<StaffPage />} />
-                  <Route path="/pagamenti" element={<Payments />} />
-                  <Route path="/reminder" element={<Reminders />} />
-                  <Route path="/statistiche" element={<Statistics />} />
-                  <Route path="/manuale" element={<UserManual />} />
-                  <Route path="/impostazioni" element={<Settings />} />
-                </Routes>
-              </Layout>
-            </Router>
-          )}
+          {isLoading && <GlobalLoader />}
+          <Router basename="/sphyrawellness">
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/calendario" element={<CalendarPage />} />
+                <Route path="/clienti" element={<Customers />} />
+                <Route path="/servizi" element={<Services />} />
+                <Route path="/personale" element={<StaffPage />} />
+                <Route path="/pagamenti" element={<Payments />} />
+                <Route path="/reminder" element={<Reminders />} />
+                <Route path="/statistiche" element={<Statistics />} />
+                <Route path="/manuale" element={<UserManual />} />
+                <Route path="/impostazioni" element={<Settings />} />
+              </Routes>
+            </Layout>
+          </Router>
         </>
       )}
     </AppProvider>
