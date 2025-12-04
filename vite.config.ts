@@ -10,20 +10,49 @@ export default defineConfig(({ mode }) => {
     base,
     // Optimize dependency pre-bundling for CommonJS modules
     optimizeDeps: {
-      include: ['pouchdb-browser', 'pouchdb-find'],
+      include: [
+        'pouchdb-browser',
+        'pouchdb-find',
+        // Include PouchDB's critical CommonJS dependencies explicitly
+        'inherits',
+        'immediate',
+        'argsarray',
+        'spark-md5',
+        'buffer-from',
+        'uuid',
+        'double-ended-queue',
+        'events'
+      ],
       esbuildOptions: {
         // Ensure proper module resolution for mixed ESM/CommonJS dependencies
-        mainFields: ['module', 'main']
+        mainFields: ['module', 'main'],
+        // Support for Node.js built-ins polyfills
+        platform: 'browser'
       }
+    },
+    // Resolve configuration to handle module resolution
+    resolve: {
+      alias: {
+        // Polyfill Node.js built-in modules for browser
+        events: 'rollup-plugin-node-polyfills/polyfills/events',
+        util: 'rollup-plugin-node-polyfills/polyfills/util',
+        buffer: 'rollup-plugin-node-polyfills/polyfills/buffer-es6',
+        process: 'rollup-plugin-node-polyfills/polyfills/process-es6',
+      }
+    },
+    define: {
+      // Define global for browser compatibility
+      'global': 'globalThis',
+      'process.env': {},
     },
     // Build configuration for production
     build: {
       // Handle CommonJS modules during production build
       commonjsOptions: {
-        include: [/pouchdb/, /node_modules/],
+        include: [/pouchdb/, /inherits/, /immediate/, /node_modules/],
         transformMixedEsModules: true,
         defaultIsModuleExports: 'auto',
-        requireReturnsDefault: 'auto'
+        requireReturnsDefault: 'auto',
       },
       // Optimize chunk splitting for better caching
       rollupOptions: {
