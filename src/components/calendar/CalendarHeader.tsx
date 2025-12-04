@@ -19,12 +19,12 @@ const CalendarHeader: React.FC<CalendarHeaderProps> = ({
 
   return (
     <div className="card">
-      <div className="flex items-center justify-center gap-2">
+      <div className="flex items-center justify-center gap-2 sm:gap-3">
         {viewButtons.map(({ mode, icon, label }) => (
           <button
             key={mode}
             onClick={() => onViewModeChange(mode)}
-            className={`px-4 py-2 rounded-md font-semibold transition-colors flex items-center gap-2 ${
+            className={`px-3 sm:px-4 py-2 rounded-md font-semibold transition-colors flex items-center gap-2 touch-manipulation ${
               viewMode === mode
                 ? 'bg-primary-600 text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'

@@ -109,7 +109,8 @@ const MonthView: React.FC<MonthViewProps> = ({ onOpenModal }) => {
                   </span>
                   <button
                     onClick={() => onOpenModal(undefined, day)}
-                    className="opacity-0 hover:opacity-100 transition-opacity p-1 hover:bg-primary-50 rounded"
+                    className="opacity-100 md:opacity-0 md:hover:opacity-100 transition-opacity p-1 hover:bg-primary-50 rounded touch-manipulation"
+                    aria-label="Aggiungi appuntamento"
                   >
                     <Plus size={14} className="text-primary-600" />
                   </button>

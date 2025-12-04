@@ -437,7 +437,7 @@ const Payments: React.FC = () => {
                 <div className="flex gap-3 pt-4">
                   <button
                     type="submit"
-                    className="btn-primary flex-1"
+                    className="btn-primary flex-1 touch-manipulation"
                     disabled={unpaidAppointments.length === 0}
                   >
                     Registra Pagamento
@@ -445,7 +445,7 @@ const Payments: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="btn-secondary flex-1"
+                    className="btn-secondary flex-1 touch-manipulation"
                   >
                     Annulla
                   </button>

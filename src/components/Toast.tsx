@@ -55,7 +55,7 @@ const Toast: React.FC<ToastProps> = ({ id, message, type, duration = 5000, onClo
       <p className="flex-1 text-sm font-medium">{message}</p>
       <button
         onClick={() => onClose(id)}
-        className="p-1 rounded hover:bg-white/20 transition-colors"
+        className="p-1 rounded hover:bg-white/20 transition-colors touch-manipulation"
         aria-label="Chiudi notifica"
       >
         <X size={16} />

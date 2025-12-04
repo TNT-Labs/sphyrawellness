@@ -63,7 +63,7 @@ class ErrorBoundary extends React.Component<Props, State> {
 
             <button
               onClick={this.handleReload}
-              className="btn-primary w-full"
+              className="btn-primary w-full touch-manipulation"
             >
               Ricarica Pagina
             </button>
