@@ -79,7 +79,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
               </h3>
               <button
                 onClick={onCancel}
-                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                className="p-1 rounded hover:bg-gray-100 transition-colors touch-manipulation"
                 aria-label="Chiudi"
               >
                 <X size={20} className="text-gray-500" />
@@ -89,7 +89,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <p className="text-sm text-gray-600 mb-6">{message}</p>
 
             <div className="flex gap-3 justify-end">
-              <button onClick={onCancel} className="btn-secondary">
+              <button onClick={onCancel} className="btn-secondary touch-manipulation">
                 {cancelText}
               </button>
               <button
@@ -97,7 +97,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                   onConfirm();
                   onCancel();
                 }}
-                className={`${styles.button} text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200`}
+                className={`${styles.button} text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 touch-manipulation`}
               >
                 {confirmText}
               </button>

@@ -179,24 +179,24 @@ const Reminders: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={() => handleSendReminder(apt.id, 'email')}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center"
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
                       >
                         <Mail size={16} className="mr-2" />
                         Invia Email
                       </button>
                       <button
                         onClick={() => handleSendReminder(apt.id, 'sms')}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-semibold flex items-center justify-center"
+                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
                       >
                         <MessageSquare size={16} className="mr-2" />
                         Invia SMS
                       </button>
                       <button
                         onClick={() => handleSendReminder(apt.id, 'whatsapp')}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-sm font-semibold flex items-center justify-center"
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
                       >
                         <Smartphone size={16} className="mr-2" />
                         WhatsApp

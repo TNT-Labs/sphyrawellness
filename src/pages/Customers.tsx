@@ -250,14 +250,14 @@ const Customers: React.FC = () => {
               <div className="flex gap-2 pt-4 border-t border-gray-200">
                 <button
                   onClick={() => handleOpenModal(customer)}
-                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold"
+                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
                 >
                   <Edit size={16} className="inline mr-1" />
                   Modifica
                 </button>
                 <button
                   onClick={() => handleDelete(customer)}
-                  className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold"
+                  className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
                 >
                   <Trash2 size={16} className="inline mr-1" />
                   Elimina
@@ -373,13 +373,13 @@ const Customers: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="btn-primary flex-1">
+                  <button type="submit" className="btn-primary flex-1 touch-manipulation">
                     {editingCustomer ? 'Salva Modifiche' : 'Crea Cliente'}
                   </button>
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="btn-secondary flex-1"
+                    className="btn-secondary flex-1 touch-manipulation"
                   >
                     Annulla
                   </button>

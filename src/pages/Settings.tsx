@@ -709,17 +709,17 @@ const Settings: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleSaveCouchDBSettings}
-                  className="btn-primary"
+                  className="btn-primary w-full sm:w-auto touch-manipulation"
                 >
                   Salva Configurazione
                 </button>
                 <button
                   onClick={handleTestConnection}
                   disabled={isTestingConnection || !couchdbUrl.trim()}
-                  className="btn-secondary flex items-center gap-2"
+                  className="btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto touch-manipulation"
                 >
                   {isTestingConnection ? (
                     <>
@@ -736,7 +736,7 @@ const Settings: React.FC = () => {
                 <button
                   onClick={handleManualSync}
                   disabled={syncStatus.status === 'syncing' || !couchdbUrl.trim()}
-                  className="btn-secondary flex items-center gap-2"
+                  className="btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto touch-manipulation"
                 >
                   <RefreshCw size={16} />
                   Sincronizza Ora

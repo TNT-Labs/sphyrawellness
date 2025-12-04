@@ -328,7 +328,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button type="submit" className="btn-primary flex-1">
+                <button type="submit" className="btn-primary flex-1 touch-manipulation">
                   {editingAppointment
                     ? 'Salva Modifiche'
                     : 'Crea Appuntamento'}
@@ -336,7 +336,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="btn-secondary flex-1"
+                  className="btn-secondary flex-1 touch-manipulation"
                 >
                   Annulla
                 </button>
@@ -346,7 +346,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleDelete(editingAppointment.id)}
-                  className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold"
+                  className="w-full px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
                 >
                   <Trash2 size={16} className="inline mr-1" />
                   Elimina Appuntamento
