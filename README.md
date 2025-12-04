@@ -13,6 +13,7 @@ Applicazione Progressive Web App (PWA) per la gestione completa di centri esteti
 - 💳 **Gestione Pagamenti** - Tracciamento incassi e fatturazione
 - 📱 **Responsive** - Ottimizzato per mobile, tablet e desktop
 - 🔒 **Offline-first** - Funziona anche senza connessione
+- 🔄 **Sincronizzazione CouchDB** - Sync multi-dispositivo opzionale (vedi [COUCHDB_SETUP.md](COUCHDB_SETUP.md))
 
 ## 🚀 Deploy
 
@@ -68,6 +69,8 @@ npm run preview
 - **React Router** - Routing
 - **Vite PWA Plugin** - Service Worker e Manifest
 - **Workbox** - Caching strategies
+- **PouchDB** - Local database
+- **CouchDB** - Remote sync (opzionale)
 - **Lucide React** - Icons
 - **date-fns** - Date utilities
 
@@ -80,6 +83,43 @@ npm run preview
 - ✅ Installabile su dispositivi
 - ✅ Funzionamento offline
 - ✅ Update automatici
+
+## 🔄 Sincronizzazione Multi-Dispositivo
+
+L'app supporta la sincronizzazione opzionale con **CouchDB** per mantenere i dati aggiornati su più dispositivi.
+
+### Setup CouchDB
+
+Per configurare la sincronizzazione:
+
+1. **Installa CouchDB** (vedi [COUCHDB_SETUP.md](COUCHDB_SETUP.md) per istruzioni dettagliate)
+   - Docker (consigliato)
+   - Installazione locale
+   - Cloud (IBM Cloudant)
+
+2. **Crea i database automaticamente**:
+   ```bash
+   npm run setup-couchdb -- http://localhost:5984 admin password
+   ```
+
+3. **Configura l'app**:
+   - Apri Impostazioni nell'app
+   - Inserisci URL CouchDB e credenziali
+   - Abilita sincronizzazione
+
+**📖 Documentazione completa**: [COUCHDB_SETUP.md](COUCHDB_SETUP.md)
+
+### Database Creati
+
+Lo script di setup crea automaticamente questi database:
+- `sphyra-customers` - Clienti
+- `sphyra-services` - Servizi
+- `sphyra-staff` - Personale
+- `sphyra-appointments` - Appuntamenti
+- `sphyra-payments` - Pagamenti
+- `sphyra-reminders` - Promemoria
+- `sphyra-staff-roles` - Ruoli
+- `sphyra-service-categories` - Categorie
 
 ## 📝 Licenza
 

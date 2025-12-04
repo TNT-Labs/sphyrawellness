@@ -92,6 +92,49 @@ function initializeLocalDatabases(): void {
 }
 
 /**
+ * Ensure remote database exists, create if it doesn't
+ */
+async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Promise<boolean> {
+  try {
+    const remoteDB = new PouchDB(`${remoteUrl}/${dbName}`);
+
+    // Try to get database info (this will fail if DB doesn't exist)
+    await remoteDB.info();
+
+    logger.log(`Remote database ${dbName} exists`);
+    await remoteDB.close();
+    return true;
+  } catch (error: any) {
+    // Database doesn't exist or other error
+    if (error.status === 404 || error.name === 'not_found') {
+      logger.log(`Remote database ${dbName} not found, attempting to create...`);
+
+      try {
+        // PouchDB will automatically create the database on first write
+        const remoteDB = new PouchDB(`${remoteUrl}/${dbName}`);
+
+        // Write a dummy document to ensure database creation
+        await remoteDB.put({
+          _id: '_design/init',
+          views: {},
+        });
+
+        logger.log(`Remote database ${dbName} created successfully`);
+        await remoteDB.close();
+        return true;
+      } catch (createError: any) {
+        logger.error(`Failed to create remote database ${dbName}:`, createError);
+        return false;
+      }
+    } else {
+      // Other error (authentication, network, etc.)
+      logger.error(`Error checking remote database ${dbName}:`, error);
+      return false;
+    }
+  }
+}
+
+/**
  * Start synchronization with CouchDB
  */
 export async function startSync(): Promise<boolean> {
@@ -124,6 +167,26 @@ export async function startSync(): Promise<boolean> {
       url.password = settings.couchdbPassword;
       remoteUrl = url.toString();
     }
+
+    // Ensure all remote databases exist before starting sync
+    logger.log('Verifying remote databases...');
+    const dbCreationResults = await Promise.all(
+      Object.values(DB_NAMES).map(dbName => ensureRemoteDatabaseExists(remoteUrl, dbName))
+    );
+
+    // Check if any database creation failed
+    const allDatabasesReady = dbCreationResults.every(result => result === true);
+    if (!allDatabasesReady) {
+      logger.error('Some remote databases could not be created');
+      notifySyncStatusChange({
+        status: 'error',
+        error: 'Impossibile creare alcuni database remoti. Verifica i permessi.',
+        isActive: false,
+      });
+      return false;
+    }
+
+    logger.log('All remote databases verified/created successfully');
 
     // Stop existing sync handlers
     await stopSync();
@@ -284,6 +347,23 @@ export async function performOneTimeSync(): Promise<boolean> {
       url.username = settings.couchdbUsername;
       url.password = settings.couchdbPassword;
       remoteUrl = url.toString();
+    }
+
+    // Ensure all remote databases exist before syncing
+    logger.log('Verifying remote databases for one-time sync...');
+    const dbCreationResults = await Promise.all(
+      Object.values(DB_NAMES).map(dbName => ensureRemoteDatabaseExists(remoteUrl, dbName))
+    );
+
+    const allDatabasesReady = dbCreationResults.every(result => result === true);
+    if (!allDatabasesReady) {
+      logger.error('Some remote databases could not be created for one-time sync');
+      notifySyncStatusChange({
+        status: 'error',
+        error: 'Impossibile creare alcuni database remoti',
+        isActive: false,
+      });
+      return false;
     }
 
     notifySyncStatusChange({
