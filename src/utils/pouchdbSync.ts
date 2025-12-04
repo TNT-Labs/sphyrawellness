@@ -6,13 +6,26 @@
  */
 
 import PouchDB from 'pouchdb-browser';
-import PouchDBFind from 'pouchdb-find';
+import pouchdbFindModule from 'pouchdb-find';
 import { logger } from './logger';
 import { loadSettings } from './storage';
 import type { SyncStatus } from '../types';
 
 // Enable PouchDB Find plugin for queries
-PouchDB.plugin(PouchDBFind);
+// Handle both ESM default export and CommonJS module format
+// In development, Vite may serve it as ESM, but in production build it may be CommonJS
+const pouchdbFind = (pouchdbFindModule as any).default || pouchdbFindModule;
+
+try {
+  PouchDB.plugin(pouchdbFind);
+  logger.log('PouchDB-Find plugin registered successfully');
+} catch (error) {
+  logger.error('Failed to register PouchDB-Find plugin:', error);
+  logger.error('pouchdbFind type:', typeof pouchdbFind);
+  logger.error('pouchdbFind value:', pouchdbFind);
+  // This error is critical - the app won't work without the find plugin
+  throw new Error('Impossibile caricare il plugin PouchDB-Find. Prova a ricaricare la pagina.');
+}
 
 // Database names
 const DB_NAMES = {
