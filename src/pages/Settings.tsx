@@ -15,7 +15,7 @@ import { logger } from '../utils/logger';
 import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
 
 const Settings: React.FC = () => {
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showToast } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const { confirm: confirmWithInput, ConfirmationDialog: ConfirmationDialogWithInput } = useConfirmWithInput();
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
@@ -304,13 +304,17 @@ const Settings: React.FC = () => {
       );
 
       if (result.success) {
-        showSuccess('Connessione riuscita!');
+        showSuccess('Connessione riuscita! Il server CouchDB è raggiungibile.');
       } else {
-        showError(`Connessione fallita: ${result.error}`);
+        // Display error message preserving line breaks
+        const errorMessage = result.error || 'Errore sconosciuto';
+        // Use showToast with longer duration (10 seconds) for detailed error messages
+        showToast(errorMessage, 'error', 10000);
+        logger.error('Connection test failed:', result.error);
       }
     } catch (error) {
       showError('Errore durante il test di connessione');
-      logger.error(error);
+      logger.error('Connection test exception:', error);
     } finally {
       setIsTestingConnection(false);
     }
