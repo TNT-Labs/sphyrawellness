@@ -6,7 +6,7 @@ import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
 import { exportAllData, clearAllData, getDBStats, importAllData } from '../utils/db';
 import { getAvailableBackups, restoreFromBackup, deleteBackup } from '../utils/autoBackup';
 import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/storagePersistence';
-import { loadSettings, saveSettings } from '../utils/storage';
+import { loadSettings, saveSettings, loadSettingsWithPassword } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
@@ -59,8 +59,8 @@ const Settings: React.FC = () => {
     };
   }, []);
 
-  const loadAppSettings = () => {
-    const settings = loadSettings();
+  const loadAppSettings = async () => {
+    const settings = await loadSettingsWithPassword();
     setIdleTimeout(settings.idleTimeout);
     setSyncEnabled(settings.syncEnabled || false);
     setCouchdbUrl(settings.couchdbUrl || '');
