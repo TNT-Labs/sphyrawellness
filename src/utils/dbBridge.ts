@@ -40,7 +40,10 @@ function getPouchDB(storeName: StoreType): PouchDB.Database | null {
     }
 
     // Crea nuovo database e mettilo in cache
-    const db = new PouchDB(dbName);
+    const db = new PouchDB(dbName, {
+      auto_compaction: false,
+      revs_limit: 1,
+    });
     pouchDBCache.set(dbName, db);
     return db;
   } catch (error) {
