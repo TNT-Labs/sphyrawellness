@@ -222,49 +222,71 @@ const Settings: React.FC = () => {
     return Object.values(stats).reduce((sum, count) => (sum as number) + (count as number), 0);
   };
 
-  const handleIdleTimeoutChange = (value: number) => {
-    setIdleTimeout(value);
-    const settings = loadSettings();
-    settings.idleTimeout = value;
-    saveSettings(settings);
-    // Trigger custom event so App.tsx can react immediately
-    window.dispatchEvent(new Event('settingsChanged'));
-    showSuccess('Impostazione salvata');
+  const handleIdleTimeoutChange = async (value: number) => {
+    try {
+      setIdleTimeout(value);
+      const settings = loadSettings();
+      settings.idleTimeout = value;
+      await saveSettings(settings);
+      // Trigger custom event so App.tsx can react immediately
+      window.dispatchEvent(new Event('settingsChanged'));
+      showSuccess('Impostazione salvata');
+    } catch (error) {
+      showError('Errore durante il salvataggio delle impostazioni');
+      logger.error('Error saving idle timeout:', error);
+    }
   };
 
   // CouchDB Sync handlers
   const handleToggleSync = async (enabled: boolean) => {
-    setSyncEnabled(enabled);
-    const settings = loadSettings();
-    settings.syncEnabled = enabled;
-    saveSettings(settings);
+    try {
+      setSyncEnabled(enabled);
+      const settings = loadSettings();
+      settings.syncEnabled = enabled;
+      await saveSettings(settings);
 
-    if (enabled && settings.couchdbUrl) {
-      const success = await startSync();
-      if (success) {
-        showSuccess('Sincronizzazione avviata');
-      } else {
-        showError('Errore durante l\'avvio della sincronizzazione');
-        setSyncEnabled(false);
-        settings.syncEnabled = false;
-        saveSettings(settings);
+      if (enabled && settings.couchdbUrl) {
+        const success = await startSync();
+        if (success) {
+          showSuccess('Sincronizzazione avviata');
+        } else {
+          showError('Errore durante l\'avvio della sincronizzazione');
+          setSyncEnabled(false);
+          settings.syncEnabled = false;
+          await saveSettings(settings);
+        }
+      } else if (!enabled) {
+        await stopSync();
+        showSuccess('Sincronizzazione disabilitata');
       }
-    } else if (!enabled) {
-      await stopSync();
-      showSuccess('Sincronizzazione disabilitata');
-    }
 
-    window.dispatchEvent(new Event('settingsChanged'));
+      window.dispatchEvent(new Event('settingsChanged'));
+    } catch (error) {
+      showError('Errore durante l\'aggiornamento delle impostazioni di sincronizzazione');
+      logger.error('Error toggling sync:', error);
+      // Revert UI state on error
+      setSyncEnabled(!enabled);
+    }
   };
 
-  const handleSaveCouchDBSettings = () => {
-    const settings = loadSettings();
-    settings.couchdbUrl = couchdbUrl.trim();
-    settings.couchdbUsername = couchdbUsername.trim();
-    settings.couchdbPassword = couchdbPassword;
-    saveSettings(settings);
-    showSuccess('Impostazioni CouchDB salvate');
-    window.dispatchEvent(new Event('settingsChanged'));
+  const handleSaveCouchDBSettings = async () => {
+    try {
+      const settings = loadSettings();
+      settings.couchdbUrl = couchdbUrl.trim();
+      settings.couchdbUsername = couchdbUsername.trim();
+      settings.couchdbPassword = couchdbPassword;
+      const success = await saveSettings(settings);
+
+      if (success) {
+        showSuccess('Impostazioni CouchDB salvate');
+        window.dispatchEvent(new Event('settingsChanged'));
+      } else {
+        showError('Errore durante il salvataggio delle impostazioni');
+      }
+    } catch (error) {
+      showError('Errore durante il salvataggio delle impostazioni');
+      logger.error('Error saving CouchDB settings:', error);
+    }
   };
 
   const handleTestConnection = async () => {
