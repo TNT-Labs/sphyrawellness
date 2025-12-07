@@ -260,6 +260,14 @@ export async function startSync(): Promise<boolean> {
       // Handle sync events
       sync.on('change', (info) => {
         logger.log(`Sync change for ${remoteName}:`, info);
+
+        // Log details about the sync change for debugging
+        if (info.direction === 'pull' && info.change?.docs) {
+          logger.log(`Received ${info.change.docs.length} document(s) from remote for ${remoteName}`);
+        } else if (info.direction === 'push' && info.change?.docs) {
+          logger.log(`Pushed ${info.change.docs.length} document(s) to remote for ${remoteName}`);
+        }
+
         notifySyncStatusChange({
           lastSync: new Date().toISOString(),
           status: 'syncing',
