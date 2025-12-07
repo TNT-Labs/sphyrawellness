@@ -37,6 +37,14 @@ const AppContent: React.FC = () => {
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
 
   useEffect(() => {
+    // Handle SPA redirect from 404.html
+    const redirectPath = sessionStorage.getItem('spa_redirect');
+    if (redirectPath) {
+      sessionStorage.removeItem('spa_redirect');
+      // Update the URL without reloading the page
+      window.history.replaceState(null, '', '/sphyrawellness' + redirectPath);
+    }
+
     const settings = loadSettings();
     setIdleTimeout(settings.idleTimeout);
 
