@@ -324,16 +324,30 @@ export async function testCouchDBConnection(
       remoteUrl = urlObj.toString();
     }
 
-    // Try to connect to the CouchDB root endpoint first
-    const testDB = new PouchDB(remoteUrl);
+    // Try to connect to CouchDB root endpoint to verify server is reachable
+    // We make a simple fetch to the root endpoint which returns server info
+    const response = await fetch(remoteUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
 
-    // Try to get info (this will test the connection)
-    const info = await testDB.info();
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
 
-    // Close the test connection
-    await testDB.close();
+    const serverInfo = await response.json();
+    logger.log('CouchDB connection test succeeded:', serverInfo);
 
-    logger.log('CouchDB connection test succeeded:', info);
+    // Verify it's actually a CouchDB server
+    if (!serverInfo.couchdb || !serverInfo.version) {
+      return {
+        success: false,
+        error: 'Il server non sembra essere un\'istanza CouchDB valida',
+      };
+    }
+
     return { success: true };
   } catch (error: any) {
     logger.error('CouchDB connection test failed:', error);
