@@ -93,44 +93,93 @@ function initializeLocalDatabases(): void {
 
 /**
  * Ensure remote database exists, create if it doesn't
+ * Uses HTTP PUT to create databases, similar to the setup script
  */
 async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Promise<boolean> {
   try {
-    const remoteDB = new PouchDB(`${remoteUrl}/${dbName}`);
+    // Parse URL to extract credentials and base URL
+    const urlObj = new URL(remoteUrl);
+    const hasCredentials = urlObj.username && urlObj.password;
 
-    // Try to get database info (this will fail if DB doesn't exist)
-    await remoteDB.info();
+    // Build base URL without credentials
+    const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+    const dbUrl = `${baseUrl}/${dbName}`;
 
-    logger.log(`Remote database ${dbName} exists`);
-    await remoteDB.close();
-    return true;
-  } catch (error: any) {
-    // Database doesn't exist or other error
-    if (error.status === 404 || error.name === 'not_found') {
+    // Prepare headers with authentication
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (hasCredentials) {
+      const authString = btoa(`${urlObj.username}:${urlObj.password}`);
+      headers['Authorization'] = `Basic ${authString}`;
+    }
+
+    // First, check if database exists using HEAD request
+    const headResponse = await fetch(dbUrl, {
+      method: 'HEAD',
+      headers,
+    });
+
+    if (headResponse.ok) {
+      logger.log(`Remote database ${dbName} already exists`);
+      return true;
+    }
+
+    // If 404, database doesn't exist - try to create it
+    if (headResponse.status === 404) {
       logger.log(`Remote database ${dbName} not found, attempting to create...`);
 
-      try {
-        // PouchDB will automatically create the database on first write
-        const remoteDB = new PouchDB(`${remoteUrl}/${dbName}`);
+      // Create database using HTTP PUT
+      const createResponse = await fetch(dbUrl, {
+        method: 'PUT',
+        headers,
+      });
 
-        // Write a dummy document to ensure database creation
-        await remoteDB.put({
-          _id: '_design/init',
-          views: {},
-        });
-
+      if (createResponse.status === 201) {
         logger.log(`Remote database ${dbName} created successfully`);
-        await remoteDB.close();
         return true;
-      } catch (createError: any) {
-        logger.error(`Failed to create remote database ${dbName}:`, createError);
+      } else if (createResponse.status === 412) {
+        // Database already exists (created by another process)
+        logger.log(`Remote database ${dbName} already exists (412)`);
+        return true;
+      } else if (createResponse.status === 401) {
+        logger.error(`Authentication failed when creating database ${dbName}. Check credentials.`);
+        return false;
+      } else if (createResponse.status === 403) {
+        logger.error(`Access denied when creating database ${dbName}. User lacks permissions to create databases.`);
+        return false;
+      } else {
+        // Failed to create
+        const errorData = await createResponse.json().catch(() => ({ reason: 'Unknown error' }));
+        logger.error(`Failed to create remote database ${dbName} (status ${createResponse.status}): ${errorData.reason || createResponse.statusText}`);
         return false;
       }
-    } else {
-      // Other error (authentication, network, etc.)
-      logger.error(`Error checking remote database ${dbName}:`, error);
+    }
+
+    // Handle authentication errors on HEAD request
+    if (headResponse.status === 401) {
+      logger.error(`Authentication failed for database ${dbName}. Check credentials.`);
       return false;
     }
+
+    if (headResponse.status === 403) {
+      logger.error(`Access denied for database ${dbName}. User lacks permissions.`);
+      return false;
+    }
+
+    // Other errors
+    logger.error(`Unexpected status ${headResponse.status} when checking database ${dbName}`);
+    return false;
+  } catch (error: any) {
+    // Network or CORS errors
+    logger.error(`Error checking/creating remote database ${dbName}:`, error);
+
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+      logger.error(`Network error for ${dbName}. Possible CORS issue or server unreachable.`);
+    }
+
+    return false;
   }
 }
 
