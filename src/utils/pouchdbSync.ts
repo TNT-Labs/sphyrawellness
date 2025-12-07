@@ -74,122 +74,63 @@ export function getSyncStatus(): SyncStatus {
 /**
  * Initialize local PouchDB databases
  */
-async function initializeLocalDatabases(): Promise<void> {
+function initializeLocalDatabases(): void {
   if (Object.keys(localDatabases).length > 0) {
     logger.log('Local databases already initialized');
     return;
   }
 
-  // Initialize databases sequentially to avoid race conditions
-  for (const [key, dbName] of Object.entries(DB_NAMES)) {
+  Object.entries(DB_NAMES).forEach(([key, dbName]) => {
     try {
-      // Check if database is already being used by another instance
-      // Add a small delay to prevent message port conflicts
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      localDatabases[key] = new PouchDB(dbName, {
-        auto_compaction: false,
-        revs_limit: 1,
-        // Prevent multiple connections to the same database
-        skip_setup: false,
-      });
+      localDatabases[key] = new PouchDB(dbName);
       logger.log(`Initialized local database: ${dbName}`);
     } catch (error) {
       logger.error(`Failed to initialize local database ${dbName}:`, error);
       throw error;
     }
-  }
+  });
 }
 
 /**
  * Ensure remote database exists, create if it doesn't
- * Uses HTTP PUT to create databases, similar to the setup script
  */
 async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Promise<boolean> {
   try {
-    // Parse URL to extract credentials and base URL
-    const urlObj = new URL(remoteUrl);
-    const hasCredentials = urlObj.username && urlObj.password;
+    const remoteDB = new PouchDB(`${remoteUrl}/${dbName}`);
 
-    // Build base URL without credentials
-    const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
-    const dbUrl = `${baseUrl}/${dbName}`;
+    // Try to get database info (this will fail if DB doesn't exist)
+    await remoteDB.info();
 
-    // Prepare headers with authentication
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
-
-    if (hasCredentials) {
-      const authString = btoa(`${urlObj.username}:${urlObj.password}`);
-      headers['Authorization'] = `Basic ${authString}`;
-    }
-
-    // First, check if database exists using HEAD request
-    const headResponse = await fetch(dbUrl, {
-      method: 'HEAD',
-      headers,
-    });
-
-    if (headResponse.ok) {
-      logger.log(`Remote database ${dbName} already exists`);
-      return true;
-    }
-
-    // If 404, database doesn't exist - try to create it
-    if (headResponse.status === 404) {
+    logger.log(`Remote database ${dbName} exists`);
+    await remoteDB.close();
+    return true;
+  } catch (error: any) {
+    // Database doesn't exist or other error
+    if (error.status === 404 || error.name === 'not_found') {
       logger.log(`Remote database ${dbName} not found, attempting to create...`);
 
-      // Create database using HTTP PUT
-      const createResponse = await fetch(dbUrl, {
-        method: 'PUT',
-        headers,
-      });
+      try {
+        // PouchDB will automatically create the database on first write
+        const remoteDB = new PouchDB(`${remoteUrl}/${dbName}`);
 
-      if (createResponse.status === 201) {
+        // Write a dummy document to ensure database creation
+        await remoteDB.put({
+          _id: '_design/init',
+          views: {},
+        });
+
         logger.log(`Remote database ${dbName} created successfully`);
+        await remoteDB.close();
         return true;
-      } else if (createResponse.status === 412) {
-        // Database already exists (created by another process)
-        logger.log(`Remote database ${dbName} already exists (412)`);
-        return true;
-      } else if (createResponse.status === 401) {
-        logger.error(`Authentication failed when creating database ${dbName}. Check credentials.`);
-        return false;
-      } else if (createResponse.status === 403) {
-        logger.error(`Access denied when creating database ${dbName}. User lacks permissions to create databases.`);
-        return false;
-      } else {
-        // Failed to create
-        const errorData = await createResponse.json().catch(() => ({ reason: 'Unknown error' }));
-        logger.error(`Failed to create remote database ${dbName} (status ${createResponse.status}): ${errorData.reason || createResponse.statusText}`);
+      } catch (createError: any) {
+        logger.error(`Failed to create remote database ${dbName}:`, createError);
         return false;
       }
-    }
-
-    // Handle authentication errors on HEAD request
-    if (headResponse.status === 401) {
-      logger.error(`Authentication failed for database ${dbName}. Check credentials.`);
+    } else {
+      // Other error (authentication, network, etc.)
+      logger.error(`Error checking remote database ${dbName}:`, error);
       return false;
     }
-
-    if (headResponse.status === 403) {
-      logger.error(`Access denied for database ${dbName}. User lacks permissions.`);
-      return false;
-    }
-
-    // Other errors
-    logger.error(`Unexpected status ${headResponse.status} when checking database ${dbName}`);
-    return false;
-  } catch (error: any) {
-    // Network or CORS errors
-    logger.error(`Error checking/creating remote database ${dbName}:`, error);
-
-    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-      logger.error(`Network error for ${dbName}. Possible CORS issue or server unreachable.`);
-    }
-
-    return false;
   }
 }
 
@@ -216,7 +157,7 @@ export async function startSync(): Promise<boolean> {
     }
 
     // Initialize local databases if not already done
-    await initializeLocalDatabases();
+    initializeLocalDatabases();
 
     // Build remote URL with credentials
     let remoteUrl = settings.couchdbUrl;
@@ -270,14 +211,6 @@ export async function startSync(): Promise<boolean> {
       // Handle sync events
       sync.on('change', (info) => {
         logger.log(`Sync change for ${remoteName}:`, info);
-
-        // Log details about the sync change for debugging
-        if (info.direction === 'pull' && info.change?.docs) {
-          logger.log(`Received ${info.change.docs.length} document(s) from remote for ${remoteName}`);
-        } else if (info.direction === 'push' && info.change?.docs) {
-          logger.log(`Pushed ${info.change.docs.length} document(s) to remote for ${remoteName}`);
-        }
-
         notifySyncStatusChange({
           lastSync: new Date().toISOString(),
           status: 'syncing',
@@ -365,84 +298,29 @@ export async function testCouchDBConnection(
   password?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Validate URL format
-    let urlObj: URL;
-    try {
-      urlObj = new URL(url);
-    } catch (urlError) {
-      return {
-        success: false,
-        error: 'URL non valido. Assicurati di includere il protocollo (http:// o https://)',
-      };
-    }
-
-    // Check protocol
-    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-      return {
-        success: false,
-        error: 'Il protocollo deve essere http:// o https://',
-      };
-    }
-
     let remoteUrl = url;
     if (username && password) {
+      const urlObj = new URL(remoteUrl);
       urlObj.username = username;
       urlObj.password = password;
       remoteUrl = urlObj.toString();
     }
 
-    // Try to connect to CouchDB root endpoint to verify server is reachable
-    // We make a simple fetch to the root endpoint which returns server info
-    const response = await fetch(remoteUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
+    // Try to connect to a test database
+    const testDB = new PouchDB(`${remoteUrl}/_users`);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
+    // Try to get info (this will test the connection)
+    await testDB.info();
 
-    const serverInfo = await response.json();
-    logger.log('CouchDB connection test succeeded:', serverInfo);
-
-    // Verify it's actually a CouchDB server
-    if (!serverInfo.couchdb || !serverInfo.version) {
-      return {
-        success: false,
-        error: 'Il server non sembra essere un\'istanza CouchDB valida',
-      };
-    }
+    // Close the test connection
+    await testDB.close();
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('CouchDB connection test failed:', error);
-
-    // Provide more specific error messages
-    let errorMessage = 'Connessione fallita';
-
-    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
-      errorMessage = 'Impossibile raggiungere il server. Verifica che:\n' +
-        '• L\'URL sia corretto e il server sia raggiungibile\n' +
-        '• Il server CouchDB sia in esecuzione\n' +
-        '• Le impostazioni CORS siano configurate correttamente sul server\n' +
-        '• Non ci siano blocchi firewall';
-    } else if (error.status === 401 || error.name === 'unauthorized') {
-      errorMessage = 'Autenticazione fallita. Verifica username e password';
-    } else if (error.status === 403 || error.name === 'forbidden') {
-      errorMessage = 'Accesso negato. L\'utente non ha i permessi necessari';
-    } else if (error.status === 404 || error.name === 'not_found') {
-      errorMessage = 'Database non trovato. Il server CouchDB è raggiungibile ma il database non esiste';
-    } else if (error.status === 0) {
-      errorMessage = 'Errore di rete. Possibile problema CORS o server non raggiungibile';
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-
     return {
       success: false,
-      error: errorMessage,
+      error: error instanceof Error ? error.message : 'Connessione fallita',
     };
   }
 }
@@ -460,7 +338,7 @@ export async function performOneTimeSync(): Promise<boolean> {
     }
 
     // Initialize local databases if not already done
-    await initializeLocalDatabases();
+    initializeLocalDatabases();
 
     // Build remote URL with credentials
     let remoteUrl = settings.couchdbUrl;
@@ -559,32 +437,5 @@ export async function initializeSync(): Promise<void> {
     }
   } catch (error) {
     logger.error('Failed to initialize sync:', error);
-    // Don't throw - allow app to continue without sync
   }
-}
-
-/**
- * Cleanup function to be called on page unload
- * Prevents "message port closed" errors by properly closing connections
- */
-export function cleanupOnUnload(): void {
-  // Close databases synchronously on page unload
-  Object.values(syncHandlers).forEach(sync => {
-    try {
-      sync.cancel();
-    } catch (error) {
-      // Ignore errors during cleanup
-    }
-  });
-
-  Object.values(localDatabases).forEach(db => {
-    try {
-      db.close();
-    } catch (error) {
-      // Ignore errors during cleanup
-    }
-  });
-
-  syncHandlers = {};
-  localDatabases = {};
 }

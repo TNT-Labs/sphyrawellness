@@ -7,8 +7,6 @@ import ErrorBoundary from './components/ErrorBoundary';
 import IdleSplashScreen from './components/IdleSplashScreen';
 import { useIdleDetection } from './hooks/useIdleDetection';
 import { loadSettings } from './utils/storage';
-import { cleanupOnUnload } from './utils/pouchdbSync';
-import { clearPouchDBCache } from './utils/dbBridge';
 
 // Eager load all pages to prevent loading issues on page refresh
 import Dashboard from './pages/Dashboard';
@@ -39,14 +37,6 @@ const AppContent: React.FC = () => {
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
 
   useEffect(() => {
-    // Handle SPA redirect from 404.html
-    const redirectPath = sessionStorage.getItem('spa_redirect');
-    if (redirectPath) {
-      sessionStorage.removeItem('spa_redirect');
-      // Update the URL without reloading the page
-      window.history.replaceState(null, '', '/sphyrawellness' + redirectPath);
-    }
-
     const settings = loadSettings();
     setIdleTimeout(settings.idleTimeout);
 
@@ -56,24 +46,13 @@ const AppContent: React.FC = () => {
       setIdleTimeout(newSettings.idleTimeout);
     };
 
-    // Cleanup PouchDB connections on page unload to prevent message port errors
-    const handleBeforeUnload = () => {
-      cleanupOnUnload();
-      clearPouchDBCache();
-    };
-
     window.addEventListener('storage', handleStorageChange);
     // Also listen for custom event from same tab
     window.addEventListener('settingsChanged', handleStorageChange);
-    // Clean up PouchDB connections before page unload
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pagehide', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('settingsChanged', handleStorageChange);
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handleBeforeUnload);
     };
   }, []);
 

@@ -117,145 +117,100 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
       try {
         setIsLoading(true);
 
-        // Check if app was already initialized in this session
-        const isAlreadyInitialized = sessionStorage.getItem('app_initialized') === 'true';
+        // Step 1: Initialize database infrastructure
+        await initDB();
+        if (!isMounted) return;
+        logger.log('✓ IndexedDB initialized');
 
-        if (isAlreadyInitialized) {
-          // Fast path: just load data from IndexedDB
-          logger.log('App already initialized, loading data...');
+        // Step 2: Request storage persistence to prevent data loss
+        await initStoragePersistence();
+        if (!isMounted) return;
 
-          const [
-            loadedCustomers,
-            loadedServices,
-            loadedStaff,
-            loadedAppointments,
-            loadedPayments,
-            loadedReminders,
-            loadedStaffRoles,
-            loadedServiceCategories,
-          ] = await Promise.all([
+        // Step 3: Migrate data from localStorage if needed (sequential to avoid race)
+        const migrationResult = await migrateFromLocalStorage();
+        if (!isMounted) return;
+        if (migrationResult.success && migrationResult.itemsMigrated > 0) {
+          logger.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
+        }
+
+        // Step 4: Load all data from IndexedDB
+        const [
+          loadedCustomers,
+          loadedServices,
+          loadedStaff,
+          loadedAppointments,
+          loadedPayments,
+          loadedReminders,
+          loadedStaffRoles,
+          loadedServiceCategories,
+        ] = await Promise.all([
+          getAllCustomers(),
+          getAllServices(),
+          getAllStaff(),
+          getAllAppointments(),
+          getAllPayments(),
+          getAllReminders(),
+          getAllStaffRoles(),
+          getAllServiceCategories(),
+        ]);
+
+        if (!isMounted) return;
+
+        // Step 5: Initialize demo data if database is empty
+        if (
+          loadedCustomers.length === 0 &&
+          loadedServices.length === 0 &&
+          loadedStaff.length === 0
+        ) {
+          logger.log('No data found, initializing demo data...');
+          initializeDemoData();
+
+          // Trigger migration again to load demo data into IndexedDB
+          await migrateFromLocalStorage();
+          if (!isMounted) return;
+
+          // Reload data after demo initialization
+          const [demoCustomers, demoServices, demoStaff, demoRoles, demoCategories] = await Promise.all([
             getAllCustomers(),
             getAllServices(),
             getAllStaff(),
-            getAllAppointments(),
-            getAllPayments(),
-            getAllReminders(),
             getAllStaffRoles(),
             getAllServiceCategories(),
           ]);
 
           if (!isMounted) return;
 
+          setCustomers(demoCustomers);
+          setServices(demoServices);
+          setStaff(demoStaff);
+          setStaffRoles(demoRoles);
+          setServiceCategories(demoCategories);
+        } else {
           setCustomers(loadedCustomers);
           setServices(loadedServices);
           setStaff(loadedStaff);
-          setAppointments(loadedAppointments);
-          setPayments(loadedPayments);
-          setReminders(loadedReminders);
           setStaffRoles(loadedStaffRoles);
           setServiceCategories(loadedServiceCategories);
+        }
 
-          logger.log('✓ App data loaded successfully (fast path)');
-        } else {
-          // Full initialization path (first time in session)
-          // Step 1: Initialize database infrastructure
-          await initDB();
-          if (!isMounted) return;
-          logger.log('✓ IndexedDB initialized');
+        setAppointments(loadedAppointments);
+        setPayments(loadedPayments);
+        setReminders(loadedReminders);
 
-          // Step 2: Request storage persistence to prevent data loss
-          await initStoragePersistence();
-          if (!isMounted) return;
+        logger.log('✓ App data loaded successfully');
 
-          // Step 3: Migrate data from localStorage if needed (sequential to avoid race)
-          const migrationResult = await migrateFromLocalStorage();
-          if (!isMounted) return;
-          if (migrationResult.success && migrationResult.itemsMigrated > 0) {
-            logger.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
-          }
+        // Step 6: Initialize auto-backup system (non-blocking)
+        if (isMounted) {
+          initAutoBackup().catch((error) => {
+            logger.error('Failed to initialize auto-backup:', error);
+          });
+        }
 
-          // Step 4: Load all data from IndexedDB
-          const [
-            loadedCustomers,
-            loadedServices,
-            loadedStaff,
-            loadedAppointments,
-            loadedPayments,
-            loadedReminders,
-            loadedStaffRoles,
-            loadedServiceCategories,
-          ] = await Promise.all([
-            getAllCustomers(),
-            getAllServices(),
-            getAllStaff(),
-            getAllAppointments(),
-            getAllPayments(),
-            getAllReminders(),
-            getAllStaffRoles(),
-            getAllServiceCategories(),
-          ]);
-
-          if (!isMounted) return;
-
-          // Step 5: Initialize demo data if database is empty
-          if (
-            loadedCustomers.length === 0 &&
-            loadedServices.length === 0 &&
-            loadedStaff.length === 0
-          ) {
-            logger.log('No data found, initializing demo data...');
-            initializeDemoData();
-
-            // Trigger migration again to load demo data into IndexedDB
-            await migrateFromLocalStorage();
-            if (!isMounted) return;
-
-            // Reload data after demo initialization
-            const [demoCustomers, demoServices, demoStaff, demoRoles, demoCategories] = await Promise.all([
-              getAllCustomers(),
-              getAllServices(),
-              getAllStaff(),
-              getAllStaffRoles(),
-              getAllServiceCategories(),
-            ]);
-
-            if (!isMounted) return;
-
-            setCustomers(demoCustomers);
-            setServices(demoServices);
-            setStaff(demoStaff);
-            setStaffRoles(demoRoles);
-            setServiceCategories(demoCategories);
-          } else {
-            setCustomers(loadedCustomers);
-            setServices(loadedServices);
-            setStaff(loadedStaff);
-            setStaffRoles(loadedStaffRoles);
-            setServiceCategories(loadedServiceCategories);
-          }
-
-          setAppointments(loadedAppointments);
-          setPayments(loadedPayments);
-          setReminders(loadedReminders);
-
-          logger.log('✓ App data loaded successfully');
-
-          // Step 6: Initialize auto-backup system (non-blocking)
-          if (isMounted) {
-            initAutoBackup().catch((error) => {
-              logger.error('Failed to initialize auto-backup:', error);
-            });
-          }
-
-          // Step 7: Initialize CouchDB sync if enabled (non-blocking)
-          if (isMounted) {
-            initializeSync().catch((error) => {
-              logger.error('Failed to initialize sync:', error);
-            });
-          }
-
-          // Mark app as initialized for this session
-          sessionStorage.setItem('app_initialized', 'true');
+        // Step 7: Initialize CouchDB sync if enabled (non-blocking)
+        if (isMounted) {
+          initializeSync().catch((error) => {
+            logger.error('Failed to initialize sync:', error);
+          });
         }
       } catch (error) {
         logger.error('Failed to initialize app:', error);

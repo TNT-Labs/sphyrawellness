@@ -6,7 +6,7 @@ import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
 import { exportAllData, clearAllData, getDBStats, importAllData } from '../utils/db';
 import { getAvailableBackups, restoreFromBackup, deleteBackup } from '../utils/autoBackup';
 import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/storagePersistence';
-import { loadSettings, saveSettings, loadSettingsWithPassword } from '../utils/storage';
+import { loadSettings, saveSettings } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
@@ -15,7 +15,7 @@ import { logger } from '../utils/logger';
 import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
 
 const Settings: React.FC = () => {
-  const { showSuccess, showError, showToast } = useToast();
+  const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const { confirm: confirmWithInput, ConfirmationDialog: ConfirmationDialogWithInput } = useConfirmWithInput();
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
@@ -59,8 +59,8 @@ const Settings: React.FC = () => {
     };
   }, []);
 
-  const loadAppSettings = async () => {
-    const settings = await loadSettingsWithPassword();
+  const loadAppSettings = () => {
+    const settings = loadSettings();
     setIdleTimeout(settings.idleTimeout);
     setSyncEnabled(settings.syncEnabled || false);
     setCouchdbUrl(settings.couchdbUrl || '');
@@ -222,71 +222,49 @@ const Settings: React.FC = () => {
     return Object.values(stats).reduce((sum, count) => (sum as number) + (count as number), 0);
   };
 
-  const handleIdleTimeoutChange = async (value: number) => {
-    try {
-      setIdleTimeout(value);
-      const settings = loadSettings();
-      settings.idleTimeout = value;
-      await saveSettings(settings);
-      // Trigger custom event so App.tsx can react immediately
-      window.dispatchEvent(new Event('settingsChanged'));
-      showSuccess('Impostazione salvata');
-    } catch (error) {
-      showError('Errore durante il salvataggio delle impostazioni');
-      logger.error('Error saving idle timeout:', error);
-    }
+  const handleIdleTimeoutChange = (value: number) => {
+    setIdleTimeout(value);
+    const settings = loadSettings();
+    settings.idleTimeout = value;
+    saveSettings(settings);
+    // Trigger custom event so App.tsx can react immediately
+    window.dispatchEvent(new Event('settingsChanged'));
+    showSuccess('Impostazione salvata');
   };
 
   // CouchDB Sync handlers
   const handleToggleSync = async (enabled: boolean) => {
-    try {
-      setSyncEnabled(enabled);
-      const settings = loadSettings();
-      settings.syncEnabled = enabled;
-      await saveSettings(settings);
+    setSyncEnabled(enabled);
+    const settings = loadSettings();
+    settings.syncEnabled = enabled;
+    saveSettings(settings);
 
-      if (enabled && settings.couchdbUrl) {
-        const success = await startSync();
-        if (success) {
-          showSuccess('Sincronizzazione avviata');
-        } else {
-          showError('Errore durante l\'avvio della sincronizzazione');
-          setSyncEnabled(false);
-          settings.syncEnabled = false;
-          await saveSettings(settings);
-        }
-      } else if (!enabled) {
-        await stopSync();
-        showSuccess('Sincronizzazione disabilitata');
+    if (enabled && settings.couchdbUrl) {
+      const success = await startSync();
+      if (success) {
+        showSuccess('Sincronizzazione avviata');
+      } else {
+        showError('Errore durante l\'avvio della sincronizzazione');
+        setSyncEnabled(false);
+        settings.syncEnabled = false;
+        saveSettings(settings);
       }
-
-      window.dispatchEvent(new Event('settingsChanged'));
-    } catch (error) {
-      showError('Errore durante l\'aggiornamento delle impostazioni di sincronizzazione');
-      logger.error('Error toggling sync:', error);
-      // Revert UI state on error
-      setSyncEnabled(!enabled);
+    } else if (!enabled) {
+      await stopSync();
+      showSuccess('Sincronizzazione disabilitata');
     }
+
+    window.dispatchEvent(new Event('settingsChanged'));
   };
 
-  const handleSaveCouchDBSettings = async () => {
-    try {
-      const settings = loadSettings();
-      settings.couchdbUrl = couchdbUrl.trim();
-      settings.couchdbUsername = couchdbUsername.trim();
-      settings.couchdbPassword = couchdbPassword;
-      const success = await saveSettings(settings);
-
-      if (success) {
-        showSuccess('Impostazioni CouchDB salvate');
-        window.dispatchEvent(new Event('settingsChanged'));
-      } else {
-        showError('Errore durante il salvataggio delle impostazioni');
-      }
-    } catch (error) {
-      showError('Errore durante il salvataggio delle impostazioni');
-      logger.error('Error saving CouchDB settings:', error);
-    }
+  const handleSaveCouchDBSettings = () => {
+    const settings = loadSettings();
+    settings.couchdbUrl = couchdbUrl.trim();
+    settings.couchdbUsername = couchdbUsername.trim();
+    settings.couchdbPassword = couchdbPassword;
+    saveSettings(settings);
+    showSuccess('Impostazioni CouchDB salvate');
+    window.dispatchEvent(new Event('settingsChanged'));
   };
 
   const handleTestConnection = async () => {
@@ -304,17 +282,13 @@ const Settings: React.FC = () => {
       );
 
       if (result.success) {
-        showSuccess('Connessione riuscita! Il server CouchDB è raggiungibile.');
+        showSuccess('Connessione riuscita!');
       } else {
-        // Display error message preserving line breaks
-        const errorMessage = result.error || 'Errore sconosciuto';
-        // Use showToast with longer duration (10 seconds) for detailed error messages
-        showToast(errorMessage, 'error', 10000);
-        logger.error('Connection test failed:', result.error);
+        showError(`Connessione fallita: ${result.error}`);
       }
     } catch (error) {
       showError('Errore durante il test di connessione');
-      logger.error('Connection test exception:', error);
+      logger.error(error);
     } finally {
       setIsTestingConnection(false);
     }
