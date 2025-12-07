@@ -61,33 +61,39 @@ export async function syncAdd<T extends { id: string }>(
     const pouchDB = getPouchDB(storeName);
     if (!pouchDB) return;
 
+    // Rimuovi la proprietà 'id' da IndexedDB e usa solo '_id' per PouchDB
+    // Questo evita conflitti tra le due chiavi primarie
+    const { id, ...itemWithoutId } = item;
+
     // Converti l'item in formato PouchDB (aggiunge _id e _rev se necessari)
     const pouchDoc = {
-      _id: item.id,
-      ...item,
+      ...itemWithoutId,
+      _id: id,
     };
 
     // Inserisci in PouchDB usando put (sovrascrive se esiste)
     await pouchDB.put(pouchDoc);
-    logger.debug(`Synced add to PouchDB for ${storeName}:`, item.id);
+    logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
   } catch (error: any) {
     // Se l'errore è un conflitto di versione, prova a recuperare e fare merge
-    if (error.status === 409) {
+    if (error.status === 409 || error.name === 'conflict') {
       try {
         const pouchDB = getPouchDB(storeName);
         if (!pouchDB) return;
 
         // Recupera il documento esistente per ottenere il _rev
         const existingDoc = await pouchDB.get(item.id);
+
+        // Rimuovi 'id' dall'item e mantieni _id e _rev dal documento esistente
+        const { id, ...itemWithoutId } = item;
         const pouchDoc = {
-          ...existingDoc,
-          ...item,
-          _id: item.id,
+          ...itemWithoutId,
+          _id: id,
           _rev: existingDoc._rev,
         };
 
         await pouchDB.put(pouchDoc);
-        logger.debug(`Resolved conflict and synced to PouchDB for ${storeName}:`, item.id);
+        logger.debug(`Resolved conflict and synced to PouchDB for ${storeName}:`, id);
       } catch (retryError) {
         logger.error(`Failed to resolve conflict for ${storeName}:`, retryError);
       }
@@ -110,17 +116,19 @@ export async function syncUpdate<T extends { id: string }>(
 
     // Recupera il documento esistente per ottenere il _rev
     const existingDoc = await pouchDB.get(item.id);
+
+    // Rimuovi 'id' dall'item e usa solo '_id' per PouchDB
+    const { id, ...itemWithoutId } = item;
     const pouchDoc = {
-      ...existingDoc,
-      ...item,
-      _id: item.id,
+      ...itemWithoutId,
+      _id: id,
       _rev: existingDoc._rev,
     };
 
     await pouchDB.put(pouchDoc);
-    logger.debug(`Synced update to PouchDB for ${storeName}:`, item.id);
+    logger.debug(`Synced update to PouchDB for ${storeName}:`, id);
   } catch (error: any) {
-    if (error.status === 404) {
+    if (error.status === 404 || error.name === 'not_found') {
       // Il documento non esiste in PouchDB, crealo
       await syncAdd(storeName, item);
     } else {

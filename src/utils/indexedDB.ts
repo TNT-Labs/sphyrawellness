@@ -200,16 +200,19 @@ async function add<T extends { id: string }>(storeName: string, item: T): Promis
         try {
           const storeKey = getStoreKey(storeName);
           if (storeKey) {
+            logger.debug(`Syncing add to PouchDB for ${storeName}:`, item.id);
             await syncAdd(storeKey, item);
+            logger.debug(`Successfully synced add to PouchDB for ${storeName}:`, item.id);
           }
         } catch (syncError) {
-          logger.warn('Failed to sync add to PouchDB:', syncError);
+          logger.warn(`Failed to sync add to PouchDB for ${storeName} (${item.id}):`, syncError);
+          // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
         }
         resolve();
       };
 
       request.onerror = () => {
-        logger.error(`IndexedDB add failed for ${storeName}:`, request.error);
+        logger.error(`IndexedDB add failed for ${storeName} (${item.id}):`, request.error);
         reject(request.error);
       };
     } catch (error) {
@@ -235,16 +238,19 @@ async function update<T extends { id: string }>(storeName: string, item: T): Pro
         try {
           const storeKey = getStoreKey(storeName);
           if (storeKey) {
+            logger.debug(`Syncing update to PouchDB for ${storeName}:`, item.id);
             await syncUpdate(storeKey, item);
+            logger.debug(`Successfully synced update to PouchDB for ${storeName}:`, item.id);
           }
         } catch (syncError) {
-          logger.warn('Failed to sync update to PouchDB:', syncError);
+          logger.warn(`Failed to sync update to PouchDB for ${storeName} (${item.id}):`, syncError);
+          // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
         }
         resolve();
       };
 
       request.onerror = () => {
-        logger.error(`IndexedDB update failed for ${storeName}:`, request.error);
+        logger.error(`IndexedDB update failed for ${storeName} (${item.id}):`, request.error);
         reject(request.error);
       };
     } catch (error) {
@@ -270,16 +276,19 @@ async function remove(storeName: string, id: string): Promise<void> {
         try {
           const storeKey = getStoreKey(storeName);
           if (storeKey) {
+            logger.debug(`Syncing delete to PouchDB for ${storeName}:`, id);
             await syncDelete(storeKey, id);
+            logger.debug(`Successfully synced delete to PouchDB for ${storeName}:`, id);
           }
         } catch (syncError) {
-          logger.warn('Failed to sync delete to PouchDB:', syncError);
+          logger.warn(`Failed to sync delete to PouchDB for ${storeName} (${id}):`, syncError);
+          // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
         }
         resolve();
       };
 
       request.onerror = () => {
-        logger.error(`IndexedDB delete failed for ${storeName}:`, request.error);
+        logger.error(`IndexedDB delete failed for ${storeName} (${id}):`, request.error);
         reject(request.error);
       };
     } catch (error) {
