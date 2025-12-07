@@ -14,6 +14,7 @@ import {
   ServiceCategory
 } from '../types';
 import { logger } from './logger';
+import { syncAdd, syncUpdate, syncDelete } from './dbBridge';
 
 const DB_NAME = 'sphyra-wellness-db';
 const DB_VERSION = 3;
@@ -31,6 +32,23 @@ const STORES = {
 } as const;
 
 let db: IDBDatabase | null = null;
+
+/**
+ * Helper per ottenere la chiave del store per il bridge PouchDB
+ */
+function getStoreKey(storeName: string): 'customers' | 'services' | 'staff' | 'appointments' | 'payments' | 'reminders' | 'staffRoles' | 'serviceCategories' | null {
+  const mapping: Record<string, any> = {
+    'customers': 'customers',
+    'services': 'services',
+    'staff': 'staff',
+    'appointments': 'appointments',
+    'payments': 'payments',
+    'reminders': 'reminders',
+    'staffRoles': 'staffRoles',
+    'serviceCategories': 'serviceCategories',
+  };
+  return mapping[storeName] || null;
+}
 
 /**
  * Check if IndexedDB is available (important for incognito mode)
@@ -164,31 +182,75 @@ async function getAll<T>(storeName: string): Promise<T[]> {
 
 /**
  * Generic add operation
+ * Usa 'put' invece di 'add' per evitare errori con ID duplicati
+ * e garantire la sincronizzazione con PouchDB
  */
-async function add<T>(storeName: string, item: T): Promise<void> {
+async function add<T extends { id: string }>(storeName: string, item: T): Promise<void> {
   const database = getDB();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.add(item);
+  return new Promise(async (resolve, reject) => {
+    try {
+      const transaction = database.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      // Usa 'put' invece di 'add' per evitare errori con ID duplicati
+      // Questo permette di inserire o aggiornare il record se esiste già
+      const request = store.put(item);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      request.onsuccess = async () => {
+        // Sincronizza con PouchDB in background (non blocca l'operazione)
+        try {
+          const storeKey = getStoreKey(storeName);
+          if (storeKey) {
+            await syncAdd(storeKey, item);
+          }
+        } catch (syncError) {
+          logger.warn('Failed to sync add to PouchDB:', syncError);
+        }
+        resolve();
+      };
+
+      request.onerror = () => {
+        logger.error(`IndexedDB add failed for ${storeName}:`, request.error);
+        reject(request.error);
+      };
+    } catch (error) {
+      logger.error(`Error in add operation for ${storeName}:`, error);
+      reject(error);
+    }
   });
 }
 
 /**
  * Generic update operation
  */
-async function update<T>(storeName: string, item: T): Promise<void> {
+async function update<T extends { id: string }>(storeName: string, item: T): Promise<void> {
   const database = getDB();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.put(item);
+  return new Promise(async (resolve, reject) => {
+    try {
+      const transaction = database.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put(item);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      request.onsuccess = async () => {
+        // Sincronizza con PouchDB in background (non blocca l'operazione)
+        try {
+          const storeKey = getStoreKey(storeName);
+          if (storeKey) {
+            await syncUpdate(storeKey, item);
+          }
+        } catch (syncError) {
+          logger.warn('Failed to sync update to PouchDB:', syncError);
+        }
+        resolve();
+      };
+
+      request.onerror = () => {
+        logger.error(`IndexedDB update failed for ${storeName}:`, request.error);
+        reject(request.error);
+      };
+    } catch (error) {
+      logger.error(`Error in update operation for ${storeName}:`, error);
+      reject(error);
+    }
   });
 }
 
@@ -197,13 +259,33 @@ async function update<T>(storeName: string, item: T): Promise<void> {
  */
 async function remove(storeName: string, id: string): Promise<void> {
   const database = getDB();
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.delete(id);
+  return new Promise(async (resolve, reject) => {
+    try {
+      const transaction = database.transaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.delete(id);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      request.onsuccess = async () => {
+        // Sincronizza con PouchDB in background (non blocca l'operazione)
+        try {
+          const storeKey = getStoreKey(storeName);
+          if (storeKey) {
+            await syncDelete(storeKey, id);
+          }
+        } catch (syncError) {
+          logger.warn('Failed to sync delete to PouchDB:', syncError);
+        }
+        resolve();
+      };
+
+      request.onerror = () => {
+        logger.error(`IndexedDB delete failed for ${storeName}:`, request.error);
+        reject(request.error);
+      };
+    } catch (error) {
+      logger.error(`Error in delete operation for ${storeName}:`, error);
+      reject(error);
+    }
   });
 }
 
