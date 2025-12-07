@@ -298,29 +298,70 @@ export async function testCouchDBConnection(
   password?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    // Validate URL format
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch (urlError) {
+      return {
+        success: false,
+        error: 'URL non valido. Assicurati di includere il protocollo (http:// o https://)',
+      };
+    }
+
+    // Check protocol
+    if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+      return {
+        success: false,
+        error: 'Il protocollo deve essere http:// o https://',
+      };
+    }
+
     let remoteUrl = url;
     if (username && password) {
-      const urlObj = new URL(remoteUrl);
       urlObj.username = username;
       urlObj.password = password;
       remoteUrl = urlObj.toString();
     }
 
-    // Try to connect to a test database
-    const testDB = new PouchDB(`${remoteUrl}/_users`);
+    // Try to connect to the CouchDB root endpoint first
+    const testDB = new PouchDB(remoteUrl);
 
     // Try to get info (this will test the connection)
-    await testDB.info();
+    const info = await testDB.info();
 
     // Close the test connection
     await testDB.close();
 
+    logger.log('CouchDB connection test succeeded:', info);
     return { success: true };
-  } catch (error: unknown) {
+  } catch (error: any) {
     logger.error('CouchDB connection test failed:', error);
+
+    // Provide more specific error messages
+    let errorMessage = 'Connessione fallita';
+
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError') {
+      errorMessage = 'Impossibile raggiungere il server. Verifica che:\n' +
+        '• L\'URL sia corretto e il server sia raggiungibile\n' +
+        '• Il server CouchDB sia in esecuzione\n' +
+        '• Le impostazioni CORS siano configurate correttamente sul server\n' +
+        '• Non ci siano blocchi firewall';
+    } else if (error.status === 401 || error.name === 'unauthorized') {
+      errorMessage = 'Autenticazione fallita. Verifica username e password';
+    } else if (error.status === 403 || error.name === 'forbidden') {
+      errorMessage = 'Accesso negato. L\'utente non ha i permessi necessari';
+    } else if (error.status === 404 || error.name === 'not_found') {
+      errorMessage = 'Database non trovato. Il server CouchDB è raggiungibile ma il database non esiste';
+    } else if (error.status === 0) {
+      errorMessage = 'Errore di rete. Possibile problema CORS o server non raggiungibile';
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Connessione fallita',
+      error: errorMessage,
     };
   }
 }

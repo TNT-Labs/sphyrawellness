@@ -48,14 +48,16 @@ const Toast: React.FC<ToastProps> = ({ id, message, type, duration = 5000, onClo
 
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${getStyles()} animate-slide-in`}
+      className={`flex items-start gap-3 px-4 py-3 rounded-lg shadow-lg ${getStyles()} animate-slide-in min-w-[320px] max-w-md`}
       role="alert"
     >
-      {getIcon()}
-      <p className="flex-1 text-sm font-medium">{message}</p>
+      <div className="mt-0.5 flex-shrink-0">
+        {getIcon()}
+      </div>
+      <p className="flex-1 text-sm font-medium whitespace-pre-line">{message}</p>
       <button
         onClick={() => onClose(id)}
-        className="p-1 rounded hover:bg-white/20 transition-colors touch-manipulation"
+        className="p-1 rounded hover:bg-white/20 transition-colors touch-manipulation flex-shrink-0"
         aria-label="Chiudi notifica"
       >
         <X size={16} />
