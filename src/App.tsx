@@ -7,6 +7,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import IdleSplashScreen from './components/IdleSplashScreen';
 import { useIdleDetection } from './hooks/useIdleDetection';
 import { loadSettings } from './utils/storage';
+import { cleanupOnUnload } from './utils/pouchdbSync';
+import { clearPouchDBCache } from './utils/dbBridge';
 
 // Eager load all pages to prevent loading issues on page refresh
 import Dashboard from './pages/Dashboard';
@@ -54,13 +56,24 @@ const AppContent: React.FC = () => {
       setIdleTimeout(newSettings.idleTimeout);
     };
 
+    // Cleanup PouchDB connections on page unload to prevent message port errors
+    const handleBeforeUnload = () => {
+      cleanupOnUnload();
+      clearPouchDBCache();
+    };
+
     window.addEventListener('storage', handleStorageChange);
     // Also listen for custom event from same tab
     window.addEventListener('settingsChanged', handleStorageChange);
+    // Clean up PouchDB connections before page unload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('settingsChanged', handleStorageChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
     };
   }, []);
 

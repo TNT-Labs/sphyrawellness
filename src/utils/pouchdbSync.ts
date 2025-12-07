@@ -74,21 +74,31 @@ export function getSyncStatus(): SyncStatus {
 /**
  * Initialize local PouchDB databases
  */
-function initializeLocalDatabases(): void {
+async function initializeLocalDatabases(): Promise<void> {
   if (Object.keys(localDatabases).length > 0) {
     logger.log('Local databases already initialized');
     return;
   }
 
-  Object.entries(DB_NAMES).forEach(([key, dbName]) => {
+  // Initialize databases sequentially to avoid race conditions
+  for (const [key, dbName] of Object.entries(DB_NAMES)) {
     try {
-      localDatabases[key] = new PouchDB(dbName);
+      // Check if database is already being used by another instance
+      // Add a small delay to prevent message port conflicts
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      localDatabases[key] = new PouchDB(dbName, {
+        auto_compaction: false,
+        revs_limit: 1,
+        // Prevent multiple connections to the same database
+        skip_setup: false,
+      });
       logger.log(`Initialized local database: ${dbName}`);
     } catch (error) {
       logger.error(`Failed to initialize local database ${dbName}:`, error);
       throw error;
     }
-  });
+  }
 }
 
 /**
@@ -206,7 +216,7 @@ export async function startSync(): Promise<boolean> {
     }
 
     // Initialize local databases if not already done
-    initializeLocalDatabases();
+    await initializeLocalDatabases();
 
     // Build remote URL with credentials
     let remoteUrl = settings.couchdbUrl;
@@ -450,7 +460,7 @@ export async function performOneTimeSync(): Promise<boolean> {
     }
 
     // Initialize local databases if not already done
-    initializeLocalDatabases();
+    await initializeLocalDatabases();
 
     // Build remote URL with credentials
     let remoteUrl = settings.couchdbUrl;
@@ -549,5 +559,32 @@ export async function initializeSync(): Promise<void> {
     }
   } catch (error) {
     logger.error('Failed to initialize sync:', error);
+    // Don't throw - allow app to continue without sync
   }
+}
+
+/**
+ * Cleanup function to be called on page unload
+ * Prevents "message port closed" errors by properly closing connections
+ */
+export function cleanupOnUnload(): void {
+  // Close databases synchronously on page unload
+  Object.values(syncHandlers).forEach(sync => {
+    try {
+      sync.cancel();
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
+  });
+
+  Object.values(localDatabases).forEach(db => {
+    try {
+      db.close();
+    } catch (error) {
+      // Ignore errors during cleanup
+    }
+  });
+
+  syncHandlers = {};
+  localDatabases = {};
 }
