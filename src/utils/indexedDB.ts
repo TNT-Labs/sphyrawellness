@@ -187,7 +187,7 @@ async function getAll<T>(storeName: string): Promise<T[]> {
  */
 async function add<T extends { id: string }>(storeName: string, item: T): Promise<void> {
   const database = getDB();
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
       const transaction = database.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
@@ -195,20 +195,23 @@ async function add<T extends { id: string }>(storeName: string, item: T): Promis
       // Questo permette di inserire o aggiornare il record se esiste già
       const request = store.put(item);
 
-      request.onsuccess = async () => {
-        // Sincronizza con PouchDB in background (non blocca l'operazione)
-        try {
-          const storeKey = getStoreKey(storeName);
-          if (storeKey) {
-            logger.debug(`Syncing add to PouchDB for ${storeName}:`, item.id);
-            await syncAdd(storeKey, item);
-            logger.debug(`Successfully synced add to PouchDB for ${storeName}:`, item.id);
-          }
-        } catch (syncError) {
-          logger.warn(`Failed to sync add to PouchDB for ${storeName} (${item.id}):`, syncError);
-          // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
-        }
+      request.onsuccess = () => {
+        // Risolvi immediatamente l'operazione IndexedDB
         resolve();
+
+        // Sincronizza con PouchDB in background (completamente asincrono e non bloccante)
+        const storeKey = getStoreKey(storeName);
+        if (storeKey) {
+          logger.debug(`Syncing add to PouchDB for ${storeName}:`, item.id);
+          syncAdd(storeKey, item)
+            .then(() => {
+              logger.debug(`Successfully synced add to PouchDB for ${storeName}:`, item.id);
+            })
+            .catch((syncError) => {
+              logger.warn(`Failed to sync add to PouchDB for ${storeName} (${item.id}):`, syncError);
+              // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
+            });
+        }
       };
 
       request.onerror = () => {
@@ -227,26 +230,29 @@ async function add<T extends { id: string }>(storeName: string, item: T): Promis
  */
 async function update<T extends { id: string }>(storeName: string, item: T): Promise<void> {
   const database = getDB();
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
       const transaction = database.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.put(item);
 
-      request.onsuccess = async () => {
-        // Sincronizza con PouchDB in background (non blocca l'operazione)
-        try {
-          const storeKey = getStoreKey(storeName);
-          if (storeKey) {
-            logger.debug(`Syncing update to PouchDB for ${storeName}:`, item.id);
-            await syncUpdate(storeKey, item);
-            logger.debug(`Successfully synced update to PouchDB for ${storeName}:`, item.id);
-          }
-        } catch (syncError) {
-          logger.warn(`Failed to sync update to PouchDB for ${storeName} (${item.id}):`, syncError);
-          // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
-        }
+      request.onsuccess = () => {
+        // Risolvi immediatamente l'operazione IndexedDB
         resolve();
+
+        // Sincronizza con PouchDB in background (completamente asincrono e non bloccante)
+        const storeKey = getStoreKey(storeName);
+        if (storeKey) {
+          logger.debug(`Syncing update to PouchDB for ${storeName}:`, item.id);
+          syncUpdate(storeKey, item)
+            .then(() => {
+              logger.debug(`Successfully synced update to PouchDB for ${storeName}:`, item.id);
+            })
+            .catch((syncError) => {
+              logger.warn(`Failed to sync update to PouchDB for ${storeName} (${item.id}):`, syncError);
+              // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
+            });
+        }
       };
 
       request.onerror = () => {
@@ -265,26 +271,29 @@ async function update<T extends { id: string }>(storeName: string, item: T): Pro
  */
 async function remove(storeName: string, id: string): Promise<void> {
   const database = getDB();
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     try {
       const transaction = database.transaction(storeName, 'readwrite');
       const store = transaction.objectStore(storeName);
       const request = store.delete(id);
 
-      request.onsuccess = async () => {
-        // Sincronizza con PouchDB in background (non blocca l'operazione)
-        try {
-          const storeKey = getStoreKey(storeName);
-          if (storeKey) {
-            logger.debug(`Syncing delete to PouchDB for ${storeName}:`, id);
-            await syncDelete(storeKey, id);
-            logger.debug(`Successfully synced delete to PouchDB for ${storeName}:`, id);
-          }
-        } catch (syncError) {
-          logger.warn(`Failed to sync delete to PouchDB for ${storeName} (${id}):`, syncError);
-          // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
-        }
+      request.onsuccess = () => {
+        // Risolvi immediatamente l'operazione IndexedDB
         resolve();
+
+        // Sincronizza con PouchDB in background (completamente asincrono e non bloccante)
+        const storeKey = getStoreKey(storeName);
+        if (storeKey) {
+          logger.debug(`Syncing delete to PouchDB for ${storeName}:`, id);
+          syncDelete(storeKey, id)
+            .then(() => {
+              logger.debug(`Successfully synced delete to PouchDB for ${storeName}:`, id);
+            })
+            .catch((syncError) => {
+              logger.warn(`Failed to sync delete to PouchDB for ${storeName} (${id}):`, syncError);
+              // L'operazione IndexedDB è comunque riuscita, quindi non blocchiamo
+            });
+        }
       };
 
       request.onerror = () => {
