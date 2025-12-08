@@ -345,6 +345,22 @@ export async function startSync(): Promise<boolean> {
         }, true);
         return false;
       }
+
+      // Controllo accesso a localhost da pagina remota
+      const isRemotePage = typeof window !== 'undefined' &&
+                          !window.location.hostname.match(/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/);
+      const isTargetLocalhost = urlObj.hostname.match(/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/);
+
+      if (isRemotePage && isTargetLocalhost) {
+        logger.error('[SYNC-START] ERRORE: Tentativo di accesso a localhost da pagina remota!');
+        logger.error('[SYNC-START] I browser bloccano l\'accesso a localhost da pagine remote per motivi di sicurezza');
+        notifySyncStatusChange({
+          status: 'error',
+          error: 'Impossibile connettersi a localhost da pagina remota. Usa un server CouchDB remoto o esegui l\'app in locale.',
+          isActive: false,
+        }, true);
+        return false;
+      }
     } catch (urlError) {
       logger.error('[SYNC-START] ERRORE: URL non valido:', urlError);
       notifySyncStatusChange({
@@ -649,6 +665,27 @@ export async function testCouchDBConnection(
       };
     }
 
+    // Step 1.6: Controllo accesso a localhost da pagina remota
+    const isRemotePage = typeof window !== 'undefined' &&
+                        !window.location.hostname.match(/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/);
+    const isTargetLocalhost = urlObj.hostname.match(/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/);
+
+    if (isRemotePage && isTargetLocalhost) {
+      logger.error('[STEP 1.6] ERRORE: Rilevato tentativo di accesso a localhost da pagina remota!');
+      logger.error('[STEP 1.6] Pagina corrente:', typeof window !== 'undefined' ? window.location.href : 'N/A');
+      logger.error('[STEP 1.6] Target:', urlObj.href);
+      logger.error('[STEP 1.6] I browser bloccano l\'accesso a localhost da pagine remote per motivi di sicurezza');
+
+      return {
+        success: false,
+        error: 'Impossibile connettersi a localhost da pagina remota. ' +
+               'I browser bloccano l\'accesso a localhost da pagine servite su domini remoti per motivi di sicurezza. ' +
+               'Soluzioni: (1) Esegui l\'app in locale (npm run dev), ' +
+               'oppure (2) Usa un tunnel (ngrok, cloudflare tunnel) per esporre CouchDB pubblicamente, ' +
+               'oppure (3) Usa un server CouchDB remoto invece di localhost.'
+      };
+    }
+
     // Step 2: Costruzione URL con credenziali
     logger.debug('[STEP 2/7] Costruzione URL remoto');
     let remoteUrl = cleanUrl;
@@ -860,6 +897,21 @@ export async function performOneTimeSync(): Promise<boolean> {
         notifySyncStatusChange({
           status: 'error',
           error: 'Mixed Content: impossibile connettersi a server HTTP da pagina HTTPS',
+          isActive: false,
+        }, true);
+        return false;
+      }
+
+      // Controllo accesso a localhost da pagina remota
+      const isRemotePage = typeof window !== 'undefined' &&
+                          !window.location.hostname.match(/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/);
+      const isTargetLocalhost = urlObj.hostname.match(/^(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])$/);
+
+      if (isRemotePage && isTargetLocalhost) {
+        logger.error('[ONE-TIME-SYNC] ERRORE: Tentativo di accesso a localhost da pagina remota!');
+        notifySyncStatusChange({
+          status: 'error',
+          error: 'Impossibile connettersi a localhost da pagina remota. Usa un server CouchDB remoto o esegui l\'app in locale.',
           isActive: false,
         }, true);
         return false;
