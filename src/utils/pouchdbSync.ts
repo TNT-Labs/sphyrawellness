@@ -131,7 +131,7 @@ async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Pr
   try {
     // Step 1: Creazione istanza PouchDB
     logger.debug(`[DB-CHECK] [${dbName}] STEP 1: Creazione istanza PouchDB remoto`);
-    const fullDbUrl = `${remoteUrl}/${dbName}`;
+    const fullDbUrl = `${remoteUrl.replace(/\/$/, '')}/${dbName}`;
     logger.debug(`[DB-CHECK] [${dbName}] URL completo database:`, fullDbUrl.replace(/\/\/[^:]+:[^@]+@/, '//*****:*****@'));
 
     let remoteDB: PouchDB.Database;
@@ -380,7 +380,7 @@ export async function startSync(): Promise<boolean> {
       logger.debug(`[SYNC-START] Configurazione sync per database: ${remoteName}`);
 
       try {
-        const remoteDB = new PouchDB(`${remoteUrl}/${remoteName}`);
+        const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${remoteName}`);
         logger.debug(`[SYNC-START] [${remoteName}] Istanza remota PouchDB creata`);
 
         // Setup bidirectional sync with live updates
@@ -757,7 +757,7 @@ export async function performOneTimeSync(): Promise<boolean> {
     // Perform one-time sync for each database
     const syncPromises = Object.entries(localDatabases).map(async ([key, localDB]) => {
       const remoteName = DB_NAMES[key as keyof typeof DB_NAMES];
-      const remoteDB = new PouchDB(`${remoteUrl}/${remoteName}`);
+      const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${remoteName}`);
 
       // Perform bidirectional replication
       await PouchDB.sync(localDB, remoteDB);
@@ -896,7 +896,7 @@ async function testActualConnectivity(): Promise<boolean> {
       }
 
       // Try to access a lightweight endpoint
-      const testDB = new PouchDB(`${remoteUrl}/_users`);
+      const testDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/_users`);
       await testDB.info();
       await testDB.close();
       return true;
