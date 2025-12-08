@@ -594,7 +594,7 @@ export async function testCouchDBConnection(
 
     // Step 3: Creazione istanza PouchDB
     logger.debug('[STEP 3/7] Creazione istanza PouchDB per test');
-    const testDbUrl = `${remoteUrl}/sphyra-test-connection`;
+    const testDbUrl = `${remoteUrl.replace(/\/$/, '')}/sphyra-test-connection`;
     logger.debug('[STEP 3/7] URL database di test:', testDbUrl.replace(/\/\/[^:]+:[^@]+@/, '//*****:*****@'));
 
     let testDB: PouchDB.Database;
