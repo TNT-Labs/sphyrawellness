@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, Cloud, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle, Shield, Clock, Users, Tag, Plus, Edit, Cloud, RefreshCw, Wifi, WifiOff, FileText } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { StaffRole, ServiceCategory, SyncStatus } from '../types';
-import { logger } from '../utils/logger';
+import { logger, LogEntry } from '../utils/logger';
 import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
 
 const Settings: React.FC = () => {
@@ -42,6 +42,11 @@ const Settings: React.FC = () => {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
   const [categoryFormData, setCategoryFormData] = useState({ name: '', color: '#3b82f6' });
+
+  // Logs state
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
+  const [logFilter, setLogFilter] = useState<'all' | 'error' | 'warn' | 'info' | 'log' | 'debug'>('all');
 
   useEffect(() => {
     const initialize = async () => {
@@ -539,6 +544,73 @@ const Settings: React.FC = () => {
     setCategoryFormData({ name: '', color: '#3b82f6' });
     setEditingCategoryId(null);
     setIsAddingCategory(false);
+  };
+
+  // Logs handlers
+  const loadLogs = () => {
+    const allLogs = logger.getLogs();
+    setLogs(allLogs);
+  };
+
+  const handleExportLogs = () => {
+    try {
+      const logsData = logger.getLogs();
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = `sphyra-logs-${timestamp}.json`;
+
+      const blob = new Blob([JSON.stringify(logsData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      showSuccess('Logs esportati con successo!');
+    } catch (error) {
+      showError('Errore durante l\'esportazione dei logs');
+      logger.error(error);
+    }
+  };
+
+  const handleClearLogs = async () => {
+    const confirmed = await confirm({
+      title: 'Cancella Logs',
+      message: 'Cancellare tutti i logs memorizzati? Questa operazione non può essere annullata.',
+      confirmText: 'Cancella',
+      variant: 'warning',
+    });
+
+    if (!confirmed) return;
+
+    try {
+      logger.clearLogs();
+      setLogs([]);
+      showSuccess('Logs cancellati');
+    } catch (error) {
+      showError('Errore durante la cancellazione dei logs');
+      logger.error(error);
+    }
+  };
+
+  const getFilteredLogs = () => {
+    if (logFilter === 'all') return logs;
+    return logs.filter(log => log.level === logFilter);
+  };
+
+  const getLevelColor = (level: LogEntry['level']) => {
+    switch (level) {
+      case 'error':
+        return 'text-red-600 bg-red-50';
+      case 'warn':
+        return 'text-yellow-600 bg-yellow-50';
+      case 'info':
+        return 'text-blue-600 bg-blue-50';
+      case 'debug':
+        return 'text-purple-600 bg-purple-50';
+      default:
+        return 'text-gray-600 bg-gray-50';
+    }
   };
 
   return (
@@ -1122,6 +1194,124 @@ const Settings: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Logs Viewer */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <FileText className="text-primary-600 mr-2" size={24} />
+              <h2 className="text-xl font-bold text-gray-900">Visualizza Logs</h2>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  loadLogs();
+                  setShowLogs(!showLogs);
+                }}
+                className="btn-primary text-sm"
+              >
+                {showLogs ? 'Nascondi' : 'Mostra'} Logs ({logger.getLogsCount()})
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+              <AlertCircle className="text-blue-600 flex-shrink-0 mt-1" size={20} />
+              <div>
+                <p className="font-semibold text-blue-900">Diagnostica Problemi</p>
+                <p className="text-sm text-blue-700">
+                  I logs registrano eventi, errori e avvisi dell'applicazione. Consultali per diagnosticare problemi o errori.
+                  I logs vengono memorizzati solo in sessione e non vengono inviati esternamente.
+                </p>
+              </div>
+            </div>
+
+            {showLogs && (
+              <div className="space-y-3">
+                {/* Controls */}
+                <div className="flex flex-wrap gap-3">
+                  <select
+                    value={logFilter}
+                    onChange={(e) => setLogFilter(e.target.value as typeof logFilter)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                  >
+                    <option value="all">Tutti i Livelli</option>
+                    <option value="error">Solo Errori</option>
+                    <option value="warn">Solo Avvisi</option>
+                    <option value="info">Solo Info</option>
+                    <option value="log">Solo Log</option>
+                    <option value="debug">Solo Debug</option>
+                  </select>
+                  <button
+                    onClick={handleExportLogs}
+                    className="btn-secondary text-sm"
+                  >
+                    <Download size={16} className="inline mr-1" />
+                    Esporta
+                  </button>
+                  <button
+                    onClick={handleClearLogs}
+                    className="btn-secondary text-sm"
+                  >
+                    <Trash2 size={16} className="inline mr-1" />
+                    Cancella
+                  </button>
+                </div>
+
+                {/* Logs List */}
+                <div className="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
+                  {getFilteredLogs().length === 0 ? (
+                    <p className="text-gray-400 text-center py-4">Nessun log disponibile</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {getFilteredLogs().reverse().map((log, index) => (
+                        <div
+                          key={index}
+                          className={`p-3 rounded ${getLevelColor(log.level)}`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-mono text-xs uppercase font-bold">
+                                  {log.level}
+                                </span>
+                                <span className="text-xs opacity-75">
+                                  {format(new Date(log.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: it })}
+                                </span>
+                              </div>
+                              <p className="text-sm font-mono break-all">{log.message}</p>
+                              {log.details && log.details.length > 0 && (
+                                <details className="mt-2">
+                                  <summary className="text-xs cursor-pointer font-semibold">
+                                    Dettagli
+                                  </summary>
+                                  <pre className="text-xs mt-2 p-2 bg-black bg-opacity-10 rounded overflow-x-auto">
+                                    {JSON.stringify(log.details, null, 2)}
+                                  </pre>
+                                </details>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats */}
+                <div className="flex items-center justify-between text-sm text-gray-600 px-2">
+                  <span>
+                    Mostrando {getFilteredLogs().length} di {logs.length} logs
+                  </span>
+                  <span className="text-xs">
+                    Max: {logger.getLogsCount()} / 1000
+                  </span>
                 </div>
               </div>
             )}
