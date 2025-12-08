@@ -34,10 +34,23 @@ let syncHandlers: Record<string, PouchDB.Replication.Sync<any>> = {};
 let syncStatus: SyncStatus = {
   isActive: false,
   status: 'idle',
+  documentsSynced: 0,
+  syncErrors: [],
 };
+
+// Monitoring
+let syncStartTime: number | null = null;
+
+// Online/Offline detection
+let isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
+let autoSyncEnabled: boolean = false;
 
 // Sync status callbacks
 const syncStatusCallbacks: Set<(status: SyncStatus) => void> = new Set();
+
+// Throttling for sync status notifications
+let lastNotificationTime = 0;
+const NOTIFICATION_THROTTLE_MS = 1000; // Max 1 notification per second
 
 /**
  * Subscribe to sync status changes
@@ -51,10 +64,19 @@ export function onSyncStatusChange(callback: (status: SyncStatus) => void): () =
 }
 
 /**
- * Notify all subscribers of sync status change
+ * Notify all subscribers of sync status change (with throttling)
  */
-function notifySyncStatusChange(newStatus: Partial<SyncStatus>): void {
+function notifySyncStatusChange(newStatus: Partial<SyncStatus>, force: boolean = false): void {
   syncStatus = { ...syncStatus, ...newStatus };
+
+  // Throttle notifications unless forced (e.g., for errors or state changes)
+  const now = Date.now();
+  if (!force && (now - lastNotificationTime) < NOTIFICATION_THROTTLE_MS) {
+    return;
+  }
+
+  lastNotificationTime = now;
+
   syncStatusCallbacks.forEach(callback => {
     try {
       callback(syncStatus);
@@ -82,7 +104,10 @@ function initializeLocalDatabases(): void {
 
   Object.entries(DB_NAMES).forEach(([key, dbName]) => {
     try {
-      localDatabases[key] = new PouchDB(dbName);
+      localDatabases[key] = new PouchDB(dbName, {
+        auto_compaction: false,
+        revs_limit: 1,
+      });
       logger.log(`Initialized local database: ${dbName}`);
     } catch (error) {
       logger.error(`Failed to initialize local database ${dbName}:`, error);
@@ -139,10 +164,22 @@ async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Pr
  */
 export async function startSync(): Promise<boolean> {
   try {
+    // Check if online
+    if (!isOnline) {
+      logger.warn('Cannot start sync: device is offline');
+      notifySyncStatusChange({
+        status: 'paused',
+        error: 'Nessuna connessione internet',
+        isActive: false,
+      }, true);
+      return false;
+    }
+
     const settings = await loadSettingsWithPassword();
 
     if (!settings.syncEnabled) {
       logger.warn('Sync is disabled in settings');
+      autoSyncEnabled = false;
       return false;
     }
 
@@ -152,9 +189,12 @@ export async function startSync(): Promise<boolean> {
         status: 'error',
         error: 'CouchDB URL non configurato',
         isActive: false,
-      });
+      }, true); // Force notification
       return false;
     }
+
+    // Mark auto-sync as enabled
+    autoSyncEnabled = true;
 
     // Initialize local databases if not already done
     initializeLocalDatabases();
@@ -182,7 +222,7 @@ export async function startSync(): Promise<boolean> {
         status: 'error',
         error: 'Impossibile creare alcuni database remoti. Verifica i permessi.',
         isActive: false,
-      });
+      }, true); // Force notification
       return false;
     }
 
@@ -191,11 +231,16 @@ export async function startSync(): Promise<boolean> {
     // Stop existing sync handlers
     await stopSync();
 
+    // Reset monitoring counters
+    syncStartTime = Date.now();
+
+    // Update status to syncing before starting
     notifySyncStatusChange({
       status: 'syncing',
       isActive: true,
       direction: 'both',
-    });
+      documentsSynced: 0,
+    }, true); // Force notification
 
     // Start bidirectional sync for each database
     Object.entries(localDatabases).forEach(([key, localDB]) => {
@@ -211,41 +256,80 @@ export async function startSync(): Promise<boolean> {
       // Handle sync events
       sync.on('change', (info) => {
         logger.log(`Sync change for ${remoteName}:`, info);
+
+        // Count documents synced
+        const docsChanged = (info.change?.docs?.length || 0);
+        const currentCount = syncStatus.documentsSynced || 0;
+
+        // Throttled notification (not forced)
         notifySyncStatusChange({
           lastSync: new Date().toISOString(),
           status: 'syncing',
-        });
+          documentsSynced: currentCount + docsChanged,
+        }, false);
       });
 
       sync.on('paused', () => {
         logger.log(`Sync paused for ${remoteName}`);
+
+        // Calculate sync duration
+        const duration = syncStartTime ? Date.now() - syncStartTime : undefined;
+        syncStartTime = null;
+
+        // Force notification for state change
         notifySyncStatusChange({
           status: 'idle',
           lastSync: new Date().toISOString(),
-        });
+          lastSyncDuration: duration,
+        }, true);
       });
 
       sync.on('active', () => {
         logger.log(`Sync active for ${remoteName}`);
+
+        // Mark sync start time
+        if (!syncStartTime) {
+          syncStartTime = Date.now();
+        }
+
+        // Force notification for state change
         notifySyncStatusChange({
           status: 'syncing',
-        });
+        }, true);
       });
 
       sync.on('error', (err: unknown) => {
         logger.error(`Sync error for ${remoteName}:`, err);
+
+        // Add error to history (keep last 10)
+        const errorMsg = err instanceof Error ? err.message : 'Errore di sincronizzazione';
+        const errors = syncStatus.syncErrors || [];
+        errors.unshift(`${new Date().toISOString()}: ${errorMsg}`);
+        if (errors.length > 10) errors.pop();
+
+        // Force notification for errors
         notifySyncStatusChange({
           status: 'error',
-          error: err instanceof Error ? err.message : 'Errore di sincronizzazione',
-        });
+          error: errorMsg,
+          syncErrors: errors,
+        }, true);
       });
 
       sync.on('denied', (err: unknown) => {
         logger.error(`Sync denied for ${remoteName}:`, err);
+
+        // Add error to history (keep last 10)
+        const errorMsg = 'Accesso negato al server';
+        const errors = syncStatus.syncErrors || [];
+        errors.unshift(`${new Date().toISOString()}: ${errorMsg}`);
+        if (errors.length > 10) errors.pop();
+
+        // Force notification for errors
         notifySyncStatusChange({
           status: 'error',
-          error: 'Accesso negato al server',
-        });
+          error: errorMsg,
+          syncErrors: errors,
+        }, true);
       });
 
       syncHandlers[key] = sync;
@@ -259,7 +343,7 @@ export async function startSync(): Promise<boolean> {
       status: 'error',
       error: error instanceof Error ? error.message : 'Errore sconosciuto',
       isActive: false,
-    });
+    }, true); // Force notification
     return false;
   }
 }
@@ -269,6 +353,9 @@ export async function startSync(): Promise<boolean> {
  */
 export async function stopSync(): Promise<void> {
   try {
+    // Disable auto-sync
+    autoSyncEnabled = false;
+
     // Cancel all sync handlers
     const cancelPromises = Object.values(syncHandlers).map(sync => {
       return sync.cancel();
@@ -281,7 +368,7 @@ export async function stopSync(): Promise<void> {
       status: 'idle',
       isActive: false,
       error: undefined,
-    });
+    }, true); // Force notification
 
     logger.log('Synchronization stopped');
   } catch (error) {
@@ -306,14 +393,22 @@ export async function testCouchDBConnection(
       remoteUrl = urlObj.toString();
     }
 
-    // Try to connect to a test database
-    const testDB = new PouchDB(`${remoteUrl}/_users`);
+    // Test connection by trying to access the root endpoint
+    // This is safer than using _users which might be restricted
+    const testDB = new PouchDB(`${remoteUrl}/sphyra-test-connection`);
 
-    // Try to get info (this will test the connection)
+    // Try to get info (this will test the connection and create the DB if needed)
     await testDB.info();
 
-    // Close the test connection
-    await testDB.close();
+    // Try to clean up the test database
+    try {
+      await testDB.destroy();
+      logger.log('Test database cleaned up successfully');
+    } catch (cleanupError) {
+      logger.warn('Could not cleanup test database (may not have permissions):', cleanupError);
+      // Not a critical error, just close the connection
+      await testDB.close();
+    }
 
     return { success: true };
   } catch (error: unknown) {
@@ -362,14 +457,14 @@ export async function performOneTimeSync(): Promise<boolean> {
         status: 'error',
         error: 'Impossibile creare alcuni database remoti',
         isActive: false,
-      });
+      }, true); // Force notification
       return false;
     }
 
     notifySyncStatusChange({
       status: 'syncing',
       isActive: true,
-    });
+    }, true); // Force notification
 
     // Perform one-time sync for each database
     const syncPromises = Object.entries(localDatabases).map(async ([key, localDB]) => {
@@ -388,7 +483,7 @@ export async function performOneTimeSync(): Promise<boolean> {
       status: 'idle',
       isActive: false,
       lastSync: new Date().toISOString(),
-    });
+    }, true); // Force notification
 
     logger.log('One-time synchronization completed successfully');
     return true;
@@ -398,7 +493,7 @@ export async function performOneTimeSync(): Promise<boolean> {
       status: 'error',
       error: error instanceof Error ? error.message : 'Errore di sincronizzazione',
       isActive: false,
-    });
+    }, true); // Force notification
     return false;
   }
 }
@@ -423,6 +518,71 @@ export async function closeDatabases(): Promise<void> {
 }
 
 /**
+ * Cleanup on page unload - closes all connections gracefully
+ */
+function cleanupOnUnload(): void {
+  try {
+    logger.log('Page unload detected, cleaning up sync...');
+    // Synchronously close databases (we can't use async here)
+    Object.values(syncHandlers).forEach(sync => {
+      try {
+        sync.cancel();
+      } catch (e) {
+        logger.warn('Error canceling sync on unload:', e);
+      }
+    });
+    Object.values(localDatabases).forEach(db => {
+      try {
+        db.close();
+      } catch (e) {
+        logger.warn('Error closing database on unload:', e);
+      }
+    });
+    logger.log('Cleanup completed');
+  } catch (error) {
+    logger.error('Error during cleanup on unload:', error);
+  }
+}
+
+/**
+ * Handle online event - restart sync if it was enabled
+ */
+function handleOnlineEvent(): void {
+  logger.log('Network connection restored');
+  isOnline = true;
+
+  if (autoSyncEnabled) {
+    logger.log('Auto-restarting sync after connection restored');
+    startSync().catch(err =>
+      logger.error('Failed to restart sync after going online:', err)
+    );
+  }
+}
+
+/**
+ * Handle offline event - log and update status
+ */
+function handleOfflineEvent(): void {
+  logger.warn('Network connection lost');
+  isOnline = false;
+
+  // Update status to reflect offline state
+  if (syncStatus.isActive) {
+    notifySyncStatusChange({
+      status: 'paused',
+      error: 'Nessuna connessione internet',
+    }, true);
+  }
+}
+
+/**
+ * Check if device is online
+ */
+export function getOnlineStatus(): boolean {
+  return isOnline;
+}
+
+/**
  * Initialize sync based on settings
  */
 export async function initializeSync(): Promise<void> {
@@ -431,9 +591,33 @@ export async function initializeSync(): Promise<void> {
 
     if (settings.syncEnabled && settings.couchdbUrl) {
       logger.log('Auto-starting sync based on settings');
-      await startSync();
+      autoSyncEnabled = true;
+
+      if (isOnline) {
+        await startSync();
+      } else {
+        logger.warn('Device is offline, sync will start when online');
+        notifySyncStatusChange({
+          status: 'paused',
+          error: 'In attesa di connessione internet',
+          isActive: false,
+        }, true);
+      }
     } else {
       logger.log('Sync is disabled or not configured');
+      autoSyncEnabled = false;
+    }
+
+    // Setup cleanup handlers for page unload
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', cleanupOnUnload);
+      window.addEventListener('pagehide', cleanupOnUnload);
+
+      // Setup online/offline detection
+      window.addEventListener('online', handleOnlineEvent);
+      window.addEventListener('offline', handleOfflineEvent);
+
+      logger.log('Cleanup and network handlers registered');
     }
   } catch (error) {
     logger.error('Failed to initialize sync:', error);

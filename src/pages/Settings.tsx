@@ -222,11 +222,11 @@ const Settings: React.FC = () => {
     return Object.values(stats).reduce((sum, count) => (sum as number) + (count as number), 0);
   };
 
-  const handleIdleTimeoutChange = (value: number) => {
+  const handleIdleTimeoutChange = async (value: number) => {
     setIdleTimeout(value);
     const settings = loadSettings();
     settings.idleTimeout = value;
-    saveSettings(settings);
+    await saveSettings(settings);
     // Trigger custom event so App.tsx can react immediately
     window.dispatchEvent(new Event('settingsChanged'));
     showSuccess('Impostazione salvata');
@@ -237,7 +237,7 @@ const Settings: React.FC = () => {
     setSyncEnabled(enabled);
     const settings = loadSettings();
     settings.syncEnabled = enabled;
-    saveSettings(settings);
+    await saveSettings(settings);
 
     if (enabled && settings.couchdbUrl) {
       const success = await startSync();
@@ -247,7 +247,7 @@ const Settings: React.FC = () => {
         showError('Errore durante l\'avvio della sincronizzazione');
         setSyncEnabled(false);
         settings.syncEnabled = false;
-        saveSettings(settings);
+        await saveSettings(settings);
       }
     } else if (!enabled) {
       await stopSync();
@@ -257,12 +257,12 @@ const Settings: React.FC = () => {
     window.dispatchEvent(new Event('settingsChanged'));
   };
 
-  const handleSaveCouchDBSettings = () => {
+  const handleSaveCouchDBSettings = async () => {
     const settings = loadSettings();
     settings.couchdbUrl = couchdbUrl.trim();
     settings.couchdbUsername = couchdbUsername.trim();
     settings.couchdbPassword = couchdbPassword;
-    saveSettings(settings);
+    await saveSettings(settings);
     showSuccess('Impostazioni CouchDB salvate');
     window.dispatchEvent(new Event('settingsChanged'));
   };
