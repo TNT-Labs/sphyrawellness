@@ -740,16 +740,35 @@ export async function testCouchDBConnection(
     logger.debug('[STEP 3/7] Test connessione diretta al server CouchDB');
 
     try {
-      // Test diretto con fetch API per verificare CORS e connessione
-      const serverTestUrl = baseUrl;
-      logger.debug('[STEP 3/7] Tentativo di connessione a:', serverTestUrl.replace(/\/\/[^:]+:[^@]+@/, '//*****:*****@'));
+      // Estrai credenziali dall'URL e crea URL pulito + header Authorization
+      const urlForFetch = new URL(baseUrl);
+      const authUsername = urlForFetch.username;
+      const authPassword = urlForFetch.password;
+
+      // Rimuovi credenziali dall'URL (fetch non le accetta nell'URL)
+      urlForFetch.username = '';
+      urlForFetch.password = '';
+      const cleanServerUrl = urlForFetch.toString();
+
+      logger.debug('[STEP 3/7] Tentativo di connessione a:', cleanServerUrl);
+
+      // Prepara headers con autenticazione Basic se necessario
+      const fetchHeaders: Record<string, string> = {
+        'Accept': 'application/json',
+      };
+
+      if (authUsername && authPassword) {
+        // Crea header Authorization con Basic Auth
+        const credentials = `${decodeURIComponent(authUsername)}:${decodeURIComponent(authPassword)}`;
+        const base64Credentials = btoa(credentials);
+        fetchHeaders['Authorization'] = `Basic ${base64Credentials}`;
+        logger.debug('[STEP 3/7] Header Authorization aggiunto con Basic Auth');
+      }
 
       const fetchStartTime = Date.now();
-      const response = await fetch(serverTestUrl, {
+      const response = await fetch(cleanServerUrl, {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-        },
+        headers: fetchHeaders,
         credentials: 'include',
       });
       const fetchDuration = Date.now() - fetchStartTime;
