@@ -132,7 +132,30 @@ docker-compose logs -f couchdb
 
 ### 4. Abilita CORS
 
-CouchDB necessita CORS abilitato per accesso da browser:
+CouchDB necessita CORS abilitato per accesso da browser. Puoi configurarlo automaticamente con lo script fornito o manualmente.
+
+#### Opzione A: Script Automatico (Consigliato) ⭐
+
+Usa lo script di configurazione CORS per configurare automaticamente tutti i parametri necessari:
+
+```bash
+# Con Docker
+node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin securepassword
+
+# Con installazione locale
+node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin securepassword
+```
+
+Lo script configurerà automaticamente:
+- ✅ CORS abilitato
+- ✅ Origins permessi
+- ✅ Credenziali abilitate
+- ✅ Metodi HTTP corretti
+- ✅ Headers necessari per PouchDB (incluso `x-requested-with`)
+
+#### Opzione B: Configurazione Manuale
+
+Se preferisci configurare manualmente:
 
 ```bash
 # Abilita CORS
@@ -142,9 +165,13 @@ docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:598
 
 docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:5984/_node/_local/_config/cors/credentials -d '"true"'
 
-docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:5984/_node/_local/_config/cors/methods -d '"GET, PUT, POST, HEAD, DELETE"'
+docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:5984/_node/_local/_config/cors/methods -d '"GET, PUT, POST, HEAD, DELETE, OPTIONS"'
 
-docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:5984/_node/_local/_config/cors/headers -d '"accept, authorization, content-type, origin, referer"'
+# IMPORTANTE: Includi x-requested-with per PouchDB
+docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:5984/_node/_local/_config/cors/headers -d '"accept, authorization, content-type, origin, referer, x-requested-with"'
+
+# Per cluster HTTP daemon
+docker exec sphyra-couchdb curl -X PUT http://admin:securepassword@localhost:5984/_node/_local/_config/chttpd/enable_cors -d '"true"'
 ```
 
 ### 5. Verifica Accesso
@@ -554,30 +581,74 @@ curl http://localhost:5984
 node scripts/setup-couchdb.js http://localhost:5984 admin password
 ```
 
-### Errore CORS
+### Errore CORS / "Failed to fetch"
 
-**Causa**: CORS non abilitato
+**Causa**: CORS non abilitato o configurato in modo incompleto
 
-**Soluzione Docker**:
+**Sintomi**:
+- Errore "Failed to fetch" nel browser
+- Test di connessione fallisce nell'app
+- Errori CORS nella console del browser (F12 > Console)
+
+**Soluzione Automatica (Consigliato)** ⭐:
 ```bash
-docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/httpd/enable_cors -d '"true"'
-docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/cors/origins -d '"*"'
+# Usa lo script di configurazione automatica
+node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password
+
+# Poi riavvia CouchDB
+# Docker:
+docker-compose restart couchdb
+
+# Locale:
+sudo systemctl restart couchdb
 ```
 
-**Soluzione Locale**:
+**Soluzione Manuale Docker**:
+```bash
+# Configurazione completa CORS
+docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/httpd/enable_cors -d '"true"'
+docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/cors/origins -d '"*"'
+docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/cors/credentials -d '"true"'
+docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/cors/methods -d '"GET, PUT, POST, HEAD, DELETE, OPTIONS"'
+docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/cors/headers -d '"accept, authorization, content-type, origin, referer, x-requested-with"'
+docker exec sphyra-couchdb curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/chttpd/enable_cors -d '"true"'
+
+# Riavvia
+docker-compose restart couchdb
+```
+
+**Soluzione Manuale Locale**:
 ```bash
 # Modifica config
 sudo nano /opt/couchdb/etc/local.ini
 
 # Aggiungi:
-# [httpd]
-# enable_cors = true
-#
-# [cors]
-# origins = *
+[httpd]
+enable_cors = true
+
+[cors]
+origins = *
+credentials = true
+methods = GET, PUT, POST, HEAD, DELETE, OPTIONS
+headers = accept, authorization, content-type, origin, referer, x-requested-with
+
+[chttpd]
+enable_cors = true
 
 # Riavvia
 sudo systemctl restart couchdb
+```
+
+**Verifica CORS funzionante**:
+```bash
+# Test con curl
+curl -H "Origin: http://localhost:3000" \
+     -H "Access-Control-Request-Method: GET" \
+     -H "Access-Control-Request-Headers: Content-Type" \
+     -X OPTIONS \
+     http://localhost:5984
+
+# Dovresti vedere headers CORS nella risposta
 ```
 
 ### Sincronizzazione Lenta

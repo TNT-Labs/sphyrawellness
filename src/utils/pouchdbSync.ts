@@ -736,109 +736,166 @@ export async function testCouchDBConnection(
       };
     }
 
+    // Step 3: Test connessione diretta con fetch API
+    logger.debug('[STEP 3/7] Test connessione diretta al server CouchDB');
+
+    try {
+      // Test diretto con fetch API per verificare CORS e connessione
+      const serverTestUrl = baseUrl;
+      logger.debug('[STEP 3/7] Tentativo di connessione a:', serverTestUrl.replace(/\/\/[^:]+:[^@]+@/, '//*****:*****@'));
+
+      const fetchStartTime = Date.now();
+      const response = await fetch(serverTestUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        credentials: 'include',
+      });
+      const fetchDuration = Date.now() - fetchStartTime;
+
+      logger.debug('[STEP 3/7] Risposta ricevuta in', fetchDuration, 'ms');
+      logger.debug('[STEP 3/7] Status:', response.status);
+      logger.debug('[STEP 3/7] Status Text:', response.statusText);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('[STEP 3/7] Risposta non OK:', errorText);
+
+        if (response.status === 401) {
+          return {
+            success: false,
+            error: 'Autenticazione fallita. Verifica username e password.'
+          };
+        } else if (response.status === 403) {
+          return {
+            success: false,
+            error: 'Accesso negato. Verifica i permessi dell\'utente su CouchDB.'
+          };
+        } else {
+          return {
+            success: false,
+            error: `Errore del server (HTTP ${response.status}): ${response.statusText}`
+          };
+        }
+      }
+
+      const serverInfo = await response.json();
+      logger.info('[STEP 3/7] Connessione al server riuscita!');
+      logger.debug('[STEP 3/7] Info server:', {
+        couchdb: serverInfo.couchdb,
+        version: serverInfo.version,
+        vendor: serverInfo.vendor?.name,
+      });
+
+    } catch (fetchError: any) {
+      logger.error('[STEP 3/7] ERRORE durante test connessione con fetch:', {
+        errorName: fetchError?.name,
+        errorMessage: fetchError?.message,
+        errorType: typeof fetchError,
+      });
+
+      // Analizza l'errore per fornire messaggi più chiari
+      if (fetchError?.message === 'Failed to fetch' || fetchError?.name === 'TypeError') {
+        return {
+          success: false,
+          error: 'Impossibile raggiungere il server. Possibili cause:\n' +
+                 '• CouchDB non è in esecuzione\n' +
+                 '• L\'URL non è corretto\n' +
+                 '• CORS non è configurato correttamente su CouchDB\n' +
+                 '• Problema di rete o firewall\n\n' +
+                 'Soluzione: Esegui lo script di configurazione CORS:\n' +
+                 'node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password'
+        };
+      } else if (fetchError?.message?.includes('NetworkError')) {
+        return {
+          success: false,
+          error: 'Errore di rete. Verifica che CouchDB sia in esecuzione e raggiungibile.'
+        };
+      } else {
+        return {
+          success: false,
+          error: `Errore di connessione: ${fetchError?.message || 'Errore sconosciuto'}`
+        };
+      }
+    }
+
+    // Step 4: Test con PouchDB per verificare compatibilità completa
+    logger.debug('[STEP 4/7] Creazione istanza PouchDB per test compatibilità');
+
     let testDB: PouchDB.Database;
     try {
-      testDB = new PouchDB(testDbUrl, {
-        skip_setup: true, // Non creare il database automaticamente
-      });
-      logger.debug('[STEP 3/7] Istanza PouchDB creata con successo');
+      testDB = new PouchDB(testDbUrl);
+      logger.debug('[STEP 4/7] Istanza PouchDB creata con successo');
     } catch (pouchError) {
-      logger.error('[STEP 3/7] ERRORE durante la creazione dell\'istanza PouchDB:', pouchError);
+      logger.error('[STEP 4/7] ERRORE durante la creazione dell\'istanza PouchDB:', pouchError);
       return {
         success: false,
         error: pouchError instanceof Error ? `Errore PouchDB: ${pouchError.message}` : 'Impossibile creare istanza PouchDB'
       };
     }
 
-    // Step 4: Test connessione con info()
-    logger.debug('[STEP 4/7] Tentativo di ottenere info dal database remoto');
-    logger.debug('[STEP 4/7] Chiamata testDB.info() in corso...');
+    // Step 5: Test info() per verificare accesso al database
+    logger.debug('[STEP 5/7] Tentativo di ottenere info dal database di test');
 
-    let dbInfo: any;
     try {
       const infoStartTime = Date.now();
-      dbInfo = await testDB.info();
-      const infoEndTime = Date.now();
-      const infoDuration = infoEndTime - infoStartTime;
+      const dbInfo = await testDB.info();
+      const infoDuration = Date.now() - infoStartTime;
 
-      logger.info('[STEP 4/7] testDB.info() completata con successo in', infoDuration, 'ms');
-      logger.debug('[STEP 4/7] Informazioni database ricevute:', {
+      logger.info('[STEP 5/7] testDB.info() completata con successo in', infoDuration, 'ms');
+      logger.debug('[STEP 5/7] Informazioni database ricevute:', {
         db_name: dbInfo.db_name,
         doc_count: dbInfo.doc_count,
-        update_seq: dbInfo.update_seq,
-        adapter: dbInfo.adapter,
       });
     } catch (infoError: any) {
-      logger.error('[STEP 4/7] ERRORE durante testDB.info():', {
+      logger.debug('[STEP 5/7] Info su database di test fallita (normale se il database non esiste):', {
         errorName: infoError?.name,
-        errorMessage: infoError?.message,
         errorStatus: infoError?.status,
-        errorReason: infoError?.reason,
-        errorStack: infoError?.stack,
-        errorType: typeof infoError,
-        errorDetails: infoError,
       });
 
-      // Tenta di chiudere la connessione prima di ritornare
-      try {
-        logger.debug('[STEP 4/7] Tentativo di chiusura connessione dopo errore');
-        await testDB.close();
-        logger.debug('[STEP 4/7] Connessione chiusa');
-      } catch (closeError) {
-        logger.warn('[STEP 4/7] Errore durante chiusura connessione:', closeError);
+      // Se il database non esiste (404), è normale - lo creeremo durante la sincronizzazione
+      if (infoError?.status !== 404) {
+        // Altri errori sono problematici
+        logger.error('[STEP 5/7] ERRORE imprevisto durante testDB.info():', infoError);
+
+        try {
+          await testDB.close();
+        } catch (e) { /* ignore */ }
+
+        let userFriendlyError = 'Errore durante l\'accesso al database';
+
+        if (infoError?.message === 'Failed to fetch') {
+          userFriendlyError = 'Errore CORS: Il server non risponde correttamente. ' +
+                            'Esegui: node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password';
+        } else if (infoError?.status === 401) {
+          userFriendlyError = 'Autenticazione fallita. Verifica username e password.';
+        } else if (infoError?.status === 403) {
+          userFriendlyError = 'Accesso negato. Verifica i permessi dell\'utente.';
+        } else if (infoError instanceof Error) {
+          userFriendlyError = `${infoError.name}: ${infoError.message}`;
+        }
+
+        return {
+          success: false,
+          error: userFriendlyError
+        };
       }
-
-      // Analizza l'errore per fornire messaggi più chiari
-      let userFriendlyError = 'Errore durante il test della connessione';
-
-      if (infoError?.message === 'Failed to fetch') {
-        userFriendlyError = 'Impossibile raggiungere il server. Verifica che: ' +
-                          '(1) CouchDB sia in esecuzione, ' +
-                          '(2) L\'URL sia corretto, ' +
-                          '(3) CORS sia abilitato su CouchDB, ' +
-                          '(4) Non ci siano problemi di rete o firewall.';
-      } else if (infoError?.status === 401 || infoError?.name === 'unauthorized') {
-        userFriendlyError = 'Autenticazione fallita. Verifica username e password.';
-      } else if (infoError?.status === 404) {
-        userFriendlyError = 'Database non trovato (404). Il database verrà creato automaticamente durante la sincronizzazione.';
-      } else if (infoError?.status === 403) {
-        userFriendlyError = 'Accesso negato (403). Verifica i permessi dell\'utente su CouchDB.';
-      } else if (infoError instanceof Error) {
-        userFriendlyError = `${infoError.name}: ${infoError.message}${(infoError as any).status ? ` (HTTP ${(infoError as any).status})` : ''}`;
-      }
-
-      return {
-        success: false,
-        error: userFriendlyError
-      };
     }
 
-    // Step 5: Test riuscito, tentativo di cleanup
-    logger.debug('[STEP 5/7] Test connessione riuscito! Tentativo di pulizia database di test');
+    // Step 6: Cleanup - elimina database di test
+    logger.debug('[STEP 6/7] Pulizia database di test');
 
     try {
-      logger.debug('[STEP 5/7] Chiamata testDB.destroy() per eliminare il database di test');
-      const destroyStartTime = Date.now();
       await testDB.destroy();
-      const destroyEndTime = Date.now();
-      const destroyDuration = destroyEndTime - destroyStartTime;
-
-      logger.info('[STEP 5/7] Database di test eliminato con successo in', destroyDuration, 'ms');
+      logger.debug('[STEP 6/7] Database di test eliminato');
     } catch (cleanupError: any) {
-      logger.warn('[STEP 5/7] Impossibile eliminare il database di test (potrebbero mancare i permessi):', {
-        errorName: cleanupError?.name,
-        errorMessage: cleanupError?.message,
-        errorStatus: cleanupError?.status,
-      });
+      // Ignora errori di cleanup (es. database non esisteva)
+      logger.debug('[STEP 6/7] Cleanup ignorato:', cleanupError?.status);
 
-      // Step 6: Tentativo di chiusura alternativa
-      logger.debug('[STEP 6/7] Tentativo di chiusura semplice della connessione');
       try {
         await testDB.close();
-        logger.debug('[STEP 6/7] Connessione chiusa con successo');
-      } catch (closeError) {
-        logger.error('[STEP 6/7] ERRORE durante la chiusura della connessione:', closeError);
-      }
+      } catch (e) { /* ignore */ }
     }
 
     // Step 7: Successo finale
