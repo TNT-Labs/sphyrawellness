@@ -99,4 +99,8 @@ export interface SyncStatus {
   status: 'idle' | 'syncing' | 'error' | 'paused';
   error?: string;
   direction?: 'push' | 'pull' | 'both';
+  // Monitoring fields
+  documentsSynced?: number; // Total documents synced in current session
+  lastSyncDuration?: number; // Last sync duration in ms
+  syncErrors?: string[]; // Recent errors (max 10)
 }

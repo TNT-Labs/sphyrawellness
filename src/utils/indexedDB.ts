@@ -14,6 +14,7 @@ import {
   ServiceCategory
 } from '../types';
 import { logger } from './logger';
+import { syncAdd, syncUpdate, syncDelete } from './dbBridge';
 
 const DB_NAME = 'sphyra-wellness-db';
 const DB_VERSION = 3;
@@ -240,15 +241,27 @@ export async function getCustomer(id: string): Promise<Customer | undefined> {
 }
 
 export async function addCustomer(customer: Customer): Promise<void> {
-  return add(STORES.CUSTOMERS, customer);
+  await add(STORES.CUSTOMERS, customer);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('customers', customer).catch(err =>
+    logger.error('Background sync failed for customer add:', err)
+  );
 }
 
 export async function updateCustomer(customer: Customer): Promise<void> {
-  return update(STORES.CUSTOMERS, customer);
+  await update(STORES.CUSTOMERS, customer);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('customers', customer).catch(err =>
+    logger.error('Background sync failed for customer update:', err)
+  );
 }
 
 export async function deleteCustomer(id: string): Promise<void> {
-  return remove(STORES.CUSTOMERS, id);
+  await remove(STORES.CUSTOMERS, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('customers', id).catch(err =>
+    logger.error('Background sync failed for customer delete:', err)
+  );
 }
 
 // ============================================
@@ -264,15 +277,27 @@ export async function getService(id: string): Promise<Service | undefined> {
 }
 
 export async function addService(service: Service): Promise<void> {
-  return add(STORES.SERVICES, service);
+  await add(STORES.SERVICES, service);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('services', service).catch(err =>
+    logger.error('Background sync failed for service add:', err)
+  );
 }
 
 export async function updateService(service: Service): Promise<void> {
-  return update(STORES.SERVICES, service);
+  await update(STORES.SERVICES, service);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('services', service).catch(err =>
+    logger.error('Background sync failed for service update:', err)
+  );
 }
 
 export async function deleteService(id: string): Promise<void> {
-  return remove(STORES.SERVICES, id);
+  await remove(STORES.SERVICES, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('services', id).catch(err =>
+    logger.error('Background sync failed for service delete:', err)
+  );
 }
 
 // ============================================
@@ -288,15 +313,27 @@ export async function getStaff(id: string): Promise<Staff | undefined> {
 }
 
 export async function addStaff(staff: Staff): Promise<void> {
-  return add(STORES.STAFF, staff);
+  await add(STORES.STAFF, staff);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('staff', staff).catch(err =>
+    logger.error('Background sync failed for staff add:', err)
+  );
 }
 
 export async function updateStaff(staff: Staff): Promise<void> {
-  return update(STORES.STAFF, staff);
+  await update(STORES.STAFF, staff);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('staff', staff).catch(err =>
+    logger.error('Background sync failed for staff update:', err)
+  );
 }
 
 export async function deleteStaff(id: string): Promise<void> {
-  return remove(STORES.STAFF, id);
+  await remove(STORES.STAFF, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('staff', id).catch(err =>
+    logger.error('Background sync failed for staff delete:', err)
+  );
 }
 
 // ============================================
@@ -312,15 +349,27 @@ export async function getAppointment(id: string): Promise<Appointment | undefine
 }
 
 export async function addAppointment(appointment: Appointment): Promise<void> {
-  return add(STORES.APPOINTMENTS, appointment);
+  await add(STORES.APPOINTMENTS, appointment);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('appointments', appointment).catch(err =>
+    logger.error('Background sync failed for appointment add:', err)
+  );
 }
 
 export async function updateAppointment(appointment: Appointment): Promise<void> {
-  return update(STORES.APPOINTMENTS, appointment);
+  await update(STORES.APPOINTMENTS, appointment);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('appointments', appointment).catch(err =>
+    logger.error('Background sync failed for appointment update:', err)
+  );
 }
 
 export async function deleteAppointment(id: string): Promise<void> {
-  return remove(STORES.APPOINTMENTS, id);
+  await remove(STORES.APPOINTMENTS, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('appointments', id).catch(err =>
+    logger.error('Background sync failed for appointment delete:', err)
+  );
 }
 
 // ============================================
@@ -336,15 +385,27 @@ export async function getPayment(id: string): Promise<Payment | undefined> {
 }
 
 export async function addPayment(payment: Payment): Promise<void> {
-  return add(STORES.PAYMENTS, payment);
+  await add(STORES.PAYMENTS, payment);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('payments', payment).catch(err =>
+    logger.error('Background sync failed for payment add:', err)
+  );
 }
 
 export async function updatePayment(payment: Payment): Promise<void> {
-  return update(STORES.PAYMENTS, payment);
+  await update(STORES.PAYMENTS, payment);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('payments', payment).catch(err =>
+    logger.error('Background sync failed for payment update:', err)
+  );
 }
 
 export async function deletePayment(id: string): Promise<void> {
-  return remove(STORES.PAYMENTS, id);
+  await remove(STORES.PAYMENTS, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('payments', id).catch(err =>
+    logger.error('Background sync failed for payment delete:', err)
+  );
 }
 
 // ============================================
@@ -360,15 +421,27 @@ export async function getReminder(id: string): Promise<Reminder | undefined> {
 }
 
 export async function addReminder(reminder: Reminder): Promise<void> {
-  return add(STORES.REMINDERS, reminder);
+  await add(STORES.REMINDERS, reminder);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('reminders', reminder).catch(err =>
+    logger.error('Background sync failed for reminder add:', err)
+  );
 }
 
 export async function updateReminder(reminder: Reminder): Promise<void> {
-  return update(STORES.REMINDERS, reminder);
+  await update(STORES.REMINDERS, reminder);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('reminders', reminder).catch(err =>
+    logger.error('Background sync failed for reminder update:', err)
+  );
 }
 
 export async function deleteReminder(id: string): Promise<void> {
-  return remove(STORES.REMINDERS, id);
+  await remove(STORES.REMINDERS, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('reminders', id).catch(err =>
+    logger.error('Background sync failed for reminder delete:', err)
+  );
 }
 
 // ============================================
@@ -384,15 +457,27 @@ export async function getStaffRole(id: string): Promise<StaffRole | undefined> {
 }
 
 export async function addStaffRole(role: StaffRole): Promise<void> {
-  return add(STORES.STAFF_ROLES, role);
+  await add(STORES.STAFF_ROLES, role);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('staffRoles', role).catch(err =>
+    logger.error('Background sync failed for staff role add:', err)
+  );
 }
 
 export async function updateStaffRole(role: StaffRole): Promise<void> {
-  return update(STORES.STAFF_ROLES, role);
+  await update(STORES.STAFF_ROLES, role);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('staffRoles', role).catch(err =>
+    logger.error('Background sync failed for staff role update:', err)
+  );
 }
 
 export async function deleteStaffRole(id: string): Promise<void> {
-  return remove(STORES.STAFF_ROLES, id);
+  await remove(STORES.STAFF_ROLES, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('staffRoles', id).catch(err =>
+    logger.error('Background sync failed for staff role delete:', err)
+  );
 }
 
 // ============================================
@@ -408,15 +493,27 @@ export async function getServiceCategory(id: string): Promise<ServiceCategory | 
 }
 
 export async function addServiceCategory(category: ServiceCategory): Promise<void> {
-  return add(STORES.SERVICE_CATEGORIES, category);
+  await add(STORES.SERVICE_CATEGORIES, category);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('serviceCategories', category).catch(err =>
+    logger.error('Background sync failed for service category add:', err)
+  );
 }
 
 export async function updateServiceCategory(category: ServiceCategory): Promise<void> {
-  return update(STORES.SERVICE_CATEGORIES, category);
+  await update(STORES.SERVICE_CATEGORIES, category);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('serviceCategories', category).catch(err =>
+    logger.error('Background sync failed for service category update:', err)
+  );
 }
 
 export async function deleteServiceCategory(id: string): Promise<void> {
-  return remove(STORES.SERVICE_CATEGORIES, id);
+  await remove(STORES.SERVICE_CATEGORIES, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('serviceCategories', id).catch(err =>
+    logger.error('Background sync failed for service category delete:', err)
+  );
 }
 
 // ============================================
