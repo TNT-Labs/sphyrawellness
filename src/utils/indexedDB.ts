@@ -165,13 +165,23 @@ async function getAll<T>(storeName: string): Promise<T[]> {
 
 /**
  * Generic add operation
+ * Automatically adds createdAt and updatedAt timestamps if not present
  */
-async function add<T>(storeName: string, item: T): Promise<void> {
+async function add<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
   const database = getDB();
+
+  // Add timestamps if not present
+  const now = new Date().toISOString();
+  const itemWithTimestamps = {
+    ...item,
+    createdAt: item.createdAt || now,
+    updatedAt: item.updatedAt || now,
+  };
+
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(storeName, 'readwrite');
     const store = transaction.objectStore(storeName);
-    const request = store.add(item);
+    const request = store.add(itemWithTimestamps);
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);
@@ -180,13 +190,21 @@ async function add<T>(storeName: string, item: T): Promise<void> {
 
 /**
  * Generic update operation
+ * Automatically adds updatedAt timestamp
  */
-async function update<T>(storeName: string, item: T): Promise<void> {
+async function update<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
   const database = getDB();
+
+  // Add updatedAt timestamp
+  const itemWithTimestamp = {
+    ...item,
+    updatedAt: new Date().toISOString(),
+  };
+
   return new Promise((resolve, reject) => {
     const transaction = database.transaction(storeName, 'readwrite');
     const store = transaction.objectStore(storeName);
-    const request = store.put(item);
+    const request = store.put(itemWithTimestamp);
 
     request.onsuccess = () => resolve();
     request.onerror = () => reject(request.error);

@@ -69,51 +69,121 @@ export async function syncAdd<T extends { id: string }>(
 
   // Queue the operation to avoid concurrent modifications
   queueOperation(queueKey, async () => {
-    try {
-      const pouchDB = getPouchDB(storeName);
-      if (!pouchDB) return;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-      // Rimuovi la proprietà 'id' da IndexedDB e usa solo '_id' per PouchDB
-      // Questo evita conflitti tra le due chiavi primarie
-      const { id, ...itemWithoutId } = item;
+    while (retryCount <= MAX_RETRIES) {
+      try {
+        const pouchDB = getPouchDB(storeName);
+        if (!pouchDB) return;
 
-      // Converti l'item in formato PouchDB (aggiunge _id e _rev se necessari)
-      const pouchDoc = {
-        ...itemWithoutId,
-        _id: id,
-      };
+        // Rimuovi la proprietà 'id' da IndexedDB e usa solo '_id' per PouchDB
+        // Questo evita conflitti tra le due chiavi primarie
+        const { id, ...itemWithoutId } = item;
 
-      // Inserisci in PouchDB usando put (sovrascrive se esiste)
-      await pouchDB.put(pouchDoc);
-      logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
-    } catch (error: any) {
-      // Se l'errore è un conflitto di versione, prova a recuperare e fare merge
-      if (error.status === 409 || error.name === 'conflict') {
-        try {
-          const pouchDB = getPouchDB(storeName);
-          if (!pouchDB) return;
+        // Converti l'item in formato PouchDB (aggiunge _id e _rev se necessari)
+        const pouchDoc = {
+          ...itemWithoutId,
+          _id: id,
+        };
 
-          // Recupera il documento esistente per ottenere il _rev
-          const existingDoc = await pouchDB.get(item.id);
+        // Inserisci in PouchDB usando put (sovrascrive se esiste)
+        await pouchDB.put(pouchDoc);
+        logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
+        return; // Success, exit
+      } catch (error: any) {
+        // Se l'errore è un conflitto di versione, prova a recuperare e fare merge intelligente
+        if (error.status === 409 || error.name === 'conflict') {
+          try {
+            const pouchDB = getPouchDB(storeName);
+            if (!pouchDB) return;
 
-          // Rimuovi 'id' dall'item e mantieni _id e _rev dal documento esistente
-          const { id, ...itemWithoutId } = item;
-          const pouchDoc = {
-            ...itemWithoutId,
-            _id: id,
-            _rev: existingDoc._rev,
-          };
+            // Recupera il documento esistente per ottenere il _rev
+            const existingDoc = await pouchDB.get(item.id);
 
-          await pouchDB.put(pouchDoc);
-          logger.debug(`Resolved conflict and synced to PouchDB for ${storeName}:`, id);
-        } catch (retryError) {
-          logger.error(`Failed to resolve conflict for ${storeName}:`, retryError);
+            // Merge intelligente: confronta timestamp se disponibili
+            const { id, ...itemWithoutId } = item;
+            const mergedData = smartMerge(itemWithoutId, existingDoc);
+
+            const pouchDoc = {
+              ...mergedData,
+              _id: id,
+              _rev: existingDoc._rev,
+            };
+
+            await pouchDB.put(pouchDoc);
+            logger.info(`Resolved conflict with smart merge for ${storeName}:${id}`);
+            return; // Success after merge
+          } catch (retryError) {
+            logger.error(`Failed to resolve conflict for ${storeName}:`, retryError);
+            retryCount++;
+            if (retryCount > MAX_RETRIES) {
+              throw retryError;
+            }
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          }
+        } else if (isNetworkError(error)) {
+          // Errore di rete: retry con exponential backoff
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            logger.error(`Failed to sync add after ${MAX_RETRIES} retries for ${storeName}:`, error);
+            throw error;
+          }
+          logger.warn(`Network error, retrying (${retryCount}/${MAX_RETRIES}) for ${storeName}:${item.id}`);
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        } else {
+          logger.error(`Failed to sync add to PouchDB for ${storeName}:`, error);
+          throw error;
         }
-      } else {
-        logger.error(`Failed to sync add to PouchDB for ${storeName}:`, error);
       }
     }
   });
+}
+
+/**
+ * Smart merge: confronta timestamp e mantiene la versione più recente
+ */
+function smartMerge(localData: any, remoteDoc: any): any {
+  // Rimuovi campi interni PouchDB
+  const { _id, _rev, ...remoteData } = remoteDoc;
+
+  // Se entrambi hanno updatedAt, usa il più recente
+  if (localData.updatedAt && remoteData.updatedAt) {
+    const localTime = new Date(localData.updatedAt).getTime();
+    const remoteTime = new Date(remoteData.updatedAt).getTime();
+
+    if (localTime > remoteTime) {
+      logger.debug('Local data is newer, using local version');
+      return localData;
+    } else {
+      logger.debug('Remote data is newer, using remote version');
+      return remoteData;
+    }
+  }
+
+  // Se solo locale ha updatedAt, probabilmente è più recente
+  if (localData.updatedAt && !remoteData.updatedAt) {
+    return localData;
+  }
+
+  // Default: usa dati remoti (comportamento precedente)
+  return remoteData;
+}
+
+/**
+ * Verifica se l'errore è un errore di rete
+ */
+function isNetworkError(error: any): boolean {
+  return (
+    error.status === 0 || // Network error
+    error.status === 408 || // Request timeout
+    error.status === 504 || // Gateway timeout
+    error.name === 'NetworkError' ||
+    error.name === 'TimeoutError' ||
+    (error.message && error.message.includes('network')) ||
+    (error.message && error.message.includes('timeout'))
+  );
 }
 
 /**
@@ -127,30 +197,58 @@ export async function syncUpdate<T extends { id: string }>(
 
   // Queue the operation to avoid concurrent modifications
   queueOperation(queueKey, async () => {
-    try {
-      const pouchDB = getPouchDB(storeName);
-      if (!pouchDB) return;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-      // Recupera il documento esistente per ottenere il _rev
-      const existingDoc = await pouchDB.get(item.id);
+    while (retryCount <= MAX_RETRIES) {
+      try {
+        const pouchDB = getPouchDB(storeName);
+        if (!pouchDB) return;
 
-      // Rimuovi 'id' dall'item e usa solo '_id' per PouchDB
-      const { id, ...itemWithoutId } = item;
-      const pouchDoc = {
-        ...itemWithoutId,
-        _id: id,
-        _rev: existingDoc._rev,
-      };
+        // Recupera il documento esistente per ottenere il _rev
+        const existingDoc = await pouchDB.get(item.id);
 
-      await pouchDB.put(pouchDoc);
-      logger.debug(`Synced update to PouchDB for ${storeName}:`, id);
-    } catch (error: any) {
-      if (error.status === 404 || error.name === 'not_found') {
-        // Il documento non esiste in PouchDB, crealo
-        // NOTE: This will also be queued, ensuring serialization
-        await syncAdd(storeName, item);
-      } else {
-        logger.error(`Failed to sync update to PouchDB for ${storeName}:`, error);
+        // Merge intelligente: confronta timestamp se disponibili
+        const { id, ...itemWithoutId } = item;
+        const mergedData = smartMerge(itemWithoutId, existingDoc);
+
+        const pouchDoc = {
+          ...mergedData,
+          _id: id,
+          _rev: existingDoc._rev,
+        };
+
+        await pouchDB.put(pouchDoc);
+        logger.debug(`Synced update to PouchDB for ${storeName}:`, id);
+        return; // Success, exit
+      } catch (error: any) {
+        if (error.status === 404 || error.name === 'not_found') {
+          // Il documento non esiste in PouchDB, crealo
+          // NOTE: This will also be queued, ensuring serialization
+          await syncAdd(storeName, item);
+          return;
+        } else if (error.status === 409 || error.name === 'conflict') {
+          // Conflitto di versione, retry
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            logger.error(`Failed to sync update after ${MAX_RETRIES} retries (conflict) for ${storeName}:`, error);
+            throw error;
+          }
+          logger.warn(`Conflict error, retrying (${retryCount}/${MAX_RETRIES}) for ${storeName}:${item.id}`);
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        } else if (isNetworkError(error)) {
+          // Errore di rete: retry con exponential backoff
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            logger.error(`Failed to sync update after ${MAX_RETRIES} retries for ${storeName}:`, error);
+            throw error;
+          }
+          logger.warn(`Network error, retrying (${retryCount}/${MAX_RETRIES}) for ${storeName}:${item.id}`);
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        } else {
+          logger.error(`Failed to sync update to PouchDB for ${storeName}:`, error);
+          throw error;
+        }
       }
     }
   });
@@ -167,22 +265,39 @@ export async function syncDelete(
 
   // Queue the operation to avoid concurrent modifications
   queueOperation(queueKey, async () => {
-    try {
-      const pouchDB = getPouchDB(storeName);
-      if (!pouchDB) return;
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-      // Recupera il documento esistente per ottenere il _rev
-      const existingDoc = await pouchDB.get(id);
+    while (retryCount <= MAX_RETRIES) {
+      try {
+        const pouchDB = getPouchDB(storeName);
+        if (!pouchDB) return;
 
-      // Elimina il documento
-      await pouchDB.remove(existingDoc);
-      logger.debug(`Synced delete to PouchDB for ${storeName}:`, id);
-    } catch (error: any) {
-      if (error.status === 404) {
-        // Il documento non esiste, non è un errore
-        logger.debug(`Document already deleted from PouchDB for ${storeName}:`, id);
-      } else {
-        logger.error(`Failed to sync delete to PouchDB for ${storeName}:`, error);
+        // Recupera il documento esistente per ottenere il _rev
+        const existingDoc = await pouchDB.get(id);
+
+        // Elimina il documento
+        await pouchDB.remove(existingDoc);
+        logger.debug(`Synced delete to PouchDB for ${storeName}:`, id);
+        return; // Success, exit
+      } catch (error: any) {
+        if (error.status === 404 || error.name === 'not_found') {
+          // Il documento non esiste, non è un errore
+          logger.debug(`Document already deleted from PouchDB for ${storeName}:`, id);
+          return;
+        } else if (isNetworkError(error)) {
+          // Errore di rete: retry con exponential backoff
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            logger.error(`Failed to sync delete after ${MAX_RETRIES} retries for ${storeName}:`, error);
+            throw error;
+          }
+          logger.warn(`Network error, retrying (${retryCount}/${MAX_RETRIES}) for ${storeName}:${id}`);
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        } else {
+          logger.error(`Failed to sync delete to PouchDB for ${storeName}:`, error);
+          throw error;
+        }
       }
     }
   });

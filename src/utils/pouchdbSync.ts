@@ -44,6 +44,11 @@ let syncStartTime: number | null = null;
 // Online/Offline detection
 let isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
 let autoSyncEnabled: boolean = false;
+let connectionCheckInterval: NodeJS.Timeout | null = null;
+
+// Connection check configuration
+const CONNECTION_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
+const CONNECTION_CHECK_TIMEOUT_MS = 5000; // 5 second timeout for connection test
 
 // Sync status callbacks
 const syncStatusCallbacks: Set<(status: SyncStatus) => void> = new Set();
@@ -335,6 +340,9 @@ export async function startSync(): Promise<boolean> {
       syncHandlers[key] = sync;
     });
 
+    // Start connection monitoring
+    startConnectionMonitoring();
+
     logger.log('Synchronization started successfully');
     return true;
   } catch (error) {
@@ -355,6 +363,9 @@ export async function stopSync(): Promise<void> {
   try {
     // Disable auto-sync
     autoSyncEnabled = false;
+
+    // Stop connection monitoring
+    stopConnectionMonitoring();
 
     // Cancel all sync handlers
     const cancelPromises = Object.values(syncHandlers).map(sync => {
@@ -583,6 +594,85 @@ export function getOnlineStatus(): boolean {
 }
 
 /**
+ * Test actual connectivity to CouchDB server (more reliable than navigator.onLine)
+ */
+async function testActualConnectivity(): Promise<boolean> {
+  try {
+    const settings = await loadSettingsWithPassword();
+    if (!settings.couchdbUrl) {
+      return false;
+    }
+
+    // Create a promise that times out after CONNECTION_CHECK_TIMEOUT_MS
+    const timeoutPromise = new Promise<boolean>((_, reject) => {
+      setTimeout(() => reject(new Error('Connection test timeout')), CONNECTION_CHECK_TIMEOUT_MS);
+    });
+
+    // Create a promise that tests the connection
+    const testPromise = async (): Promise<boolean> => {
+      let remoteUrl = settings.couchdbUrl!;
+      if (settings.couchdbUsername && settings.couchdbPassword) {
+        const url = new URL(remoteUrl);
+        url.username = settings.couchdbUsername;
+        url.password = settings.couchdbPassword;
+        remoteUrl = url.toString();
+      }
+
+      // Try to access a lightweight endpoint
+      const testDB = new PouchDB(`${remoteUrl}/_users`);
+      await testDB.info();
+      await testDB.close();
+      return true;
+    };
+
+    // Race between timeout and actual test
+    return await Promise.race([testPromise(), timeoutPromise]);
+  } catch (error) {
+    logger.debug('Connectivity test failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Start periodic connection checks
+ */
+function startConnectionMonitoring(): void {
+  if (connectionCheckInterval) {
+    return; // Already monitoring
+  }
+
+  logger.log('Starting connection monitoring');
+
+  connectionCheckInterval = setInterval(async () => {
+    const wasOnline = isOnline;
+    const actuallyOnline = await testActualConnectivity();
+
+    // Update online status
+    isOnline = actuallyOnline;
+
+    // If status changed, trigger appropriate handler
+    if (wasOnline && !actuallyOnline) {
+      logger.warn('Connection lost (detected by connectivity test)');
+      handleOfflineEvent();
+    } else if (!wasOnline && actuallyOnline) {
+      logger.log('Connection restored (detected by connectivity test)');
+      handleOnlineEvent();
+    }
+  }, CONNECTION_CHECK_INTERVAL_MS);
+}
+
+/**
+ * Stop periodic connection checks
+ */
+function stopConnectionMonitoring(): void {
+  if (connectionCheckInterval) {
+    clearInterval(connectionCheckInterval);
+    connectionCheckInterval = null;
+    logger.log('Stopped connection monitoring');
+  }
+}
+
+/**
  * Initialize sync based on settings
  */
 export async function initializeSync(): Promise<void> {
@@ -593,6 +683,10 @@ export async function initializeSync(): Promise<void> {
       logger.log('Auto-starting sync based on settings');
       autoSyncEnabled = true;
 
+      // Test actual connectivity before starting
+      const actuallyOnline = await testActualConnectivity();
+      isOnline = actuallyOnline;
+
       if (isOnline) {
         await startSync();
       } else {
@@ -602,6 +696,9 @@ export async function initializeSync(): Promise<void> {
           error: 'In attesa di connessione internet',
           isActive: false,
         }, true);
+
+        // Start monitoring to detect when connection is restored
+        startConnectionMonitoring();
       }
     } else {
       logger.log('Sync is disabled or not configured');
@@ -613,7 +710,7 @@ export async function initializeSync(): Promise<void> {
       window.addEventListener('beforeunload', cleanupOnUnload);
       window.addEventListener('pagehide', cleanupOnUnload);
 
-      // Setup online/offline detection
+      // Setup online/offline detection (as fallback to periodic checks)
       window.addEventListener('online', handleOnlineEvent);
       window.addEventListener('offline', handleOfflineEvent);
 
