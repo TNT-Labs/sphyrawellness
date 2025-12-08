@@ -131,8 +131,24 @@ async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Pr
   try {
     // Step 1: Creazione istanza PouchDB
     logger.debug(`[DB-CHECK] [${dbName}] STEP 1: Creazione istanza PouchDB remoto`);
-    const fullDbUrl = `${remoteUrl.replace(/\/$/, '')}/${dbName}`;
+
+    // Normalizza l'URL rimuovendo slash finali multipli
+    const normalizedUrl = remoteUrl.replace(/\/+$/, '');
+    const fullDbUrl = `${normalizedUrl}/${dbName}`;
+
     logger.debug(`[DB-CHECK] [${dbName}] URL completo database:`, fullDbUrl.replace(/\/\/[^:]+:[^@]+@/, '//*****:*****@'));
+
+    // Verifica che non ci siano doppi slash nel percorso
+    try {
+      const urlCheck = new URL(fullDbUrl);
+      if (urlCheck.pathname.includes('//')) {
+        logger.error(`[DB-CHECK] [${dbName}] ERRORE: Rilevati doppi slash nel percorso URL:`, urlCheck.pathname);
+        return false;
+      }
+    } catch (urlError) {
+      logger.error(`[DB-CHECK] [${dbName}] ERRORE: URL non valido:`, urlError);
+      return false;
+    }
 
     let remoteDB: PouchDB.Database;
     try {
@@ -166,7 +182,16 @@ async function ensureRemoteDatabaseExists(remoteUrl: string, dbName: string): Pr
         errorName: error?.name,
         errorStatus: error?.status,
         errorMessage: error?.message,
+        errorType: typeof error,
       });
+
+      // Gestione errori specifici con messaggi più chiari
+      if (error?.message === 'Failed to fetch') {
+        logger.error(`[DB-CHECK] [${dbName}] ERRORE: Impossibile raggiungere il server (Failed to fetch)`);
+        logger.error(`[DB-CHECK] [${dbName}] Possibili cause: CORS non abilitato, server non raggiungibile, Mixed Content (HTTPS->HTTP)`);
+        await remoteDB.close().catch(() => {});
+        return false;
+      }
 
       // Database doesn't exist or other error
       if (error.status === 404 || error.name === 'not_found') {
@@ -300,8 +325,39 @@ export async function startSync(): Promise<boolean> {
 
     // Build remote URL with credentials
     logger.debug('[SYNC-START] STEP 4: Costruzione URL remoto con credenziali');
-    let remoteUrl = settings.couchdbUrl;
+    let remoteUrl = settings.couchdbUrl.trim();
     logger.debug('[SYNC-START] URL base:', remoteUrl.substring(0, 30) + '...');
+
+    // Valida URL
+    try {
+      const urlObj = new URL(remoteUrl);
+
+      // Controllo Mixed Content
+      const isPageHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      const isTargetHttp = urlObj.protocol === 'http:';
+
+      if (isPageHttps && isTargetHttp) {
+        logger.error('[SYNC-START] ERRORE: Mixed Content rilevato! Pagina HTTPS non può connettersi a server HTTP');
+        notifySyncStatusChange({
+          status: 'error',
+          error: 'Mixed Content: impossibile connettersi a server HTTP da pagina HTTPS',
+          isActive: false,
+        }, true);
+        return false;
+      }
+    } catch (urlError) {
+      logger.error('[SYNC-START] ERRORE: URL non valido:', urlError);
+      notifySyncStatusChange({
+        status: 'error',
+        error: 'URL CouchDB non valido',
+        isActive: false,
+      }, true);
+      return false;
+    }
+
+    // Normalizza URL rimuovendo slash finali
+    remoteUrl = remoteUrl.replace(/\/+$/, '');
+    logger.debug('[SYNC-START] URL normalizzato:', remoteUrl.substring(0, 30) + '...');
 
     if (settings.couchdbUsername && settings.couchdbPassword) {
       logger.debug('[SYNC-START] Aggiunta credenziali all\'URL');
@@ -309,11 +365,11 @@ export async function startSync(): Promise<boolean> {
         const url = new URL(remoteUrl);
         logger.debug('[SYNC-START] URL parsato - Protocol:', url.protocol, 'Host:', url.host);
 
-        url.username = settings.couchdbUsername;
-        url.password = settings.couchdbPassword;
+        url.username = encodeURIComponent(settings.couchdbUsername);
+        url.password = encodeURIComponent(settings.couchdbPassword);
         remoteUrl = url.toString();
 
-        logger.debug('[SYNC-START] ✓ Credenziali aggiunte all\'URL');
+        logger.debug('[SYNC-START] ✓ Credenziali aggiunte all\'URL (encoded)');
       } catch (urlError) {
         logger.error('[SYNC-START] ERRORE durante costruzione URL con credenziali:', urlError);
         return false;
@@ -563,23 +619,55 @@ export async function testCouchDBConnection(
       logger.error('[STEP 1/7] ERRORE: URL vuoto o non fornito');
       return { success: false, error: 'URL non fornito' };
     }
-    logger.debug('[STEP 1/7] URL ricevuto:', url.substring(0, 50) + (url.length > 50 ? '...' : ''));
+
+    const cleanUrl = url.trim();
+    logger.debug('[STEP 1/7] URL ricevuto:', cleanUrl.substring(0, 50) + (cleanUrl.length > 50 ? '...' : ''));
+
+    // Validazione formato URL
+    let urlObj: URL;
+    try {
+      urlObj = new URL(cleanUrl);
+    } catch (parseError) {
+      logger.error('[STEP 1/7] URL non valido:', parseError);
+      return { success: false, error: 'URL non valido. Formato richiesto: http://host:port oppure https://host:port' };
+    }
+
+    // Step 1.5: Controllo Mixed Content (HTTPS -> HTTP)
+    const isPageHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+    const isTargetHttp = urlObj.protocol === 'http:';
+
+    if (isPageHttps && isTargetHttp) {
+      logger.warn('[STEP 1.5] ATTENZIONE: Rilevato Mixed Content! Pagina HTTPS tenta connessione HTTP');
+      logger.warn('[STEP 1.5] Il browser potrebbe bloccare la richiesta per motivi di sicurezza');
+      logger.warn('[STEP 1.5] Soluzione: Usa HTTPS per CouchDB o accedi all\'app via HTTP');
+
+      return {
+        success: false,
+        error: 'Mixed Content bloccato: impossibile connettersi a un server HTTP da una pagina HTTPS. ' +
+               'Soluzione: (1) Usa https:// nell\'URL del server, oppure (2) Accedi all\'app tramite http:// invece di https://, ' +
+               'oppure (3) Configura CouchDB con certificato SSL/TLS.'
+      };
+    }
 
     // Step 2: Costruzione URL con credenziali
     logger.debug('[STEP 2/7] Costruzione URL remoto');
-    let remoteUrl = url;
+    let remoteUrl = cleanUrl;
+
+    // Normalizza URL rimuovendo slash finali multipli
+    remoteUrl = remoteUrl.replace(/\/+$/, '');
+    logger.debug('[STEP 2/7] URL normalizzato:', remoteUrl.substring(0, 50) + '...');
 
     if (username && password) {
       logger.debug('[STEP 2/7] Credenziali fornite, costruzione URL con autenticazione');
       try {
-        const urlObj = new URL(remoteUrl);
-        logger.debug('[STEP 2/7] URL parsato correttamente. Protocol:', urlObj.protocol, 'Host:', urlObj.host);
+        const authUrlObj = new URL(remoteUrl);
+        logger.debug('[STEP 2/7] URL parsato correttamente. Protocol:', authUrlObj.protocol, 'Host:', authUrlObj.host);
 
-        urlObj.username = username;
-        urlObj.password = password;
-        logger.debug('[STEP 2/7] Credenziali aggiunte all\'URL');
+        authUrlObj.username = encodeURIComponent(username);
+        authUrlObj.password = encodeURIComponent(password);
+        logger.debug('[STEP 2/7] Credenziali aggiunte all\'URL (encoded)');
 
-        remoteUrl = urlObj.toString();
+        remoteUrl = authUrlObj.toString();
         logger.debug('[STEP 2/7] URL completo costruito (lunghezza:', remoteUrl.length, ')');
       } catch (urlError) {
         logger.error('[STEP 2/7] ERRORE durante il parsing dell\'URL:', urlError);
@@ -594,12 +682,28 @@ export async function testCouchDBConnection(
 
     // Step 3: Creazione istanza PouchDB
     logger.debug('[STEP 3/7] Creazione istanza PouchDB per test');
-    const testDbUrl = `${remoteUrl.replace(/\/$/, '')}/sphyra-test-connection`;
+
+    // Costruisci URL database assicurandoti che non ci siano doppi slash
+    const baseUrl = remoteUrl.replace(/\/+$/, ''); // Rimuovi tutti gli slash finali
+    const testDbUrl = `${baseUrl}/sphyra-test-connection`;
+
     logger.debug('[STEP 3/7] URL database di test:', testDbUrl.replace(/\/\/[^:]+:[^@]+@/, '//*****:*****@'));
+
+    // Verifica che non ci siano doppi slash nel percorso
+    const urlCheck = new URL(testDbUrl);
+    if (urlCheck.pathname.includes('//')) {
+      logger.error('[STEP 3/7] ERRORE: Rilevati doppi slash nel percorso URL:', urlCheck.pathname);
+      return {
+        success: false,
+        error: 'URL malformato: percorso contiene doppi slash. Verifica l\'URL del server.'
+      };
+    }
 
     let testDB: PouchDB.Database;
     try {
-      testDB = new PouchDB(testDbUrl);
+      testDB = new PouchDB(testDbUrl, {
+        skip_setup: true, // Non creare il database automaticamente
+      });
       logger.debug('[STEP 3/7] Istanza PouchDB creata con successo');
     } catch (pouchError) {
       logger.error('[STEP 3/7] ERRORE durante la creazione dell\'istanza PouchDB:', pouchError);
@@ -647,11 +751,28 @@ export async function testCouchDBConnection(
         logger.warn('[STEP 4/7] Errore durante chiusura connessione:', closeError);
       }
 
+      // Analizza l'errore per fornire messaggi più chiari
+      let userFriendlyError = 'Errore durante il test della connessione';
+
+      if (infoError?.message === 'Failed to fetch') {
+        userFriendlyError = 'Impossibile raggiungere il server. Verifica che: ' +
+                          '(1) CouchDB sia in esecuzione, ' +
+                          '(2) L\'URL sia corretto, ' +
+                          '(3) CORS sia abilitato su CouchDB, ' +
+                          '(4) Non ci siano problemi di rete o firewall.';
+      } else if (infoError?.status === 401 || infoError?.name === 'unauthorized') {
+        userFriendlyError = 'Autenticazione fallita. Verifica username e password.';
+      } else if (infoError?.status === 404) {
+        userFriendlyError = 'Database non trovato (404). Il database verrà creato automaticamente durante la sincronizzazione.';
+      } else if (infoError?.status === 403) {
+        userFriendlyError = 'Accesso negato (403). Verifica i permessi dell\'utente su CouchDB.';
+      } else if (infoError instanceof Error) {
+        userFriendlyError = `${infoError.name}: ${infoError.message}${(infoError as any).status ? ` (HTTP ${(infoError as any).status})` : ''}`;
+      }
+
       return {
         success: false,
-        error: infoError instanceof Error
-          ? `${infoError.name}: ${infoError.message}${(infoError as any).status ? ` (HTTP ${(infoError as any).status})` : ''}`
-          : 'Errore durante il test della connessione'
+        error: userFriendlyError
       };
     }
 
@@ -724,11 +845,37 @@ export async function performOneTimeSync(): Promise<boolean> {
     initializeLocalDatabases();
 
     // Build remote URL with credentials
-    let remoteUrl = settings.couchdbUrl;
+    let remoteUrl = settings.couchdbUrl.trim();
+
+    // Valida e normalizza URL
+    try {
+      const urlObj = new URL(remoteUrl);
+
+      // Controllo Mixed Content
+      const isPageHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      const isTargetHttp = urlObj.protocol === 'http:';
+
+      if (isPageHttps && isTargetHttp) {
+        logger.error('[ONE-TIME-SYNC] ERRORE: Mixed Content rilevato');
+        notifySyncStatusChange({
+          status: 'error',
+          error: 'Mixed Content: impossibile connettersi a server HTTP da pagina HTTPS',
+          isActive: false,
+        }, true);
+        return false;
+      }
+    } catch (urlError) {
+      logger.error('[ONE-TIME-SYNC] ERRORE: URL non valido:', urlError);
+      return false;
+    }
+
+    // Normalizza URL
+    remoteUrl = remoteUrl.replace(/\/+$/, '');
+
     if (settings.couchdbUsername && settings.couchdbPassword) {
       const url = new URL(remoteUrl);
-      url.username = settings.couchdbUsername;
-      url.password = settings.couchdbPassword;
+      url.username = encodeURIComponent(settings.couchdbUsername);
+      url.password = encodeURIComponent(settings.couchdbPassword);
       remoteUrl = url.toString();
     }
 
@@ -887,16 +1034,17 @@ async function testActualConnectivity(): Promise<boolean> {
 
     // Create a promise that tests the connection
     const testPromise = async (): Promise<boolean> => {
-      let remoteUrl = settings.couchdbUrl!;
+      let remoteUrl = settings.couchdbUrl!.trim().replace(/\/+$/, '');
+
       if (settings.couchdbUsername && settings.couchdbPassword) {
         const url = new URL(remoteUrl);
-        url.username = settings.couchdbUsername;
-        url.password = settings.couchdbPassword;
+        url.username = encodeURIComponent(settings.couchdbUsername);
+        url.password = encodeURIComponent(settings.couchdbPassword);
         remoteUrl = url.toString();
       }
 
       // Try to access a lightweight endpoint
-      const testDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/_users`);
+      const testDB = new PouchDB(`${remoteUrl}/_users`);
       await testDB.info();
       await testDB.close();
       return true;
