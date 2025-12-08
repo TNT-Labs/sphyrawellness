@@ -8,12 +8,15 @@ export interface Customer {
   notes?: string;
   allergies?: string;
   createdAt: string;
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface StaffRole {
   id: string;
   name: string;
   isActive: boolean;
+  createdAt?: string; // ISO timestamp of creation
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface ServiceCategory {
@@ -21,6 +24,8 @@ export interface ServiceCategory {
   name: string;
   color: string;
   isActive: boolean;
+  createdAt?: string; // ISO timestamp of creation
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface Service {
@@ -31,6 +36,8 @@ export interface Service {
   price: number;
   category: string;
   color?: string;
+  createdAt?: string; // ISO timestamp of creation
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface Staff {
@@ -43,6 +50,8 @@ export interface Staff {
   specializations: string[]; // Array of category IDs
   color: string;
   isActive: boolean;
+  createdAt?: string; // ISO timestamp of creation
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface Appointment {
@@ -57,6 +66,7 @@ export interface Appointment {
   notes?: string;
   reminderSent?: boolean;
   createdAt: string;
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface Payment {
@@ -66,6 +76,8 @@ export interface Payment {
   method: 'cash' | 'card' | 'transfer' | 'other';
   date: string;
   notes?: string;
+  createdAt?: string; // ISO timestamp of creation
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface Reminder {
@@ -75,6 +87,8 @@ export interface Reminder {
   scheduledFor: string;
   sent: boolean;
   sentAt?: string;
+  createdAt?: string; // ISO timestamp of creation
+  updatedAt?: string; // ISO timestamp of last modification
 }
 
 export interface Statistics {
