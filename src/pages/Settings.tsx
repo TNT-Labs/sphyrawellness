@@ -6,7 +6,7 @@ import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
 import { exportAllData, clearAllData, getDBStats, importAllData } from '../utils/db';
 import { getAvailableBackups, restoreFromBackup, deleteBackup } from '../utils/autoBackup';
 import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/storagePersistence';
-import { loadSettings, saveSettings } from '../utils/storage';
+import { loadSettings, loadSettingsWithPassword, saveSettings } from '../utils/storage';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
@@ -44,10 +44,16 @@ const Settings: React.FC = () => {
   const [categoryFormData, setCategoryFormData] = useState({ name: '', color: '#3b82f6' });
 
   useEffect(() => {
-    loadStats();
-    loadBackups();
-    loadStorageInfo();
-    loadAppSettings();
+    const initialize = async () => {
+      await Promise.all([
+        loadStats(),
+        loadBackups(),
+        loadStorageInfo(),
+        loadAppSettings(),
+      ]);
+    };
+
+    initialize();
 
     // Subscribe to sync status changes
     const unsubscribe = onSyncStatusChange((status) => {
@@ -59,13 +65,23 @@ const Settings: React.FC = () => {
     };
   }, []);
 
-  const loadAppSettings = () => {
-    const settings = loadSettings();
-    setIdleTimeout(settings.idleTimeout);
-    setSyncEnabled(settings.syncEnabled || false);
-    setCouchdbUrl(settings.couchdbUrl || '');
-    setCouchdbUsername(settings.couchdbUsername || '');
-    setCouchdbPassword(settings.couchdbPassword || '');
+  const loadAppSettings = async () => {
+    try {
+      const settings = await loadSettingsWithPassword();
+      setIdleTimeout(settings.idleTimeout);
+      setSyncEnabled(settings.syncEnabled || false);
+      setCouchdbUrl(settings.couchdbUrl || '');
+      setCouchdbUsername(settings.couchdbUsername || '');
+      setCouchdbPassword(settings.couchdbPassword || '');
+    } catch (error) {
+      logger.error('Failed to load settings:', error);
+      // Load without password as fallback
+      const settings = loadSettings();
+      setIdleTimeout(settings.idleTimeout);
+      setSyncEnabled(settings.syncEnabled || false);
+      setCouchdbUrl(settings.couchdbUrl || '');
+      setCouchdbUsername(settings.couchdbUsername || '');
+    }
   };
 
   const loadStats = async () => {
