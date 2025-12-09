@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { Appointment } from '../../types';
 import { Trash2 } from 'lucide-react';
@@ -9,6 +9,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { logger } from '../../utils/logger';
+import SearchableSelect, { SearchableOption } from '../SearchableSelect';
 
 interface AppointmentModalProps {
   isOpen: boolean;
@@ -44,6 +45,26 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
     notes: '',
     status: 'scheduled' as Appointment['status'],
   });
+
+  // Prepara le opzioni per il SearchableSelect dei clienti
+  const customerOptions: SearchableOption[] = useMemo(() => {
+    return customers.map((customer) => ({
+      id: customer.id,
+      label: `${customer.firstName} ${customer.lastName}`,
+      secondaryLabel: customer.email,
+      metadata: customer.phone,
+    }));
+  }, [customers]);
+
+  // Prepara le opzioni per il SearchableSelect dei servizi
+  const serviceOptions: SearchableOption[] = useMemo(() => {
+    return services.map((service) => ({
+      id: service.id,
+      label: service.name,
+      secondaryLabel: service.description,
+      metadata: `€${service.price.toFixed(2)} • ${service.duration} min`,
+    }));
+  }, [services]);
 
   useEffect(() => {
     if (editingAppointment) {
@@ -171,57 +192,42 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
             </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="label">Cliente *</label>
-                <select
-                  required
-                  value={formData.customerId}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customerId: e.target.value })
+              <SearchableSelect
+                label="Cliente"
+                options={customerOptions}
+                value={formData.customerId}
+                onChange={(value) =>
+                  setFormData({ ...formData, customerId: value })
+                }
+                placeholder="Cerca cliente per nome, email o telefono..."
+                noOptionsMessage="Nessun cliente trovato"
+                required
+              />
+
+              <SearchableSelect
+                label="Servizio"
+                options={serviceOptions}
+                value={formData.serviceId}
+                onChange={(newServiceId) => {
+                  const newService = services.find(s => s.id === newServiceId);
+                  const currentStaff = staff.find(s => s.id === formData.staffId);
+
+                  // Se l'operatore corrente non ha la specializzazione per il nuovo servizio, resettalo
+                  let newStaffId = formData.staffId;
+                  if (newService && currentStaff && !currentStaff.specializations.includes(newService.category)) {
+                    newStaffId = '';
                   }
-                  className="input"
-                >
-                  <option value="">Seleziona un cliente</option>
-                  {customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>
-                      {customer.firstName} {customer.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
-              <div>
-                <label className="label">Servizio *</label>
-                <select
-                  required
-                  value={formData.serviceId}
-                  onChange={(e) => {
-                    const newServiceId = e.target.value;
-                    const newService = services.find(s => s.id === newServiceId);
-                    const currentStaff = staff.find(s => s.id === formData.staffId);
-
-                    // Se l'operatore corrente non ha la specializzazione per il nuovo servizio, resettalo
-                    let newStaffId = formData.staffId;
-                    if (newService && currentStaff && !currentStaff.specializations.includes(newService.category)) {
-                      newStaffId = '';
-                    }
-
-                    setFormData({
-                      ...formData,
-                      serviceId: newServiceId,
-                      staffId: newStaffId
-                    });
-                  }}
-                  className="input"
-                >
-                  <option value="">Seleziona un servizio</option>
-                  {services.map((service) => (
-                    <option key={service.id} value={service.id}>
-                      {service.name} - €{service.price} ({service.duration} min)
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  setFormData({
+                    ...formData,
+                    serviceId: newServiceId,
+                    staffId: newStaffId
+                  });
+                }}
+                placeholder="Cerca servizio per nome o descrizione..."
+                noOptionsMessage="Nessun servizio trovato"
+                required
+              />
 
               <div>
                 <label className="label">Operatore *</label>
