@@ -4,11 +4,12 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Service } from '../types';
-import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar } from 'lucide-react';
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteService } from '../utils/db';
 import { logger } from '../utils/logger';
+import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService, serviceCategories } = useApp();
@@ -17,6 +18,8 @@ const Services: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
 
   // Debounce search
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -128,6 +131,16 @@ const Services: React.FC = () => {
     }
   };
 
+  const handleOpenAppointmentModal = (serviceId: string) => {
+    setSelectedServiceId(serviceId);
+    setIsAppointmentModalOpen(true);
+  };
+
+  const handleCloseAppointmentModal = () => {
+    setIsAppointmentModalOpen(false);
+    setSelectedServiceId(undefined);
+  };
+
   return (
     <>
       <ConfirmationDialog />
@@ -227,21 +240,30 @@ const Services: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4 border-t border-gray-200">
+              <div className="space-y-2 pt-4 border-t border-gray-200">
                 <button
-                  onClick={() => handleOpenModal(service)}
-                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
+                  onClick={() => handleOpenAppointmentModal(service.id)}
+                  className="w-full px-3 py-2 bg-primary-50 text-primary-600 rounded-md hover:bg-primary-100 transition-colors text-sm font-semibold touch-manipulation"
                 >
-                  <Edit size={16} className="inline mr-1" />
-                  Modifica
+                  <Calendar size={16} className="inline mr-1" />
+                  Nuovo Appuntamento
                 </button>
-                <button
-                  onClick={() => handleDelete(service)}
-                  className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
-                >
-                  <Trash2 size={16} className="inline mr-1" />
-                  Elimina
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleOpenModal(service)}
+                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
+                  >
+                    <Edit size={16} className="inline mr-1" />
+                    Modifica
+                  </button>
+                  <button
+                    onClick={() => handleDelete(service)}
+                    className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
+                  >
+                    <Trash2 size={16} className="inline mr-1" />
+                    Elimina
+                  </button>
+                </div>
               </div>
             </div>
             );
@@ -431,6 +453,14 @@ const Services: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Appointment Modal */}
+      <AppointmentModal
+        isOpen={isAppointmentModalOpen}
+        onClose={handleCloseAppointmentModal}
+        editingAppointment={null}
+        initialServiceId={selectedServiceId}
+      />
     </div>
     </>
   );

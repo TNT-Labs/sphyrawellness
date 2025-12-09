@@ -16,6 +16,8 @@ interface AppointmentModalProps {
   onClose: () => void;
   editingAppointment: Appointment | null;
   selectedDate?: Date;
+  initialCustomerId?: string;
+  initialServiceId?: string;
 }
 
 const AppointmentModal: React.FC<AppointmentModalProps> = ({
@@ -23,6 +25,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   onClose,
   editingAppointment,
   selectedDate,
+  initialCustomerId,
+  initialServiceId,
 }) => {
   const {
     addAppointment,
@@ -79,8 +83,8 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       });
     } else {
       setFormData({
-        customerId: '',
-        serviceId: '',
+        customerId: initialCustomerId || '',
+        serviceId: initialServiceId || '',
         staffId: '',
         date: selectedDate
           ? format(selectedDate, 'yyyy-MM-dd')
@@ -90,7 +94,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         status: 'scheduled',
       });
     }
-  }, [editingAppointment, selectedDate]);
+  }, [editingAppointment, selectedDate, initialCustomerId, initialServiceId]);
 
   useEscapeKey(onClose, isOpen);
 

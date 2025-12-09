@@ -4,12 +4,13 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Customer } from '../types';
-import { Plus, Search, Edit, Trash2, Phone, Mail, User } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Phone, Mail, User, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteCustomer } from '../utils/db';
 import { logger } from '../utils/logger';
+import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useApp();
@@ -18,6 +19,8 @@ const Customers: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(undefined);
 
   // Debounce search term
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -147,6 +150,16 @@ const Customers: React.FC = () => {
     }
   };
 
+  const handleOpenAppointmentModal = (customerId: string) => {
+    setSelectedCustomerId(customerId);
+    setIsAppointmentModalOpen(true);
+  };
+
+  const handleCloseAppointmentModal = () => {
+    setIsAppointmentModalOpen(false);
+    setSelectedCustomerId(undefined);
+  };
+
   return (
     <>
       <ConfirmationDialog />
@@ -247,21 +260,30 @@ const Customers: React.FC = () => {
                 </p>
               )}
 
-              <div className="flex gap-2 pt-4 border-t border-gray-200">
+              <div className="space-y-2 pt-4 border-t border-gray-200">
                 <button
-                  onClick={() => handleOpenModal(customer)}
-                  className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
+                  onClick={() => handleOpenAppointmentModal(customer.id)}
+                  className="w-full px-3 py-2 bg-primary-50 text-primary-600 rounded-md hover:bg-primary-100 transition-colors text-sm font-semibold touch-manipulation"
                 >
-                  <Edit size={16} className="inline mr-1" />
-                  Modifica
+                  <Calendar size={16} className="inline mr-1" />
+                  Nuovo Appuntamento
                 </button>
-                <button
-                  onClick={() => handleDelete(customer)}
-                  className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
-                >
-                  <Trash2 size={16} className="inline mr-1" />
-                  Elimina
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleOpenModal(customer)}
+                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
+                  >
+                    <Edit size={16} className="inline mr-1" />
+                    Modifica
+                  </button>
+                  <button
+                    onClick={() => handleDelete(customer)}
+                    className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
+                  >
+                    <Trash2 size={16} className="inline mr-1" />
+                    Elimina
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -389,6 +411,14 @@ const Customers: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Appointment Modal */}
+      <AppointmentModal
+        isOpen={isAppointmentModalOpen}
+        onClose={handleCloseAppointmentModal}
+        editingAppointment={null}
+        initialCustomerId={selectedCustomerId}
+      />
     </div>
     </>
   );
