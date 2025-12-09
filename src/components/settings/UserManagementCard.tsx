@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Users, Plus, Edit, Trash2, Eye, EyeOff, Shield, User as UserIcon } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Eye, EyeOff, Shield, User as UserIcon, AlertCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -144,10 +144,11 @@ export default function UserManagementCard(): JSX.Element {
       return;
     }
 
-    const confirmed = await confirm(
-      `Eliminare l'utente "${user.username}"?`,
-      'Questa azione non può essere annullata.'
-    );
+    const confirmed = await confirm({
+      title: `Eliminare l'utente "${user.username}"?`,
+      message: 'Questa azione non può essere annullata.',
+      variant: 'danger',
+    });
 
     if (confirmed) {
       try {
