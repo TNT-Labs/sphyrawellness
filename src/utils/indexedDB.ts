@@ -11,13 +11,14 @@ import {
   Payment,
   Reminder,
   StaffRole,
-  ServiceCategory
+  ServiceCategory,
+  User
 } from '../types';
 import { logger } from './logger';
 import { syncAdd, syncUpdate, syncDelete } from './dbBridge';
 
 const DB_NAME = 'sphyra-wellness-db';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 // Object store names
 const STORES = {
@@ -29,6 +30,7 @@ const STORES = {
   REMINDERS: 'reminders',
   STAFF_ROLES: 'staffRoles',
   SERVICE_CATEGORIES: 'serviceCategories',
+  USERS: 'users',
 } as const;
 
 let db: IDBDatabase | null = null;
@@ -116,6 +118,12 @@ export async function initIndexedDB(): Promise<void> {
 
       if (!database.objectStoreNames.contains(STORES.SERVICE_CATEGORIES)) {
         database.createObjectStore(STORES.SERVICE_CATEGORIES, { keyPath: 'id' });
+      }
+
+      if (!database.objectStoreNames.contains(STORES.USERS)) {
+        const userStore = database.createObjectStore(STORES.USERS, { keyPath: 'id' });
+        userStore.createIndex('username', 'username', { unique: true });
+        userStore.createIndex('role', 'role', { unique: false });
       }
 
       logger.info('IndexedDB schema upgraded to version', DB_VERSION);
@@ -667,6 +675,7 @@ export async function getDatabaseStats(): Promise<{
   reminders: number;
   staffRoles: number;
   serviceCategories: number;
+  users: number;
 }> {
   const [
     customers,
@@ -677,6 +686,7 @@ export async function getDatabaseStats(): Promise<{
     reminders,
     staffRoles,
     serviceCategories,
+    users,
   ] = await Promise.all([
     getAllCustomers(),
     getAllServices(),
@@ -686,6 +696,7 @@ export async function getDatabaseStats(): Promise<{
     getAllReminders(),
     getAllStaffRoles(),
     getAllServiceCategories(),
+    getAllUsers(),
   ]);
 
   return {
@@ -697,6 +708,7 @@ export async function getDatabaseStats(): Promise<{
     reminders: reminders.length,
     staffRoles: staffRoles.length,
     serviceCategories: serviceCategories.length,
+    users: users.length,
   };
 }
 
@@ -712,6 +724,7 @@ export async function exportData(): Promise<{
   reminders: Reminder[];
   staffRoles: StaffRole[];
   serviceCategories: ServiceCategory[];
+  users: User[];
 }> {
   const [
     customers,
@@ -722,6 +735,7 @@ export async function exportData(): Promise<{
     reminders,
     staffRoles,
     serviceCategories,
+    users,
   ] = await Promise.all([
     getAllCustomers(),
     getAllServices(),
@@ -731,6 +745,7 @@ export async function exportData(): Promise<{
     getAllReminders(),
     getAllStaffRoles(),
     getAllServiceCategories(),
+    getAllUsers(),
   ]);
 
   return {
@@ -742,6 +757,7 @@ export async function exportData(): Promise<{
     reminders,
     staffRoles,
     serviceCategories,
+    users,
   };
 }
 
@@ -757,6 +773,7 @@ export async function importData(data: {
   reminders?: Reminder[];
   staffRoles?: StaffRole[];
   serviceCategories?: ServiceCategory[];
+  users?: User[];
 }): Promise<void> {
   const database = getDB();
 
@@ -771,6 +788,7 @@ export async function importData(data: {
         STORES.REMINDERS,
         STORES.STAFF_ROLES,
         STORES.SERVICE_CATEGORIES,
+        STORES.USERS,
       ],
       'readwrite'
     );
@@ -818,8 +836,58 @@ export async function importData(data: {
       const store = transaction.objectStore(STORES.SERVICE_CATEGORIES);
       data.serviceCategories.forEach(item => store.put(item));
     }
+
+    if (data.users) {
+      const store = transaction.objectStore(STORES.USERS);
+      data.users.forEach(item => store.put(item));
+    }
   });
 }
+
+// ============================================
+// CRUD Operations for Users
+// ============================================
+
+export async function getAllUsers(): Promise<User[]> {
+  return getAll<User>(STORES.USERS);
+}
+
+export async function getUser(id: string): Promise<User | undefined> {
+  return get<User>(STORES.USERS, id);
+}
+
+export async function getUserByUsername(username: string): Promise<User | undefined> {
+  const users = await getByIndex<User>(STORES.USERS, 'username', username);
+  return users[0];
+}
+
+export async function addUser(user: User): Promise<void> {
+  await add(STORES.USERS, user);
+  // Sync to PouchDB in background (non-blocking)
+  syncAdd('users', user).catch(err =>
+    logger.error('Background sync failed for user add:', err)
+  );
+}
+
+export async function updateUser(user: User): Promise<void> {
+  await update(STORES.USERS, user);
+  // Sync to PouchDB in background (non-blocking)
+  syncUpdate('users', user).catch(err =>
+    logger.error('Background sync failed for user update:', err)
+  );
+}
+
+export async function deleteUser(id: string): Promise<void> {
+  await remove(STORES.USERS, id);
+  // Sync to PouchDB in background (non-blocking)
+  syncDelete('users', id).catch(err =>
+    logger.error('Background sync failed for user delete:', err)
+  );
+}
+
+// ============================================
+// Utility Functions
+// ============================================
 
 /**
  * Clear all data from database
@@ -838,6 +906,7 @@ export async function clearAllData(): Promise<void> {
         STORES.REMINDERS,
         STORES.STAFF_ROLES,
         STORES.SERVICE_CATEGORIES,
+        STORES.USERS,
       ],
       'readwrite'
     );
@@ -854,5 +923,6 @@ export async function clearAllData(): Promise<void> {
     transaction.objectStore(STORES.REMINDERS).clear();
     transaction.objectStore(STORES.STAFF_ROLES).clear();
     transaction.objectStore(STORES.SERVICE_CATEGORIES).clear();
+    transaction.objectStore(STORES.USERS).clear();
   });
 }

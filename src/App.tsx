@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './contexts/AppContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
+import PrivateRoute from './components/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import IdleSplashScreen from './components/IdleSplashScreen';
 import { useIdleDetection } from './hooks/useIdleDetection';
 import { loadSettings } from './utils/storage';
 
 // Eager load all pages to prevent loading issues on page refresh
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CalendarPage from './pages/CalendarPage';
 import Customers from './pages/Customers';
@@ -71,23 +74,36 @@ const AppContent: React.FC = () => {
             <GlobalLoader />
           ) : (
             <Router basename="/sphyrawellness">
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/calendario" element={<CalendarPage />} />
-                  <Route path="/clienti" element={<Customers />} />
-                  <Route path="/servizi" element={<Services />} />
-                  <Route path="/personale" element={<StaffPage />} />
-                  <Route path="/pagamenti" element={<Payments />} />
-                  <Route path="/reminder" element={<Reminders />} />
-                  <Route path="/statistiche" element={<Statistics />} />
-                  <Route path="/manuale" element={<UserManual />} />
-                  <Route path="/impostazioni" element={<Settings />} />
-                  <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
-                  <Route path="/confirm-appointment/success" element={<ConfirmAppointment />} />
-                  <Route path="/confirm-appointment/error" element={<ConfirmAppointment />} />
-                </Routes>
-              </Layout>
+              <Routes>
+                {/* Public route for login */}
+                <Route path="/login" element={<Login />} />
+
+                {/* Protected routes */}
+                <Route
+                  path="/*"
+                  element={
+                    <PrivateRoute>
+                      <Layout>
+                        <Routes>
+                          <Route path="/" element={<Dashboard />} />
+                          <Route path="/calendario" element={<CalendarPage />} />
+                          <Route path="/clienti" element={<Customers />} />
+                          <Route path="/servizi" element={<Services />} />
+                          <Route path="/personale" element={<StaffPage />} />
+                          <Route path="/pagamenti" element={<Payments />} />
+                          <Route path="/reminder" element={<Reminders />} />
+                          <Route path="/statistiche" element={<Statistics />} />
+                          <Route path="/manuale" element={<UserManual />} />
+                          <Route path="/impostazioni" element={<Settings />} />
+                          <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
+                          <Route path="/confirm-appointment/success" element={<ConfirmAppointment />} />
+                          <Route path="/confirm-appointment/error" element={<ConfirmAppointment />} />
+                        </Routes>
+                      </Layout>
+                    </PrivateRoute>
+                  }
+                />
+              </Routes>
             </Router>
           )}
         </>
@@ -100,7 +116,9 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </ToastProvider>
     </ErrorBoundary>
   );

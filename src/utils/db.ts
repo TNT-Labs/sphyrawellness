@@ -4,7 +4,7 @@
  */
 
 import * as IndexedDB from './indexedDB';
-import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory } from '../types';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory, User } from '../types';
 import { logger } from './logger';
 
 /**
@@ -101,6 +101,17 @@ export const getServiceCategory = IndexedDB.getServiceCategory;
 export const addServiceCategory = IndexedDB.addServiceCategory;
 export const updateServiceCategory = IndexedDB.updateServiceCategory;
 export const deleteServiceCategory = IndexedDB.deleteServiceCategory;
+
+// ============================================
+// CRUD Operations for Users
+// ============================================
+
+export const getAllUsers = IndexedDB.getAllUsers;
+export const getUser = IndexedDB.getUser;
+export const getUserByUsername = IndexedDB.getUserByUsername;
+export const addUser = IndexedDB.addUser;
+export const updateUser = IndexedDB.updateUser;
+export const deleteUser = IndexedDB.deleteUser;
 
 // ============================================
 // Utility Functions

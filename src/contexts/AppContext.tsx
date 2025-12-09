@@ -8,6 +8,7 @@ import {
   Reminder,
   StaffRole,
   ServiceCategory,
+  User,
 } from '../types';
 import {
   initDB,
@@ -39,6 +40,10 @@ import {
   addServiceCategory as dbAddServiceCategory,
   updateServiceCategory as dbUpdateServiceCategory,
   deleteServiceCategory as dbDeleteServiceCategory,
+  getAllUsers,
+  addUser as dbAddUser,
+  updateUser as dbUpdateUser,
+  deleteUser as dbDeleteUser,
 } from '../utils/db';
 import { migrateFromLocalStorage } from '../utils/migration';
 import { initializeDemoData } from '../utils/storage';
@@ -46,6 +51,7 @@ import { logger } from '../utils/logger';
 import { initAutoBackup } from '../utils/autoBackup';
 import { initStoragePersistence } from '../utils/storagePersistence';
 import { initializeSync } from '../utils/pouchdbSync';
+import { hashPassword } from '../utils/auth';
 
 interface AppContextType {
   // Loading state
@@ -94,6 +100,12 @@ interface AppContextType {
   addServiceCategory: (_category: ServiceCategory) => Promise<void>;
   updateServiceCategory: (_category: ServiceCategory) => Promise<void>;
   deleteServiceCategory: (_id: string) => Promise<void>;
+
+  // Users
+  users: User[];
+  addUser: (_user: User) => Promise<void>;
+  updateUser: (_user: User) => Promise<void>;
+  deleteUser: (_id: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -108,6 +120,7 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [staffRoles, setStaffRoles] = useState<StaffRole[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   // Initialize database and load data
   useEffect(() => {
@@ -143,6 +156,7 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
           loadedReminders,
           loadedStaffRoles,
           loadedServiceCategories,
+          loadedUsers,
         ] = await Promise.all([
           getAllCustomers(),
           getAllServices(),
@@ -152,6 +166,7 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
           getAllReminders(),
           getAllStaffRoles(),
           getAllServiceCategories(),
+          getAllUsers(),
         ]);
 
         if (!isMounted) return;
@@ -196,6 +211,26 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
         setAppointments(loadedAppointments);
         setPayments(loadedPayments);
         setReminders(loadedReminders);
+        setUsers(loadedUsers);
+
+        // Step 5.5: Initialize default admin user if no users exist
+        if (loadedUsers.length === 0) {
+          logger.log('No users found, creating default admin user...');
+          const defaultAdminPassword = await hashPassword('admin123');
+          const defaultAdmin: User = {
+            id: 'admin-default-' + Date.now(),
+            username: 'admin',
+            passwordHash: defaultAdminPassword,
+            role: 'RESPONSABILE',
+            firstName: 'Admin',
+            lastName: 'Default',
+            isActive: true,
+            createdAt: new Date().toISOString(),
+          };
+          await dbAddUser(defaultAdmin);
+          setUsers([defaultAdmin]);
+          logger.log('✓ Default admin user created (username: admin, password: admin123)');
+        }
 
         logger.log('✓ App data loaded successfully');
 
@@ -441,6 +476,37 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     }
   };
 
+  // Users
+  const addUser = async (user: User) => {
+    try {
+      await dbAddUser(user);
+      setUsers((prev) => [...prev, user]);
+    } catch (error) {
+      logger.error('Failed to add user:', error);
+      throw error;
+    }
+  };
+
+  const updateUser = async (user: User) => {
+    try {
+      await dbUpdateUser(user);
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
+    } catch (error) {
+      logger.error('Failed to update user:', error);
+      throw error;
+    }
+  };
+
+  const deleteUser = async (id: string) => {
+    try {
+      await dbDeleteUser(id);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+    } catch (error) {
+      logger.error('Failed to delete user:', error);
+      throw error;
+    }
+  };
+
   const value: AppContextType = {
     isLoading,
     customers,
@@ -471,6 +537,10 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     addServiceCategory,
     updateServiceCategory,
     deleteServiceCategory,
+    users,
+    addUser,
+    updateUser,
+    deleteUser,
   };
 
   return (

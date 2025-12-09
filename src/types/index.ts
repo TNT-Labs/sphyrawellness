@@ -128,3 +128,18 @@ export interface SyncStatus {
   lastSyncDuration?: number; // Last sync duration in ms
   syncErrors?: string[]; // Recent errors (max 10)
 }
+
+export type UserRole = 'RESPONSABILE' | 'UTENTE';
+
+export interface User {
+  id: string;
+  username: string;
+  passwordHash: string; // SHA-256 hash
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string; // ISO timestamp of last modification
+}
