@@ -20,6 +20,7 @@ const DB_NAME_MAPPING = {
   reminders: 'sphyra-reminders',
   staffRoles: 'sphyra-staff-roles',
   serviceCategories: 'sphyra-service-categories',
+  users: 'sphyra-users',
 } as const;
 
 type StoreType = keyof typeof DB_NAME_MAPPING;
