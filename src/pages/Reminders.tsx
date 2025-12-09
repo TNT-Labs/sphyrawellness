@@ -4,11 +4,14 @@ import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, Refres
 import { format, parseISO, addHours } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../hooks/useConfirm';
 import { remindersApi } from '../utils/api';
+import { logger } from '../utils/logger';
 
 const Reminders: React.FC = () => {
-  const { appointments, customers, services, staff, reminders } = useApp();
+  const { appointments, customers, services, staff, reminders, refreshAppointments, refreshReminders } = useApp();
   const { showSuccess, showError } = useToast();
+  const { confirm, ConfirmationDialog } = useConfirm();
   const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
   const [sendingAll, setSendingAll] = useState(false);
 
@@ -69,10 +72,11 @@ const Reminders: React.FC = () => {
       await remindersApi.sendForAppointment(appointmentId);
       showSuccess('Reminder email inviato con successo!');
 
-      // Reload page to update the list
-      window.location.reload();
+      // Refresh data from database
+      await refreshAppointments();
+      await refreshReminders();
     } catch (error: any) {
-      console.error('Error sending reminder:', error);
+      logger.error('Error sending reminder:', error);
       showError(`Errore nell'invio del reminder: ${error.message}`);
     } finally {
       setSendingReminders(prev => {
@@ -89,9 +93,12 @@ const Reminders: React.FC = () => {
       return;
     }
 
-    const confirmed = window.confirm(
-      `Confermi l'invio di ${appointmentsNeedingReminders.length} reminder via email?`
-    );
+    const confirmed = await confirm({
+      title: 'Conferma Invio Reminder',
+      message: `Confermi l'invio di ${appointmentsNeedingReminders.length} reminder via email?`,
+      confirmText: 'Invia',
+      cancelText: 'Annulla',
+    });
 
     if (!confirmed) return;
 
@@ -108,10 +115,11 @@ const Reminders: React.FC = () => {
         showError(`${result.failed} reminder non sono stati inviati`);
       }
 
-      // Reload page to update the list
-      window.location.reload();
+      // Refresh data from database
+      await refreshAppointments();
+      await refreshReminders();
     } catch (error: any) {
-      console.error('Error sending reminders:', error);
+      logger.error('Error sending reminders:', error);
       showError(`Errore nell'invio dei reminder: ${error.message}`);
     } finally {
       setSendingAll(false);
@@ -370,15 +378,13 @@ const Reminders: React.FC = () => {
             if ('Notification' in window) {
               Notification.requestPermission().then((permission) => {
                 if (permission === 'granted') {
-                  alert('Notifiche abilitate con successo!');
+                  showSuccess('Notifiche abilitate con successo!');
                 } else {
-                  alert(
-                    'Permesso negato. Abilita le notifiche nelle impostazioni del browser.'
-                  );
+                  showError('Permesso negato. Abilita le notifiche nelle impostazioni del browser.');
                 }
               });
             } else {
-              alert('Il tuo browser non supporta le notifiche push.');
+              showError('Il tuo browser non supporta le notifiche push.');
             }
           }}
           className="bg-white text-primary-600 px-6 py-3 rounded-lg font-semibold hover:bg-primary-50 transition-colors"
@@ -386,6 +392,8 @@ const Reminders: React.FC = () => {
           Abilita Notifiche
         </button>
       </div>
+
+      <ConfirmationDialog />
     </div>
   );
 };

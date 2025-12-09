@@ -11,6 +11,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { User, UserRole } from '../../types';
 import { hashPassword } from '../../utils/auth';
+import { logger } from '../../utils/logger';
 
 export default function UserManagementCard(): JSX.Element {
   const { users, addUser, updateUser, deleteUser } = useApp();
@@ -123,7 +124,7 @@ export default function UserManagementCard(): JSX.Element {
       resetForm();
     } catch (error) {
       showError('Errore durante il salvataggio dell\'utente');
-      console.error(error);
+      logger.error('Error saving user:', error);
     }
   };
 
