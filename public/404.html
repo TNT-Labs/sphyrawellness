@@ -5,14 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reindirizzamento - Sphyra Wellness</title>
   <script>
-    // Redirect to the correct base path
-    const currentPath = window.location.pathname;
-    const basePath = '/sphyrawellness/';
+    // SPA redirect script for GitHub Pages
+    // This script handles 404 errors by preserving the requested path
+    // and redirecting to index.html, which will then restore the correct route
 
-    // If we're not already on the correct base path, redirect
-    if (!currentPath.startsWith(basePath)) {
-      window.location.replace(basePath);
-    }
+    (function() {
+      const basePath = '/sphyrawellness';
+      const currentPath = window.location.pathname;
+
+      // Remove the base path to get the app route
+      let appRoute = currentPath;
+      if (currentPath.startsWith(basePath)) {
+        appRoute = currentPath.substring(basePath.length);
+      }
+
+      // Save the intended route and search params
+      const redirect = appRoute + window.location.search + window.location.hash;
+
+      // Store the redirect path in sessionStorage
+      sessionStorage.setItem('redirectPath', redirect);
+
+      // Redirect to the app's index
+      window.location.replace(basePath + '/');
+    })();
   </script>
   <style>
     body {
