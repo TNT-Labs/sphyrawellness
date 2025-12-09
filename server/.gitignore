@@ -7,7 +7,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+
+# Build output
 dist
 dist-ssr
 *.local
@@ -28,5 +31,6 @@ dist-ssr
 *.sln
 *.sw?
 
-# PWA
-dev-dist
+# Testing
+coverage
+.nyc_output

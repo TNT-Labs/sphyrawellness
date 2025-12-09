@@ -65,6 +65,7 @@ export interface Appointment {
   status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
   notes?: string;
   reminderSent?: boolean;
+  confirmationToken?: string; // Token for email confirmation
   createdAt: string;
   updatedAt?: string; // ISO timestamp of last modification
 }
@@ -89,6 +90,15 @@ export interface Reminder {
   sentAt?: string;
   createdAt?: string; // ISO timestamp of creation
   updatedAt?: string; // ISO timestamp of last modification
+}
+
+export interface Settings {
+  id: string;
+  reminderSendHour: number; // 0-23
+  reminderSendMinute: number; // 0-59
+  enableAutoReminders: boolean;
+  reminderDaysBefore: number; // Default: 1 (send 1 day before)
+  updatedAt?: string;
 }
 
 export interface Statistics {

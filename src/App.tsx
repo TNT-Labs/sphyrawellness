@@ -19,6 +19,7 @@ import Reminders from './pages/Reminders';
 import Statistics from './pages/Statistics';
 import UserManual from './pages/UserManual';
 import Settings from './pages/Settings';
+import ConfirmAppointment from './pages/ConfirmAppointment';
 
 // Global loading screen
 const GlobalLoader: React.FC = () => (
@@ -82,6 +83,9 @@ const AppContent: React.FC = () => {
                   <Route path="/statistiche" element={<Statistics />} />
                   <Route path="/manuale" element={<UserManual />} />
                   <Route path="/impostazioni" element={<Settings />} />
+                  <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
+                  <Route path="/confirm-appointment/success" element={<ConfirmAppointment />} />
+                  <Route path="/confirm-appointment/error" element={<ConfirmAppointment />} />
                 </Routes>
               </Layout>
             </Router>
