@@ -1,0 +1,52 @@
+# Node modules
+node_modules
+npm-debug.log
+yarn-error.log
+
+# Build outputs
+dist
+
+# Source files (saranno copiati esplicitamente)
+# Non mettiamo src/ qui perché serve per il build
+
+# Test files
+coverage
+test-results
+*.test.ts
+*.spec.ts
+__tests__
+__mocks__
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation
+*.md
+LICENSE
+
+# CI/CD
+.gitlab-ci.yml
+.travis.yml
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Logs
+logs
+*.log
