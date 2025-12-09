@@ -106,6 +106,10 @@ interface AppContextType {
   addUser: (_user: User) => Promise<void>;
   updateUser: (_user: User) => Promise<void>;
   deleteUser: (_id: string) => Promise<void>;
+
+  // Refresh methods
+  refreshAppointments: () => Promise<void>;
+  refreshReminders: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -507,6 +511,27 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     }
   };
 
+  // Refresh methods
+  const refreshAppointments = async () => {
+    try {
+      const loadedAppointments = await getAllAppointments();
+      setAppointments(loadedAppointments);
+    } catch (error) {
+      logger.error('Failed to refresh appointments:', error);
+      throw error;
+    }
+  };
+
+  const refreshReminders = async () => {
+    try {
+      const loadedReminders = await getAllReminders();
+      setReminders(loadedReminders);
+    } catch (error) {
+      logger.error('Failed to refresh reminders:', error);
+      throw error;
+    }
+  };
+
   const value: AppContextType = {
     isLoading,
     customers,
@@ -541,6 +566,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     addUser,
     updateUser,
     deleteUser,
+    refreshAppointments,
+    refreshReminders,
   };
 
   return (

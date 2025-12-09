@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, AlertCircle, CheckCircle, RefreshCw, Server } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { settingsApi, checkServerHealth } from '../../utils/api';
+import { logger } from '../../utils/logger';
 import type { Settings as ReminderSettings } from '../../types';
 
 export const ReminderSettingsCard: React.FC = () => {
@@ -31,7 +32,7 @@ export const ReminderSettingsCard: React.FC = () => {
       setReminderMinute(data.reminderSendMinute);
       setEnableAutoReminders(data.enableAutoReminders);
     } catch (error: any) {
-      console.error('Failed to load reminder settings:', error);
+      logger.error('Failed to load reminder settings:', error);
       // Don't show error if server is not running (expected during initial setup)
       if (!error.message?.includes('Failed to fetch')) {
         showError('Impossibile caricare le impostazioni reminder');
@@ -65,7 +66,7 @@ export const ReminderSettingsCard: React.FC = () => {
       setSettings(updatedSettings);
       showSuccess('Impostazioni reminder salvate con successo');
     } catch (error: any) {
-      console.error('Failed to save reminder settings:', error);
+      logger.error('Failed to save reminder settings:', error);
       showError('Errore nel salvataggio delle impostazioni');
     } finally {
       setIsSaving(false);

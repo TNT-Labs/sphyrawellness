@@ -21,7 +21,7 @@ const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const { confirm: confirmWithInput, ConfirmationDialog: ConfirmationDialogWithInput } = useConfirmWithInput();
-  const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
+  const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory, refreshAppointments, refreshReminders } = useApp();
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getDBStats>> | null>(null);
   const [backups, setBackups] = useState<ReturnType<typeof getAvailableBackups>>([]);
   const [storageInfo, setStorageInfo] = useState<Awaited<ReturnType<typeof getStoragePersistenceInfo>> | null>(null);
@@ -151,8 +151,9 @@ const Settings: React.FC = () => {
         const data = JSON.parse(text);
         await importAllData(data);
         await loadStats();
+        await refreshAppointments();
+        await refreshReminders();
         showSuccess('Backup importato con successo!');
-        window.location.reload();
       } catch (error) {
         showError('Errore durante l\'importazione del backup');
         logger.error(error);
@@ -175,8 +176,9 @@ const Settings: React.FC = () => {
       const data = restoreFromBackup(backupDate);
       await importAllData(data);
       await loadStats();
+      await refreshAppointments();
+      await refreshReminders();
       showSuccess('Backup ripristinato con successo!');
-      window.location.reload();
     } catch (error) {
       showError('Errore durante il ripristino del backup');
       logger.error(error);
@@ -218,8 +220,9 @@ const Settings: React.FC = () => {
     try {
       await clearAllData();
       await loadStats();
+      await refreshAppointments();
+      await refreshReminders();
       showSuccess('Tutti i dati sono stati cancellati');
-      window.location.reload();
     } catch (error) {
       showError('Errore durante la cancellazione dei dati');
       logger.error(error);
