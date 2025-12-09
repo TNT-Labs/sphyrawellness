@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone } from 'lucide-react';
+import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, RefreshCw } from 'lucide-react';
 import { format, parseISO, addHours } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { useToast } from '../contexts/ToastContext';
+import { remindersApi } from '../utils/api';
 
 const Reminders: React.FC = () => {
   const { appointments, customers, services, staff, reminders } = useApp();
+  const { showSuccess, showError } = useToast();
+  const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
+  const [sendingAll, setSendingAll] = useState(false);
 
   const upcomingAppointments = appointments
     .filter((apt) => {
@@ -48,14 +53,69 @@ const Reminders: React.FC = () => {
 
   const appointmentsNeedingReminders = upcomingAppointments.filter(needsReminder);
 
-  const handleSendReminder = (
+  const handleSendReminder = async (
     appointmentId: string,
     type: 'email' | 'sms' | 'whatsapp'
   ) => {
-    // In a real app, this would trigger actual notifications
-    alert(
-      `In una implementazione reale, invieresti un reminder via ${type} per l'appuntamento ${appointmentId}`
+    // Currently only email is supported
+    if (type !== 'email') {
+      showError(`Invio ${type} non ancora implementato. Usa l'email per ora.`);
+      return;
+    }
+
+    setSendingReminders(prev => new Set(prev).add(appointmentId));
+
+    try {
+      await remindersApi.sendForAppointment(appointmentId);
+      showSuccess('Reminder email inviato con successo!');
+
+      // Reload page to update the list
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error sending reminder:', error);
+      showError(`Errore nell'invio del reminder: ${error.message}`);
+    } finally {
+      setSendingReminders(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(appointmentId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleSendAllReminders = async () => {
+    if (appointmentsNeedingReminders.length === 0) {
+      showError('Nessun reminder da inviare');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Confermi l'invio di ${appointmentsNeedingReminders.length} reminder via email?`
     );
+
+    if (!confirmed) return;
+
+    setSendingAll(true);
+
+    try {
+      const result = await remindersApi.sendAll();
+
+      if (result.sent > 0) {
+        showSuccess(`${result.sent} reminder inviati con successo!`);
+      }
+
+      if (result.failed > 0) {
+        showError(`${result.failed} reminder non sono stati inviati`);
+      }
+
+      // Reload page to update the list
+      window.location.reload();
+    } catch (error: any) {
+      console.error('Error sending reminders:', error);
+      showError(`Errore nell'invio dei reminder: ${error.message}`);
+    } finally {
+      setSendingAll(false);
+    }
   };
 
   return (
@@ -72,15 +132,14 @@ const Reminders: React.FC = () => {
       <div className="card bg-blue-50 border-l-4 border-blue-400">
         <div className="flex items-start">
           <Bell className="text-blue-600 mr-3 flex-shrink-0" size={24} />
-          <div>
+          <div className="flex-1">
             <h3 className="font-semibold text-blue-900">
-              Sistema di Notifiche
+              Sistema di Reminder Email
             </h3>
             <p className="text-sm text-blue-700 mt-1">
-              In una implementazione completa, i reminder verrebbero inviati
-              automaticamente via email, SMS o WhatsApp 24 ore prima
-              dell'appuntamento. Per abilitare le notifiche push del browser,
-              abilita i permessi quando richiesto.
+              I reminder vengono inviati automaticamente via email 24 ore prima
+              dell'appuntamento. Le email contengono un link per confermare l'appuntamento.
+              Configura l'orario di invio nelle Impostazioni.
             </p>
           </div>
         </div>
@@ -138,10 +197,29 @@ const Reminders: React.FC = () => {
       {/* Appointments Needing Reminders */}
       {appointmentsNeedingReminders.length > 0 && (
         <div className="card">
-          <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-            <Bell className="mr-2 text-orange-600" size={24} />
-            Appuntamenti entro 24 ore - Invia Reminder
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Bell className="mr-2 text-orange-600" size={24} />
+              Appuntamenti entro 24 ore - Invia Reminder
+            </h2>
+            <button
+              onClick={handleSendAllReminders}
+              disabled={sendingAll}
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
+            >
+              {sendingAll ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  Invio in corso...
+                </>
+              ) : (
+                <>
+                  <Send size={16} />
+                  Invia Tutti ({appointmentsNeedingReminders.length})
+                </>
+              )}
+            </button>
+          </div>
 
           <div className="space-y-4">
             {appointmentsNeedingReminders.map((apt) => {
@@ -182,21 +260,35 @@ const Reminders: React.FC = () => {
                     <div className="flex flex-col sm:flex-row gap-2">
                       <button
                         onClick={() => handleSendReminder(apt.id, 'email')}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
+                        disabled={sendingReminders.has(apt.id) || sendingAll}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <Mail size={16} className="mr-2" />
-                        Invia Email
+                        {sendingReminders.has(apt.id) ? (
+                          <>
+                            <RefreshCw size={16} className="mr-2 animate-spin" />
+                            Invio...
+                          </>
+                        ) : (
+                          <>
+                            <Mail size={16} className="mr-2" />
+                            Invia Email
+                          </>
+                        )}
                       </button>
                       <button
                         onClick={() => handleSendReminder(apt.id, 'sms')}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
+                        disabled
+                        className="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed opacity-50 text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
+                        title="Non ancora implementato"
                       >
                         <MessageSquare size={16} className="mr-2" />
-                        Invia SMS
+                        SMS
                       </button>
                       <button
                         onClick={() => handleSendReminder(apt.id, 'whatsapp')}
-                        className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
+                        disabled
+                        className="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed opacity-50 text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
+                        title="Non ancora implementato"
                       >
                         <Smartphone size={16} className="mr-2" />
                         WhatsApp

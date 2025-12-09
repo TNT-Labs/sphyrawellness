@@ -13,6 +13,7 @@ import { useApp } from '../contexts/AppContext';
 import { StaffRole, ServiceCategory, SyncStatus } from '../types';
 import { logger, LogEntry } from '../utils/logger';
 import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
+import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 
 const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -678,6 +679,9 @@ const Settings: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Reminder Settings */}
+        <ReminderSettingsCard />
 
         {/* CouchDB Sync Settings */}
         <div className="card">
