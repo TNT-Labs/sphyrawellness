@@ -24,6 +24,7 @@ const DB_NAMES = {
   REMINDERS: 'sphyra-reminders',
   STAFF_ROLES: 'sphyra-staff-roles',
   SERVICE_CATEGORIES: 'sphyra-service-categories',
+  USERS: 'sphyra-users',
 } as const;
 
 // PouchDB instances
