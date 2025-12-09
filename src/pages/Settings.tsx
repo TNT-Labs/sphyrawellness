@@ -14,8 +14,9 @@ import { StaffRole, ServiceCategory, SyncStatus } from '../types';
 import { logger, LogEntry } from '../utils/logger';
 import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
+import UserManagementCard from '../components/settings/UserManagementCard';
 
-type SettingsTab = 'general' | 'configuration' | 'advanced';
+type SettingsTab = 'general' | 'configuration' | 'advanced' | 'users';
 
 const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
@@ -623,6 +624,7 @@ const Settings: React.FC = () => {
   const tabs = [
     { id: 'general' as SettingsTab, label: 'Generali', icon: Clock },
     { id: 'configuration' as SettingsTab, label: 'Configurazione', icon: Shield },
+    { id: 'users' as SettingsTab, label: 'Utenti', icon: Users },
     { id: 'advanced' as SettingsTab, label: 'Avanzate', icon: AlertCircle },
   ];
 
@@ -1251,6 +1253,13 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
               )}
+            </>
+          )}
+
+          {/* USERS TAB */}
+          {activeTab === 'users' && (
+            <>
+              <UserManagementCard />
             </>
           )}
 
