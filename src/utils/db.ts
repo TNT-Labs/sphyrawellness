@@ -4,7 +4,7 @@
  */
 
 import * as IndexedDB from './indexedDB';
-import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory, User } from '../types';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
 
 /**

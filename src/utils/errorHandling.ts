@@ -3,6 +3,7 @@ import { logger } from './logger';
 /**
  * Error types for user-friendly error handling
  */
+/* eslint-disable no-unused-vars */
 export enum ErrorType {
   STORAGE_QUOTA_EXCEEDED = 'STORAGE_QUOTA_EXCEEDED',
   STORAGE_CORRUPTED = 'STORAGE_CORRUPTED',
@@ -12,6 +13,7 @@ export enum ErrorType {
   PERMISSION_DENIED = 'PERMISSION_DENIED',
   UNKNOWN = 'UNKNOWN',
 }
+/* eslint-enable no-unused-vars */
 
 /**
  * User-friendly error messages in Italian

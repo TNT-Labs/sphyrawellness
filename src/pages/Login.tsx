@@ -37,7 +37,7 @@ export default function Login(): JSX.Element {
       } else {
         setError(result.error || 'Login fallito');
       }
-    } catch (_err) {
+    } catch {
       setError('Errore durante il login. Riprova.');
     } finally {
       setIsLoading(false);
