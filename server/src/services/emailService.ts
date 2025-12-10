@@ -43,13 +43,31 @@ export class EmailService {
       console.error('❌ Error sending email:', error);
 
       // SendGrid specific error handling
+      let errorMessage = error.message || 'Unknown error occurred';
+
       if (error.response) {
         console.error('SendGrid Error Response:', error.response.body);
+
+        // Extract detailed error information from SendGrid response
+        const responseBody = error.response.body;
+        if (responseBody && responseBody.errors && Array.isArray(responseBody.errors)) {
+          const errorMessages = responseBody.errors.map((err: any) => err.message || err).join(', ');
+          errorMessage = `SendGrid error: ${errorMessages}`;
+
+          // Add helpful context for common errors
+          if (errorMessages.toLowerCase().includes('from') || errorMessages.toLowerCase().includes('missing')) {
+            errorMessage += '. Check that the from email is verified in SendGrid and all required fields are configured.';
+          }
+        } else if (typeof responseBody === 'object') {
+          errorMessage = `SendGrid error: ${JSON.stringify(responseBody)}`;
+        }
       }
+
+      console.error('Final error message:', errorMessage);
 
       return {
         success: false,
-        error: error.message || 'Unknown error occurred'
+        error: errorMessage
       };
     }
   }
@@ -83,9 +101,30 @@ export class EmailService {
       return { success: true };
     } catch (error: any) {
       console.error('❌ Error sending test email:', error);
+
+      let errorMessage = error.message || 'Unknown error occurred';
+
+      if (error.response) {
+        console.error('SendGrid Error Response:', error.response.body);
+
+        const responseBody = error.response.body;
+        if (responseBody && responseBody.errors && Array.isArray(responseBody.errors)) {
+          const errorMessages = responseBody.errors.map((err: any) => err.message || err).join(', ');
+          errorMessage = `SendGrid error: ${errorMessages}`;
+
+          if (errorMessages.toLowerCase().includes('from') || errorMessages.toLowerCase().includes('missing')) {
+            errorMessage += '. Check that the from email is verified in SendGrid and all required fields are configured.';
+          }
+        } else if (typeof responseBody === 'object') {
+          errorMessage = `SendGrid error: ${JSON.stringify(responseBody)}`;
+        }
+      }
+
+      console.error('Final error message:', errorMessage);
+
       return {
         success: false,
-        error: error.message || 'Unknown error occurred'
+        error: errorMessage
       };
     }
   }
