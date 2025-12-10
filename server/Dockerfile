@@ -1,4 +1,25 @@
 # Dockerfile per il Backend Sphyra Wellness API
+# Multi-stage build per ottimizzare dimensioni immagine
+
+# Stage 1: Build
+FROM node:20-alpine AS builder
+
+# Imposta la directory di lavoro
+WORKDIR /app
+
+# Copia i file di configurazione delle dipendenze
+COPY package*.json ./
+
+# Installa tutte le dipendenze (incluse devDependencies per il build)
+RUN npm ci
+
+# Copia tutto il codice sorgente
+COPY . .
+
+# Build dell'applicazione TypeScript
+RUN npm run build
+
+# Stage 2: Production
 FROM node:20-alpine
 
 # Installa dumb-init per gestione corretta dei segnali
@@ -16,11 +37,8 @@ COPY package*.json ./
 # Installa solo le dipendenze di produzione
 RUN npm ci --only=production
 
-# Copia tutto il codice sorgente
-COPY . .
-
-# Build dell'applicazione TypeScript
-RUN npm run build
+# Copia i file buildati dallo stage precedente
+COPY --from=builder /app/dist ./dist
 
 # Cambia ownership dei file all'utente nodejs
 RUN chown -R nodejs:nodejs /app
