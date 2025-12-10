@@ -13,7 +13,7 @@ interface ConfirmWithInputOptions {
 }
 
 interface UseConfirmWithInputReturn {
-  confirm: (options: ConfirmWithInputOptions) => Promise<boolean>;
+  confirm: (_options: ConfirmWithInputOptions) => Promise<boolean>;
   ConfirmationDialog: React.FC;
 }
 
@@ -24,7 +24,7 @@ export const useConfirmWithInput = (): UseConfirmWithInputReturn => {
     message: '',
     expectedInput: '',
   });
-  const [resolveRef, setResolveRef] = useState<((value: boolean) => void) | null>(
+  const [resolveRef, setResolveRef] = useState<((_value: boolean) => void) | null>(
     null
   );
 

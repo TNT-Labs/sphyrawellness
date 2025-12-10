@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader, Calendar } from 'lucide-react';
 import { appointmentsApi } from '../utils/api';
@@ -13,6 +13,20 @@ const ConfirmAppointment: React.FC = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
+
+  const confirmAppointment = useCallback(async () => {
+    if (!appointmentId || !token) return;
+
+    try {
+      const confirmedAppointment = await appointmentsApi.confirm(appointmentId, token);
+      setAppointment(confirmedAppointment);
+      setSuccess(true);
+    } catch (err: any) {
+      setError(err.message || 'Errore durante la conferma dell\'appuntamento');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appointmentId, token]);
 
   useEffect(() => {
     // Check if coming from redirect with success/error params
@@ -38,21 +52,7 @@ const ConfirmAppointment: React.FC = () => {
       setError('Link non valido. Parametri mancanti.');
       setIsLoading(false);
     }
-  }, [appointmentId, token, searchParams]);
-
-  const confirmAppointment = async () => {
-    if (!appointmentId || !token) return;
-
-    try {
-      const confirmedAppointment = await appointmentsApi.confirm(appointmentId, token);
-      setAppointment(confirmedAppointment);
-      setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Errore durante la conferma dell\'appuntamento');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [appointmentId, token, searchParams, confirmAppointment]);
 
   if (isLoading) {
     return (

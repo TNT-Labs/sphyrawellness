@@ -33,7 +33,7 @@ const Dashboard: React.FC = () => {
       try {
         const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
         return aptDateTime >= new Date() && (apt.status === 'scheduled' || apt.status === 'confirmed');
-      } catch (_error) {
+      } catch {
         return false;
       }
     })
