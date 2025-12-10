@@ -6,7 +6,7 @@ import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
 
 interface WeekViewProps {
-  onOpenModal: (appointment?: Appointment, selectedDate?: Date) => void;
+  onOpenModal: (_appointment?: Appointment, _selectedDate?: Date) => void;
 }
 
 const WeekView: React.FC<WeekViewProps> = ({ onOpenModal }) => {

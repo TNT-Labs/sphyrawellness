@@ -16,7 +16,7 @@ import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
 
 interface MonthViewProps {
-  onOpenModal: (appointment?: Appointment, selectedDate?: Date) => void;
+  onOpenModal: (_appointment?: Appointment, _selectedDate?: Date) => void;
 }
 
 const MonthView: React.FC<MonthViewProps> = ({ onOpenModal }) => {
