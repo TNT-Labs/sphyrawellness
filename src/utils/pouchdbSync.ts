@@ -915,7 +915,7 @@ export async function testCouchDBConnection(
 
       try {
         await testDB.close();
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ }
     }
 
     // Step 7: Successo finale
