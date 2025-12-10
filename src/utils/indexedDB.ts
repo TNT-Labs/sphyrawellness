@@ -44,7 +44,7 @@ function isIndexedDBAvailable(): boolean {
       return false;
     }
     return true;
-  } catch (_e) {
+  } catch {
     return false;
   }
 }

@@ -102,7 +102,7 @@ export function handleError(
   error: unknown,
   options: {
     context?: string;
-    showToast?: (message: string) => void;
+    showToast?: (_message: string) => void;
     fallback?: () => void;
   } = {}
 ): void {
@@ -132,7 +132,7 @@ export async function retryWithBackoff<T>(
     maxRetries?: number;
     baseDelay?: number;
     maxDelay?: number;
-    onRetry?: (attempt: number, error: unknown) => void;
+    onRetry?: (_attempt: number, _error: unknown) => void;
   } = {}
 ): Promise<T> {
   const { maxRetries = 3, baseDelay = 1000, maxDelay = 10000, onRetry } = options;

@@ -52,7 +52,7 @@ const CONNECTION_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
 const CONNECTION_CHECK_TIMEOUT_MS = 5000; // 5 second timeout for connection test
 
 // Sync status callbacks
-const syncStatusCallbacks: Set<(status: SyncStatus) => void> = new Set();
+const syncStatusCallbacks: Set<(_status: SyncStatus) => void> = new Set();
 
 // Throttling for sync status notifications
 let lastNotificationTime = 0;
@@ -61,7 +61,7 @@ const NOTIFICATION_THROTTLE_MS = 1000; // Max 1 notification per second
 /**
  * Subscribe to sync status changes
  */
-export function onSyncStatusChange(callback: (status: SyncStatus) => void): () => void {
+export function onSyncStatusChange(callback: (_status: SyncStatus) => void): () => void {
   syncStatusCallbacks.add(callback);
   // Return unsubscribe function
   return () => {
@@ -881,7 +881,7 @@ export async function testCouchDBConnection(
 
         try {
           await testDB.close();
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
 
         let userFriendlyError = 'Errore durante l\'accesso al database';
 
