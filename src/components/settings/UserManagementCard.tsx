@@ -155,7 +155,7 @@ export default function UserManagementCard(): JSX.Element {
       try {
         await deleteUser(userId);
         showSuccess('Utente eliminato');
-      } catch (error) {
+      } catch {
         showError('Errore durante l\'eliminazione');
       }
     }
@@ -182,7 +182,7 @@ export default function UserManagementCard(): JSX.Element {
         updatedAt: new Date().toISOString(),
       });
       showSuccess(user.isActive ? 'Utente disattivato' : 'Utente attivato');
-    } catch (error) {
+    } catch {
       showError('Errore durante l\'aggiornamento');
     }
   };

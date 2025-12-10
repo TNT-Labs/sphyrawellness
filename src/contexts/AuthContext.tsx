@@ -14,9 +14,9 @@ interface AuthContextType {
   currentUser: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (_username: string, _password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
-  hasRole: (role: UserRole) => boolean;
+  hasRole: (_role: UserRole) => boolean;
   canModifySettings: () => boolean;
 }
 
