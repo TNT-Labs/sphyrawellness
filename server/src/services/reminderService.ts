@@ -64,22 +64,41 @@ export class ReminderService {
       }
 
       // 2. Get related data
-      const customerDoc = await db.customers.get(appointment.customerId);
-      const customer = { ...customerDoc, id: customerDoc._id } as unknown as Customer;
+      console.log(`Fetching related data for appointment ${appointmentId}...`);
 
-      const serviceDoc = await db.services.get(appointment.serviceId);
-      const service = { ...serviceDoc, id: serviceDoc._id } as unknown as Service;
+      let customerDoc, serviceDoc, staffDoc;
+      let customer: Customer, service: Service, staff: Staff;
 
-      const staffDoc = await db.staff.get(appointment.staffId);
-      const staff = { ...staffDoc, id: staffDoc._id } as unknown as Staff;
+      try {
+        customerDoc = await db.customers.get(appointment.customerId);
+        customer = { ...customerDoc, id: customerDoc._id } as unknown as Customer;
+      } catch (error: any) {
+        console.error(`Failed to fetch customer ${appointment.customerId}:`, error);
+        return { success: false, error: `Customer not found (ID: ${appointment.customerId})` };
+      }
 
-      if (!customer || !service || !staff) {
-        return { success: false, error: 'Related data not found' };
+      try {
+        serviceDoc = await db.services.get(appointment.serviceId);
+        service = { ...serviceDoc, id: serviceDoc._id } as unknown as Service;
+      } catch (error: any) {
+        console.error(`Failed to fetch service ${appointment.serviceId}:`, error);
+        return { success: false, error: `Service not found (ID: ${appointment.serviceId})` };
+      }
+
+      try {
+        staffDoc = await db.staff.get(appointment.staffId);
+        staff = { ...staffDoc, id: staffDoc._id } as unknown as Staff;
+      } catch (error: any) {
+        console.error(`Failed to fetch staff ${appointment.staffId}:`, error);
+        return { success: false, error: `Staff not found (ID: ${appointment.staffId})` };
       }
 
       if (!customer.email) {
-        return { success: false, error: 'Customer email not found' };
+        console.error(`Customer ${customer.id} has no email address`);
+        return { success: false, error: `Customer email not found (${customer.firstName} ${customer.lastName})` };
       }
+
+      console.log(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
 
       // 3. Generate confirmation token if not exists
       let confirmationToken = appointment.confirmationToken;
@@ -108,9 +127,11 @@ export class ReminderService {
       };
 
       // 5. Send email
+      console.log(`Sending reminder email to ${customer.email} for appointment on ${emailData.appointmentDate}...`);
       const emailResult = await emailService.sendReminderEmail(customer.email, emailData);
 
       if (!emailResult.success) {
+        console.error(`Failed to send reminder email to ${customer.email}:`, emailResult.error);
         // Create failed reminder record
         const failedReminder: Reminder = {
           id: uuidv4(),
@@ -159,10 +180,23 @@ export class ReminderService {
         reminderId: reminder.id
       };
     } catch (error: any) {
-      console.error('❌ Error sending reminder:', error);
+      console.error('❌ Error sending reminder for appointment:', appointmentId, error);
+
+      // Provide detailed error context
+      let errorMessage = error.message || 'Unknown error';
+
+      // Check if it's a database error
+      if (error.name === 'not_found') {
+        errorMessage = `Appointment or related data not found (appointmentId: ${appointmentId})`;
+      } else if (error.status === 404) {
+        errorMessage = `Database record not found (appointmentId: ${appointmentId})`;
+      }
+
+      console.error('Final error:', errorMessage);
+
       return {
         success: false,
-        error: error.message || 'Unknown error'
+        error: errorMessage
       };
     }
   }
