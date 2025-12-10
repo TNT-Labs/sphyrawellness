@@ -31,7 +31,7 @@ export function getStoredSession(): { userId: string; username: string; role: st
     const sessionData = localStorage.getItem('sphyra_session');
     if (!sessionData) return null;
     return JSON.parse(sessionData);
-  } catch (error) {
+  } catch {
     return null;
   }
 }
