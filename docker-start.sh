@@ -57,6 +57,16 @@ if [ "$SENDGRID_API_KEY" = "your_sendgrid_api_key_here" ]; then
     fi
 fi
 
+# Verifica che COUCHDB_PASSWORD non sia il valore di default
+echo ""
+if [ -z "$COUCHDB_PASSWORD" ] || [ "$COUCHDB_PASSWORD" = "password" ]; then
+    echo "❌ ERRORE: COUCHDB_PASSWORD non è stato configurato o usa il valore di default!"
+    echo "   Per sicurezza, è OBBLIGATORIO impostare una password sicura."
+    echo "   Edita il file .env e imposta: COUCHDB_PASSWORD=tuaPasswordSicura123!"
+    echo ""
+    exit 1
+fi
+
 echo "🐳 Avvio dei container Docker..."
 echo ""
 
