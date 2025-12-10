@@ -31,7 +31,12 @@ export class ReminderService {
         }
       });
 
-      return result.docs as Appointment[];
+      // Type-safe conversion with explicit mapping
+      // Map PouchDB ExistingDocument to Appointment type
+      return result.docs.map((doc: any) => ({
+        ...doc,
+        id: doc._id  // Map _id to id field required by Appointment type
+      })) as unknown as Appointment[];
     } catch (error) {
       console.error('❌ Error fetching appointments needing reminders:', error);
       throw error;
@@ -48,16 +53,25 @@ export class ReminderService {
   }> {
     try {
       // 1. Get appointment
-      const appointment = await db.appointments.get(appointmentId) as Appointment;
+      const doc = await db.appointments.get(appointmentId);
+      const appointment = {
+        ...doc,
+        id: doc._id
+      } as unknown as Appointment;
 
       if (!appointment) {
         return { success: false, error: 'Appointment not found' };
       }
 
       // 2. Get related data
-      const customer = await db.customers.get(appointment.customerId) as Customer;
-      const service = await db.services.get(appointment.serviceId) as Service;
-      const staff = await db.staff.get(appointment.staffId) as Staff;
+      const customerDoc = await db.customers.get(appointment.customerId);
+      const customer = { ...customerDoc, id: customerDoc._id } as unknown as Customer;
+
+      const serviceDoc = await db.services.get(appointment.serviceId);
+      const service = { ...serviceDoc, id: serviceDoc._id } as unknown as Service;
+
+      const staffDoc = await db.staff.get(appointment.staffId);
+      const staff = { ...staffDoc, id: staffDoc._id } as unknown as Staff;
 
       if (!customer || !service || !staff) {
         return { success: false, error: 'Related data not found' };
@@ -210,7 +224,11 @@ export class ReminderService {
     error?: string;
   }> {
     try {
-      const appointment = await db.appointments.get(appointmentId) as Appointment;
+      const doc = await db.appointments.get(appointmentId);
+      const appointment = {
+        ...doc,
+        id: doc._id
+      } as unknown as Appointment;
 
       if (!appointment) {
         return { success: false, error: 'Appointment not found' };
