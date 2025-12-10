@@ -6,7 +6,7 @@ import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
 
 interface DayViewProps {
-  onOpenModal: (appointment?: Appointment, selectedDate?: Date) => void;
+  onOpenModal: (_appointment?: Appointment, selectedDate?: Date) => void;
 }
 
 const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {

@@ -12,7 +12,7 @@ export interface SearchableOption {
 interface SearchableSelectProps {
   options: SearchableOption[];
   value: string;
-  onChange: (value: string) => void;
+  onChange: (_value: string) => void;
   placeholder?: string;
   label?: string;
   required?: boolean;
