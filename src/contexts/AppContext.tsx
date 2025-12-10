@@ -518,6 +518,37 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
   // Refresh methods
   const refreshAppointments = async () => {
     try {
+      // First, try to fetch from backend to sync latest data
+      try {
+        const { appointmentsApi } = await import('../utils/api');
+        const backendAppointments = await appointmentsApi.getAll();
+
+        // Sync backend appointments to local IndexedDB
+        for (const appointment of backendAppointments) {
+          try {
+            // Check if appointment exists in IndexedDB
+            const existingAppointment = await getAllAppointments().then(apts =>
+              apts.find(a => a.id === appointment.id)
+            );
+
+            if (existingAppointment) {
+              // Update if exists
+              await dbUpdateAppointment(appointment);
+            } else {
+              // Add if doesn't exist
+              await dbAddAppointment(appointment);
+            }
+          } catch (syncError) {
+            logger.debug(`Skipped syncing appointment ${appointment.id}:`, syncError);
+          }
+        }
+
+        logger.debug('Synced appointments from backend');
+      } catch (backendError) {
+        logger.debug('Backend sync not available, using local data:', backendError);
+      }
+
+      // Load from IndexedDB (which now has the latest data)
       const loadedAppointments = await getAllAppointments();
       setAppointments(loadedAppointments);
     } catch (error) {

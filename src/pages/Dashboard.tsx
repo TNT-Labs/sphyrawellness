@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Appointment } from '../types';
@@ -8,7 +8,7 @@ import { it } from 'date-fns/locale';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const Dashboard: React.FC = () => {
-  const { customers, appointments, services, staff } = useApp();
+  const { customers, appointments, services, staff, refreshAppointments } = useApp();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
 
@@ -68,6 +68,18 @@ const Dashboard: React.FC = () => {
     setIsModalOpen(false);
     setSelectedAppointment(null);
   };
+
+  // Auto-refresh appointments every 30 seconds to detect reminder updates
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      refreshAppointments().catch((error) => {
+        console.error('Failed to refresh appointments:', error);
+      });
+    }, 30000); // 30 seconds
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(intervalId);
+  }, [refreshAppointments]);
 
   const stats = [
     {

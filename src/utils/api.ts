@@ -96,6 +96,17 @@ export const remindersApi = {
  * Appointments API
  */
 export const appointmentsApi = {
+  async getAll(): Promise<Appointment[]> {
+    const response = await fetch(`${API_BASE_URL}/appointments`);
+    const result: ApiResponse<Appointment[]> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch appointments');
+    }
+
+    return result.data;
+  },
+
   async confirm(appointmentId: string, token: string): Promise<Appointment> {
     const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/confirm`, {
       method: 'POST',
