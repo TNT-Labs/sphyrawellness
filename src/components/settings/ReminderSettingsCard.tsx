@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Bell, AlertCircle, CheckCircle, RefreshCw, Server } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { settingsApi, checkServerHealth } from '../../utils/api';
@@ -18,26 +18,7 @@ export const ReminderSettingsCard: React.FC = () => {
   const [reminderMinute, setReminderMinute] = useState(0);
   const [enableAutoReminders, setEnableAutoReminders] = useState(true);
 
-  useEffect(() => {
-    initializeSettings();
-  }, []);
-
-  const initializeSettings = async () => {
-    // First check if server is available
-    await checkServer();
-    // Only load settings if server is healthy
-    // Note: we need to check the server health result directly since state update is async
-    try {
-      const healthy = await checkServerHealth();
-      if (healthy) {
-        await loadSettings();
-      }
-    } catch (error) {
-      // Server check already failed, skip loading settings
-    }
-  };
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await settingsApi.get();
@@ -51,19 +32,38 @@ export const ReminderSettingsCard: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showError]);
 
-  const checkServer = async () => {
+  const checkServer = useCallback(async () => {
     setIsCheckingServer(true);
     try {
       const healthy = await checkServerHealth();
       setServerHealthy(healthy);
-    } catch (error) {
+    } catch {
       setServerHealthy(false);
     } finally {
       setIsCheckingServer(false);
     }
-  };
+  }, []);
+
+  const initializeSettings = useCallback(async () => {
+    // First check if server is available
+    await checkServer();
+    // Only load settings if server is healthy
+    // Note: we need to check the server health result directly since state update is async
+    try {
+      const healthy = await checkServerHealth();
+      if (healthy) {
+        await loadSettings();
+      }
+    } catch {
+      // Server check already failed, skip loading settings
+    }
+  }, [checkServer, loadSettings]);
+
+  useEffect(() => {
+    initializeSettings();
+  }, [initializeSettings]);
 
   const handleSaveSettings = async () => {
     setIsSaving(true);
