@@ -147,8 +147,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* Main content */}
-      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0">
-        <div className="p-4 md:p-6 lg:p-8">{children}</div>
+      <main className="lg:ml-64 min-h-screen pt-16 lg:pt-0 max-w-full overflow-x-hidden">
+        <div className="p-4 md:p-6 lg:p-8 max-w-full">{children}</div>
       </main>
     </div>
   );
