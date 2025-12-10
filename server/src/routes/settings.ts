@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
       // If settings don't exist, create defaults
       if (error.status === 404) {
         settings = {
-          id: DEFAULT_SETTINGS_ID,
+          _id: DEFAULT_SETTINGS_ID,
           reminderSendHour: 10,
           reminderSendMinute: 0,
           enableAutoReminders: true,
@@ -87,7 +87,7 @@ router.put('/', async (req, res) => {
     } catch (error: any) {
       if (error.status === 404) {
         settings = {
-          id: DEFAULT_SETTINGS_ID,
+          _id: DEFAULT_SETTINGS_ID,
           reminderSendHour: 10,
           reminderSendMinute: 0,
           enableAutoReminders: true,

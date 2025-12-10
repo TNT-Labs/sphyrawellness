@@ -93,7 +93,7 @@ export interface Reminder {
 }
 
 export interface Settings {
-  id: string;
+  _id: string;
   reminderSendHour: number; // 0-23
   reminderSendMinute: number; // 0-59
   enableAutoReminders: boolean;
