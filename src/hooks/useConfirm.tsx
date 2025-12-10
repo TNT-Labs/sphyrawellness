@@ -11,7 +11,7 @@ interface ConfirmOptions {
 }
 
 interface UseConfirmReturn {
-  confirm: (options: ConfirmOptions) => Promise<boolean>;
+  confirm: (_options: ConfirmOptions) => Promise<boolean>;
   ConfirmationDialog: React.FC;
 }
 
@@ -21,7 +21,7 @@ export const useConfirm = (): UseConfirmReturn => {
     title: '',
     message: '',
   });
-  const [resolveRef, setResolveRef] = useState<((value: boolean) => void) | null>(
+  const [resolveRef, setResolveRef] = useState<((_value: boolean) => void) | null>(
     null
   );
 
