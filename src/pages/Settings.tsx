@@ -10,6 +10,7 @@ import { loadSettings, loadSettingsWithPassword, saveSettings } from '../utils/s
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 import { StaffRole, ServiceCategory, SyncStatus } from '../types';
 import { logger, LogEntry } from '../utils/logger';
 import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
@@ -23,6 +24,7 @@ const Settings: React.FC = () => {
   const { confirm, ConfirmationDialog } = useConfirm();
   const { confirm: confirmWithInput, ConfirmationDialog: ConfirmationDialogWithInput } = useConfirmWithInput();
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory, refreshAppointments, refreshReminders } = useApp();
+  const { canModifySettings } = useAuth();
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getDBStats>> | null>(null);
   const [backups, setBackups] = useState<ReturnType<typeof getAvailableBackups>>([]);
   const [storageInfo, setStorageInfo] = useState<Awaited<ReturnType<typeof getStoragePersistenceInfo>> | null>(null);
@@ -628,6 +630,9 @@ const Settings: React.FC = () => {
     { id: 'advanced' as SettingsTab, label: 'Avanzate', icon: AlertCircle },
   ];
 
+  // Check if user is a standard user (not RESPONSABILE)
+  const isStandardUser = !canModifySettings();
+
   return (
     <>
       <ConfirmationDialog />
@@ -637,40 +642,168 @@ const Settings: React.FC = () => {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Impostazioni</h1>
           <p className="text-gray-600 mt-1">
-            Gestisci configurazione, backup e sicurezza dell'applicazione
+            {isStandardUser
+              ? 'Visualizza i logs dell\'applicazione'
+              : 'Gestisci configurazione, backup e sicurezza dell\'applicazione'
+            }
           </p>
         </div>
 
-        {/* Tabs Navigation */}
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
-                    ${isActive
-                      ? 'border-primary-600 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  <Icon size={20} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+        {/* Tabs Navigation - Only for RESPONSABILE */}
+        {!isStandardUser && (
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
+                      flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                      ${isActive
+                        ? 'border-primary-600 text-primary-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }
+                    `}
+                  >
+                    <Icon size={20} />
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        )}
 
         {/* Tab Content */}
         <div className="space-y-6">
-          {/* GENERAL TAB */}
-          {activeTab === 'general' && (
+          {/* Standard users only see logs */}
+          {isStandardUser ? (
+            <>
+              {/* Logs Viewer - For standard users */}
+              <div className="card">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center">
+                    <FileText className="text-primary-600 mr-2" size={24} />
+                    <h2 className="text-xl font-bold text-gray-900">Visualizza Logs</h2>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        loadLogs();
+                        setShowLogs(!showLogs);
+                      }}
+                      className="btn-primary text-sm"
+                    >
+                      {showLogs ? 'Nascondi' : 'Mostra'} Logs ({logger.getLogsCount()})
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg">
+                    <AlertCircle className="text-blue-600 flex-shrink-0 mt-1" size={20} />
+                    <div>
+                      <p className="font-semibold text-blue-900">Diagnostica Problemi</p>
+                      <p className="text-sm text-blue-700">
+                        I logs registrano eventi, errori e avvisi dell'applicazione. Consultali per diagnosticare problemi o errori.
+                        I logs vengono memorizzati solo in sessione e non vengono inviati esternamente.
+                      </p>
+                    </div>
+                  </div>
+
+                  {showLogs && (
+                    <div className="space-y-3">
+                      {/* Controls */}
+                      <div className="flex flex-wrap gap-3">
+                        <select
+                          value={logFilter}
+                          onChange={(e) => setLogFilter(e.target.value as typeof logFilter)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                        >
+                          <option value="all">Tutti i Livelli</option>
+                          <option value="error">Solo Errori</option>
+                          <option value="warn">Solo Avvisi</option>
+                          <option value="info">Solo Info</option>
+                          <option value="log">Solo Log</option>
+                          <option value="debug">Solo Debug</option>
+                        </select>
+                        <button
+                          onClick={handleExportLogs}
+                          className="btn-secondary text-sm"
+                        >
+                          <Download size={16} className="inline mr-1" />
+                          Esporta
+                        </button>
+                        <button
+                          onClick={handleClearLogs}
+                          className="btn-secondary text-sm"
+                        >
+                          <Trash2 size={16} className="inline mr-1" />
+                          Cancella
+                        </button>
+                      </div>
+
+                      {/* Logs List */}
+                      <div className="bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto">
+                        {getFilteredLogs().length === 0 ? (
+                          <p className="text-gray-400 text-center py-4">Nessun log disponibile</p>
+                        ) : (
+                          <div className="space-y-2">
+                            {getFilteredLogs().reverse().map((log, index) => (
+                              <div
+                                key={index}
+                                className={`p-3 rounded ${getLevelColor(log.level)}`}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-mono text-xs uppercase font-bold">
+                                        {log.level}
+                                      </span>
+                                      <span className="text-xs opacity-75">
+                                        {format(new Date(log.timestamp), 'dd/MM/yyyy HH:mm:ss', { locale: it })}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm font-mono break-all">{log.message}</p>
+                                    {log.details && log.details.length > 0 && (
+                                      <details className="mt-2">
+                                        <summary className="text-xs cursor-pointer font-semibold">
+                                          Dettagli
+                                        </summary>
+                                        <pre className="text-xs mt-2 p-2 bg-black bg-opacity-10 rounded overflow-x-auto">
+                                          {JSON.stringify(log.details, null, 2)}
+                                        </pre>
+                                      </details>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex items-center justify-between text-sm text-gray-600 px-2">
+                        <span>
+                          Mostrando {getFilteredLogs().length} di {logs.length} logs
+                        </span>
+                        <span className="text-xs">
+                          Max: {logger.getLogsCount()} / 1000
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* GENERAL TAB */}
+              {activeTab === 'general' && (
             <>
               {/* App Settings */}
               <div className="card">
@@ -1402,6 +1535,8 @@ const Settings: React.FC = () => {
                   </button>
                 </div>
               </div>
+            </>
+          )}
             </>
           )}
         </div>
