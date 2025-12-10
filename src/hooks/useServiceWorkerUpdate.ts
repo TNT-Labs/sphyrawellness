@@ -62,7 +62,7 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateReturn {
     try {
       // Aggiungi un parametro timestamp per evitare il caching
       const timestamp = Date.now();
-      const basePath = import.meta.env.PROD ? '/sphyrawellness' : '';
+      const basePath = '';
       const response = await fetch(`${basePath}/version.json?t=${timestamp}`, {
         cache: 'no-cache',
         headers: {
