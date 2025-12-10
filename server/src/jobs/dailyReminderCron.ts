@@ -21,7 +21,7 @@ export function initializeDailyReminderCron() {
       } catch {
         // Use defaults if settings don't exist
         settings = {
-          id: DEFAULT_SETTINGS_ID,
+          _id: DEFAULT_SETTINGS_ID,
           reminderSendHour: 10,
           reminderSendMinute: 0,
           enableAutoReminders: true,
