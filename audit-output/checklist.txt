@@ -1,0 +1,536 @@
+================================================================
+CHECKLIST OPERATIVA VALIDAZIONE - Sphyra Wellness Audit
+================================================================
+
+Data: 2025-12-10
+Audit Branch: claude/technical-audit-sphyra-014br2k4JTRF6EMyeRWcGehz
+
+Questa checklist guida l'applicazione dei fix e la validazione in staging/produzione.
+
+================================================================
+PREREQUISITI
+================================================================
+
+[ ] Git repository clonato e branch audit checkout:
+    git clone https://github.com/TNT-Labs/sphyrawellness.git
+    cd sphyrawellness
+    git checkout claude/technical-audit-sphyra-014br2k4JTRF6EMyeRWcGehz
+
+[ ] Node.js 20+ installato:
+    node --version  # Deve essere v20+
+
+[ ] npm installato:
+    npm --version
+
+[ ] Docker e Docker Compose installati (per test completo):
+    docker --version
+    docker compose version
+
+[ ] Accesso a:
+    - Repository GitHub (per PR e deploy)
+    - Account SendGrid (opzionale, per test email)
+    - CouchDB (opzionale, per test sync)
+
+================================================================
+FASE 1: APPLICAZIONE FIX CRITICAL (BLOCKER)
+================================================================
+Priorità: MASSIMA - Questi fix sbloccano il deploy
+
+──────────────────────────────────────────────────────────────
+1.1 FIX BACKEND TYPESCRIPT BUILD (ISSUE-001)
+──────────────────────────────────────────────────────────────
+
+[ ] Applicare patch:
+    cd /path/to/sphyrawellness
+    git apply audit-output/patches/001-fix-backend-typescript.patch
+
+    Se git apply fallisce:
+    patch -p1 < audit-output/patches/001-fix-backend-typescript.patch
+
+[ ] Verificare modifiche:
+    git diff server/src/services/reminderService.ts
+    # Deve mostrare mapping esplicito doc → Appointment
+
+[ ] Testare compilazione backend:
+    cd server
+    npm ci
+    npm run build
+
+    ✅ Successo: dist/ creato senza errori TypeScript
+    ❌ Fallimento: Rivedere patch o segnalare issue
+
+[ ] Verificare file compilati:
+    ls -la dist/
+    # Deve contenere: index.js, services/, routes/, etc.
+
+[ ] Testare avvio backend (opzionale - serve .env):
+    # Copiare .env.example → .env
+    cp .env.example .env
+    # Editare .env con valori di test
+    npm run dev
+    # Backend deve avviarsi su porta 3001
+
+[ ] Commit fix:
+    git add server/src/services/reminderService.ts
+    git commit -m "fix: risolve errore TypeScript in reminderService
+
+    - Aggiunge mapping esplicito ExistingDocument → Appointment
+    - Risolve type assertion unsafe
+    - Backend ora compila senza errori
+
+    Refs: audit-output/report.md ISSUE-001"
+
+──────────────────────────────────────────────────────────────
+1.2 FIX HARDCODED CREDENTIALS (ISSUE-002)
+──────────────────────────────────────────────────────────────
+
+[ ] Applicare patch:
+    git apply audit-output/patches/002-remove-hardcoded-credentials.patch
+
+[ ] Verificare modifiche:
+    git diff docker-compose.yml docker-start.sh .env.docker.example
+
+    Deve mostrare:
+    - docker-compose.yml: ${COUCHDB_PASSWORD} invece di "password"
+    - docker-start.sh: validazione password aggiunta
+    - .env.docker.example: warning più forte
+
+[ ] Testare validazione startup script:
+    # Senza .env - deve fallire
+    rm -f .env
+    ./docker-start.sh
+    # Exit code: 1, messaggio: "COUCHDB_PASSWORD non configurato"
+
+    # Con password default - deve fallire
+    echo "COUCHDB_PASSWORD=password" > .env
+    ./docker-start.sh
+    # Exit code: 1, messaggio: "usa valore di default"
+
+    # Con password sicura - deve partire
+    echo "COUCHDB_PASSWORD=MySecurePass123!" > .env
+    echo "SENDGRID_API_KEY=test_key" >> .env
+    ./docker-start.sh
+    # Deve avviare i container
+
+[ ] Testare Docker Compose:
+    docker compose down -v  # Cleanup
+    docker compose up -d
+
+    ✅ Successo: Container avviati, CouchDB accessibile
+    ❌ Fallimento: Verificare .env e logs
+
+[ ] Verificare CouchDB con nuova password:
+    curl -u admin:MySecurePass123! http://localhost:5984/_up
+    # Output atteso: {"status":"ok"}
+
+[ ] Commit fix:
+    git add docker-compose.yml docker-start.sh .env.docker.example
+    git commit -m "fix(security): rimuove credenziali hardcoded CouchDB
+
+    - Usa variabili ambiente per COUCHDB_PASSWORD
+    - Aggiunge validazione in docker-start.sh
+    - Blocca avvio se password = default
+    - Aggiorna documentazione .env.docker.example
+
+    SECURITY: Previene deploy con credenziali deboli
+    Refs: audit-output/report.md ISSUE-002"
+
+──────────────────────────────────────────────────────────────
+1.3 MIGLIORARE CI/CD WORKFLOW (ISSUE-005 parziale)
+──────────────────────────────────────────────────────────────
+
+⚠️ ATTENZIONE: Questa patch bloccherà deploy finché non si fixano
+   ESLint errors (patch 003). Applicare DOPO aver fixato lint.
+
+[ ] Applicare patch:
+    git apply audit-output/patches/005-improve-ci-workflow.patch
+
+[ ] Verificare modifiche:
+    git diff .github/workflows/deploy.yml
+
+    Deve mostrare nuovi jobs: quality, backend-quality
+
+[ ] Testare workflow localmente (simulazione):
+    # Frontend quality checks
+    npm ci
+    npm run lint:strict || echo "⚠️ Lint fail - fixare prima"
+    npx tsc --noEmit
+    npm run test:run
+    npm audit --audit-level=high
+
+    # Backend quality checks
+    cd server
+    npm ci
+    npm run build  # Deve passare dopo patch 001
+    npm audit --audit-level=high
+
+    ✅ Tutti passano: workflow OK
+    ❌ Qualcuno fallisce: NON applicare patch, fixare prima
+
+[ ] Commit fix:
+    git add .github/workflows/deploy.yml
+    git commit -m "ci: aggiungi quality gates al workflow deploy
+
+    - Aggiunge job quality: lint + test + type check + audit
+    - Aggiunge job backend-quality: build + audit
+    - Build dipende da quality (needs: [quality, backend-quality])
+    - Deploy bloccato se quality fail
+
+    Previene deploy di codice rotto in produzione
+    Refs: audit-output/report.md ISSUE-005"
+
+[ ] Push e verificare su GitHub Actions:
+    git push origin YOUR_BRANCH
+    # Aprire https://github.com/TNT-Labs/sphyrawellness/actions
+    # Verificare che workflow parta e quality jobs passino
+
+================================================================
+FASE 2: FIX HIGH PRIORITY
+================================================================
+Priorità: ALTA - Migliorano qualità e sicurezza
+
+──────────────────────────────────────────────────────────────
+2.1 FIX ESLINT REGEX ERRORS (ISSUE-003)
+──────────────────────────────────────────────────────────────
+
+[ ] Applicare patch:
+    git apply audit-output/patches/003-fix-eslint-regex-errors.patch
+
+[ ] Verificare modifiche:
+    git diff src/utils/validation.ts
+
+    Deve mostrare:
+    - Regex senza escape inutili: [+] invece di [\+]
+    - Commenti documentazione per sanitizeInput()
+
+[ ] Testare lint:
+    npm run lint
+
+    ✅ Successo: 0 errors (da 10), warnings ridotti
+    ❌ Fallimento: Verificare patch
+
+[ ] Testare validazione (non deve cambiare comportamento):
+    npm run test:run
+    # Tutti i test in validation.test.ts devono passare
+
+[ ] Test manuale phone validation (opzionale):
+    node -e "
+    const {validatePhone} = require('./src/utils/validation');
+    console.log(validatePhone('+39 123 456 7890')); // true
+    console.log(validatePhone('(123) 456-7890')); // true
+    console.log(validatePhone('invalid')); // false
+    "
+
+[ ] Commit fix:
+    git add src/utils/validation.ts
+    git commit -m "fix(lint): corregge escape inutili in regex validation
+
+    - Rimuove \\ inutili da phone regex
+    - Documenta control character removal per sicurezza
+    - 10 errori ESLint → 0 errori
+
+    Refs: audit-output/report.md ISSUE-003"
+
+──────────────────────────────────────────────────────────────
+2.2 FIX TEST UNHANDLED REJECTION (ISSUE-004)
+──────────────────────────────────────────────────────────────
+
+[ ] Applicare patch:
+    git apply audit-output/patches/004-fix-test-unhandled-rejection.patch
+
+[ ] Verificare modifiche:
+    git diff src/utils/__tests__/errorHandling.test.ts
+
+    Deve mostrare: expect(...).rejects.toThrow() invece di try/catch
+
+[ ] Testare suite:
+    npm run test:run
+
+    ✅ Successo: 32 tests passing, 0 unhandled errors
+    ❌ Fallimento: Se test fail, verificare patch
+
+[ ] Verificare output pulito:
+    # Non deve mostrare "Unhandled Rejection" warning
+
+[ ] Commit fix:
+    git add src/utils/__tests__/errorHandling.test.ts
+    git commit -m "test: fix unhandled promise rejection in errorHandling test
+
+    - Usa expect(...).rejects.toThrow() per async assertions
+    - Rimuove try/catch pattern che causa unhandled rejection
+    - Test output ora pulito senza warning
+
+    Refs: audit-output/report.md ISSUE-004"
+
+================================================================
+FASE 3: VALIDAZIONE INTEGRATA
+================================================================
+
+Dopo aver applicato tutti i fix, validare l'intero stack:
+
+──────────────────────────────────────────────────────────────
+3.1 BUILD COMPLETO
+──────────────────────────────────────────────────────────────
+
+[ ] Frontend build:
+    npm ci
+    npm run build
+
+    ✅ dist/ creato, 0 errori TypeScript, bundle ~125KB gzipped
+
+[ ] Backend build:
+    cd server
+    npm ci
+    npm run build
+
+    ✅ dist/ creato, 0 errori TypeScript
+
+[ ] Lint:
+    cd ..
+    npm run lint
+
+    ✅ 0 errori, <20 warnings
+
+[ ] Tests:
+    npm run test:run
+
+    ✅ 32/32 passing, 0 unhandled errors
+
+[ ] Security audit:
+    npm audit
+    cd server && npm audit
+
+    ✅ 0 vulnerabilities
+
+──────────────────────────────────────────────────────────────
+3.2 DOCKER STACK COMPLETO
+──────────────────────────────────────────────────────────────
+
+[ ] Preparare .env:
+    cp .env.docker.example .env
+    # Editare .env:
+    # - SENDGRID_API_KEY=... (opzionale per test)
+    # - COUCHDB_PASSWORD=SecurePass123!
+    # - Altri valori di test
+
+[ ] Avviare stack:
+    docker compose down -v  # Cleanup
+    docker compose build --no-cache
+    docker compose up -d
+
+    ✅ Tutti i container healthy
+
+[ ] Verificare healthchecks:
+    docker compose ps
+
+    Deve mostrare:
+    sphyra-frontend    Up (healthy)
+    sphyra-backend     Up (healthy)
+    sphyra-couchdb     Up (healthy)
+
+[ ] Testare servizi:
+    # CouchDB
+    curl http://localhost:5984/_up
+    # Output: {"status":"ok"}
+
+    # Backend
+    curl http://localhost:3001/api/health
+    # Output: {"status":"ok"} o simile
+
+    # Frontend
+    curl -I http://localhost
+    # HTTP/1.1 200 OK
+
+[ ] Logs check:
+    docker compose logs --tail=50
+
+    ✅ Nessun errore critico, servizi avviati
+
+[ ] Aprire browser:
+    http://localhost
+
+    ✅ App carica, login visibile, nessun console error
+
+──────────────────────────────────────────────────────────────
+3.3 SMOKE TESTS FUNZIONALI
+──────────────────────────────────────────────────────────────
+
+[ ] Login:
+    Username: admin
+    Password: password (o quello configurato)
+
+    ✅ Redirect a dashboard
+
+[ ] Navigazione:
+    - Dashboard → OK
+    - Clienti → OK
+    - Calendario → OK
+    - Impostazioni → OK
+
+[ ] CRUD Cliente:
+    Clienti → Nuovo Cliente → Fill form → Save
+
+    ✅ Cliente appare in lista
+
+[ ] Sincronizzazione CouchDB (se configurato):
+    Impostazioni → CouchDB Config
+    URL: http://localhost:5984
+    Username: admin
+    Password: SecurePass123!
+
+    [ ] Click "Testa Connessione"
+        ✅ "Connessione riuscita!"
+
+    [ ] Click "Inizializza Database"
+        ✅ "Database creati con successo"
+
+    [ ] Toggle "Abilita Sincronizzazione"
+        ✅ Status: "Sincronizzato"
+
+================================================================
+FASE 4: STAGING/PRODUZIONE
+================================================================
+
+⚠️ Solo dopo che FASE 1-3 sono completate al 100%
+
+──────────────────────────────────────────────────────────────
+4.1 MERGE E DEPLOY
+──────────────────────────────────────────────────────────────
+
+[ ] Creare Pull Request:
+    git push origin YOUR_BRANCH
+    # Aprire PR su GitHub verso main
+
+[ ] Code Review:
+    - Verificare che tutti i fix siano applicati
+    - Verificare GitHub Actions passano (quality gates)
+    - Almeno 1 approval
+
+[ ] Merge:
+    # Merge PR → main
+
+[ ] Deploy automatico (GitHub Pages):
+    # Workflow deploy parte automaticamente su push a main
+    # Monitorare: https://github.com/TNT-Labs/sphyrawellness/actions
+
+[ ] Verificare deploy:
+    https://tnt-labs.github.io/sphyrawellness/
+
+    ✅ App carica, versione aggiornata
+
+──────────────────────────────────────────────────────────────
+4.2 DEPLOY DOCKER (Self-Hosted/Production)
+──────────────────────────────────────────────────────────────
+
+[ ] Preparare production .env:
+    # NON committare .env!
+    # Creare su server produzione:
+    SENDGRID_API_KEY=SG.real_production_key
+    SENDGRID_FROM_EMAIL=noreply@yourdomain.com
+    FRONTEND_URL=https://yourdomain.com
+    COUCHDB_PASSWORD=VerySecureProductionPassword123!
+    # ... altri valori prod
+
+[ ] Pull codice su server:
+    git clone https://github.com/TNT-Labs/sphyrawellness.git
+    cd sphyrawellness
+    git checkout main
+
+[ ] Deploy:
+    docker compose -f docker-compose.yml up -d --build
+
+[ ] Verificare:
+    docker compose ps  # Tutti healthy
+    docker compose logs -f  # No errors
+
+[ ] Smoke tests produzione:
+    - Login funziona
+    - Creazione cliente funziona
+    - Email reminder funziona (se SendGrid configurato)
+
+[ ] Monitoring:
+    - Configurare Uptime Robot per health checks
+    - Configurare Sentry per error tracking (opzionale)
+    - Configurare backup automatici CouchDB
+
+──────────────────────────────────────────────────────────────
+4.3 POST-DEPLOY VERIFICATION
+──────────────────────────────────────────────────────────────
+
+[ ] Backup database:
+    docker exec sphyra-couchdb tar czf /tmp/backup.tar.gz /opt/couchdb/data
+    docker cp sphyra-couchdb:/tmp/backup.tar.gz ./backup-$(date +%Y%m%d).tar.gz
+
+[ ] Verificare logs (24h dopo deploy):
+    docker compose logs --tail=1000 | grep -i error
+    # Nessun errore critico
+
+[ ] Metriche (se configurate):
+    - Uptime > 99%
+    - Error rate < 1%
+    - Response time < 1s
+
+[ ] Feedback utenti:
+    - Nessun bug report critico
+    - Funzionalità core operative
+
+================================================================
+ROLLBACK PROCEDURE (Se qualcosa va storto)
+================================================================
+
+Se deploy fallisce o ci sono problemi critici in produzione:
+
+[ ] Rollback Git:
+    git revert HEAD  # Revert ultimo commit
+    git push origin main
+    # Workflow deploy ripristina versione precedente
+
+[ ] Rollback Docker:
+    docker compose down
+    git checkout PREVIOUS_COMMIT_HASH
+    docker compose up -d --build
+
+[ ] Ripristino Database:
+    docker compose stop couchdb
+    docker cp ./backup-YYYYMMDD.tar.gz sphyra-couchdb:/tmp/
+    docker exec sphyra-couchdb tar xzf /tmp/backup-YYYYMMDD.tar.gz -C /
+    docker compose start couchdb
+
+[ ] Notificare team e utenti
+
+================================================================
+NOTE FINALI
+================================================================
+
+TEMPI STIMATI:
+- Fase 1 (Critical): 2-3 ore
+- Fase 2 (High): 1-2 ore
+- Fase 3 (Validazione): 1-2 ore
+- Fase 4 (Deploy): 1-2 ore
+TOTALE: 5-9 ore
+
+DEPENDENCIES:
+- Patch 001 deve essere applicata PRIMA di 005
+- Patch 003 deve essere applicata PRIMA di 005
+- Tutte le patch CRITICAL prima di merge a main
+
+SUPPORTO:
+- Documentazione audit: audit-output/report.md
+- Issue dettagliate: audit-output/report.json
+- Patch files: audit-output/patches/*.patch
+
+CONTATTI:
+- Repository: https://github.com/TNT-Labs/sphyrawellness
+- Issues: https://github.com/TNT-Labs/sphyrawellness/issues
+
+================================================================
+CHECKLIST COMPLETION STATUS
+================================================================
+
+[ ] Fase 1 completata (Critical fixes)
+[ ] Fase 2 completata (High priority fixes)
+[ ] Fase 3 completata (Validazione integrata)
+[ ] Fase 4 completata (Deploy produzione)
+[ ] Post-deploy verification OK
+
+Firma/Data: ___________________ / ___________________

@@ -1,0 +1,192 @@
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index 1234567..abcdefg 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -15,8 +15,50 @@ concurrency:
+   group: "pages"
+   cancel-in-progress: false
+
+ jobs:
++  # Quality gate: lint, test, security check
++  quality:
++    runs-on: ubuntu-latest
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v4
++
++      - name: Setup Node
++        uses: actions/setup-node@v4
++        with:
++          node-version: '20'
++          cache: 'npm'
++
++      - name: Install dependencies
++        run: npm ci
++
++      - name: Lint (strict)
++        run: npm run lint:strict
++        continue-on-error: false
++
++      - name: Type Check
++        run: npx tsc --noEmit
++
++      - name: Run Tests
++        run: npm run test:run
++
++      - name: Security Audit
++        run: npm audit --audit-level=high
++        continue-on-error: false
++
++  # Backend quality check
++  backend-quality:
++    runs-on: ubuntu-latest
++    defaults:
++      run:
++        working-directory: ./server
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v4
++
++      - name: Setup Node
++        uses: actions/setup-node@v4
++        with:
++          node-version: '20'
++          cache: 'npm'
++          cache-dependency-path: './server/package-lock.json'
++
++      - name: Install dependencies
++        run: npm ci
++
++      - name: Build backend
++        run: npm run build
++
++      - name: Security Audit (backend)
++        run: npm audit --audit-level=high
++        continue-on-error: false
++
+   build:
++    needs: [quality, backend-quality]  # ← Block if quality fails
+     runs-on: ubuntu-latest
+     steps:
+       - name: Checkout
+
+---
+PATCH: 005-improve-ci-workflow.patch
+
+ISSUE: Missing Quality Gates in CI/CD
+FILE: .github/workflows/deploy.yml
+SEVERITY: HIGH
+
+PROBLEM:
+Current GitHub Actions workflow only builds and deploys frontend.
+No quality checks before deployment:
+  - ❌ Lint not run (10 errors + 67 warnings can deploy)
+  - ❌ Tests not run (broken tests can deploy)
+  - ❌ npm audit not run (vulnerabilities can deploy)
+  - ❌ Backend not built/tested
+
+This means broken code can be deployed to production.
+
+FIX:
+Add quality gate jobs that run before build:
+1. Frontend quality: lint + test + type check + audit
+2. Backend quality: build + audit
+3. Build job depends on quality jobs (needs: [quality, backend-quality])
+
+If quality checks fail, build and deploy are blocked.
+
+JOBS ADDED:
+
+1. **quality** (Frontend):
+   - npm run lint:strict (max 0 warnings)
+   - npx tsc --noEmit (type check)
+   - npm run test:run (unit tests)
+   - npm audit --audit-level=high (security)
+
+2. **backend-quality**:
+   - npm run build (TypeScript compilation)
+   - npm audit --audit-level=high (security)
+
+3. **build** (modified):
+   - needs: [quality, backend-quality]
+   - Only runs if quality jobs succeed
+
+WORKFLOW:
+```
+quality (frontend) ──┐
+                     ├─→ build → deploy
+backend-quality ─────┘
+```
+
+VALIDATION:
+```bash
+# Simulate workflow locally
+
+# Frontend quality
+npm ci
+npm run lint:strict  # Should fail with current errors
+npm run test:run
+npm audit --audit-level=high
+
+# Backend quality
+cd server
+npm ci
+npm run build  # Should fail with current TypeScript error
+npm audit --audit-level=high
+
+# If both pass → build succeeds
+npm run build
+```
+
+BREAKING CHANGES:
+⚠️ This patch will BLOCK deployments until:
+1. ESLint errors are fixed (patch 003)
+2. Backend TypeScript error is fixed (patch 001)
+
+Apply patches in order:
+1. 001-fix-backend-typescript.patch
+2. 003-fix-eslint-regex-errors.patch
+3. 005-improve-ci-workflow.patch  ← This one
+
+BENEFITS:
+- ✅ Broken code can't reach production
+- ✅ Tests must pass before deploy
+- ✅ Security vulnerabilities blocked
+- ✅ Type safety enforced
+- ✅ Code quality standards enforced
+
+METRICS TRACKED:
+After this patch, GitHub Actions will track:
+- Lint pass rate
+- Test pass rate
+- Build success rate
+- Security audit status
+
+OPTIONAL ENHANCEMENTS (future):
+```yaml
+# Add bundle size check
+- name: Check Bundle Size
+  run: |
+    SIZE=$(stat -c%s dist/assets/*.js | awk '{s+=$1} END {print s}')
+    if [ $SIZE -gt 524288 ]; then
+      echo "Bundle exceeds 512KB: $SIZE bytes"
+      exit 1
+    fi
+
+# Add coverage threshold
+- name: Coverage Check
+  run: |
+    npm run test:coverage
+    COVERAGE=$(cat coverage/coverage-summary.json | jq '.total.lines.pct')
+    if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+      echo "Coverage below 70%: $COVERAGE%"
+      exit 1
+    fi
+```
+
+EFFORT: 2 story points (~2 hours including testing workflow)
+
+TESTING:
+1. Create PR with intentional lint error
+2. Verify quality job fails and blocks deploy
+3. Fix error, verify workflow succeeds

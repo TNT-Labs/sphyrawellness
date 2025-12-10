@@ -1,0 +1,111 @@
+diff --git a/src/utils/__tests__/errorHandling.test.ts b/src/utils/__tests__/errorHandling.test.ts
+index 1234567..abcdefg 100644
+--- a/src/utils/__tests__/errorHandling.test.ts
++++ b/src/utils/__tests__/errorHandling.test.ts
+@@ -93,15 +93,13 @@ describe('Retry with Backoff', () => {
+     expect(fn).toHaveBeenCalledTimes(2);
+   });
+
+-  it('should throw after max retries', async () => {
++  it('should throw after max retries', async () => {
+     const fn = vi.fn(async () => {
+       throw new Error('Always fails');
+     });
+
+-    try {
+-      await retryWithBackoff(fn, { maxRetries: 2, initialDelay: 10 });
+-      expect.fail('Should have thrown');
+-    } catch (error) {
+-      expect(fn).toHaveBeenCalledTimes(3); // Initial + 2 retries
+-    }
++    // Properly assert promise rejection with Vitest
++    await expect(
++      retryWithBackoff(fn, { maxRetries: 2, initialDelay: 10 })
++    ).rejects.toThrow('Always fails');
++
++    expect(fn).toHaveBeenCalledTimes(3); // Initial + 2 retries
+   });
+
+---
+PATCH: 004-fix-test-unhandled-rejection.patch
+
+ISSUE: Test Suite Unhandled Promise Rejection
+FILE: src/utils/__tests__/errorHandling.test.ts:98
+SEVERITY: HIGH
+
+PROBLEM:
+Test "should throw after max retries" causes an unhandled promise rejection
+even though all tests pass. The test uses try/catch which doesn't properly
+handle async rejections in Vitest, causing:
+
+```
+⎯⎯⎯ Unhandled Rejection ⎯⎯⎯
+Error: Always fails
+  at src/utils/__tests__/errorHandling.test.ts:98:13
+```
+
+This indicates improper async error handling in test code and can mask
+real bugs or cause false positives in CI/CD.
+
+ROOT CAUSE:
+The try/catch pattern with expect.fail() doesn't work correctly with
+async functions in Vitest. The promise rejection happens asynchronously
+and escapes the try/catch block.
+
+FIX:
+Use Vitest's built-in async assertion: expect(...).rejects.toThrow()
+This properly awaits the promise and asserts that it rejects with the
+expected error, without creating unhandled rejections.
+
+BEFORE (incorrect):
+```typescript
+try {
+  await retryWithBackoff(fn, { maxRetries: 2, initialDelay: 10 });
+  expect.fail('Should have thrown');
+} catch (error) {
+  expect(fn).toHaveBeenCalledTimes(3);
+}
+```
+
+AFTER (correct):
+```typescript
+await expect(
+  retryWithBackoff(fn, { maxRetries: 2, initialDelay: 10 })
+).rejects.toThrow('Always fails');
+
+expect(fn).toHaveBeenCalledTimes(3);
+```
+
+VALIDATION:
+```bash
+npm run test:run
+
+# Before patch:
+# ✓ 32 tests passed
+# ⎯⎯⎯ Unhandled Errors ⎯⎯⎯
+# Vitest caught 1 unhandled error
+
+# After patch:
+# ✓ 32 tests passed
+# (no unhandled errors)
+```
+
+TESTING IMPROVEMENTS:
+This pattern should be applied to all async rejection tests:
+```bash
+grep -r "expect.fail" src/**/__tests__/
+# Review all occurrences for similar issues
+```
+
+BENEFITS:
+- Cleaner test output (no unhandled rejection warnings)
+- More reliable tests (proper async handling)
+- CI/CD confidence (no false positives)
+- Catches real async bugs (strict unhandled rejection mode)
+
+EFFORT: 1 story point (~1 hour)
+
+RELATED:
+- Consider adding --unhandled-rejections=strict to test script
+- Review all async tests for proper error handling
+- Add ESLint rule: @typescript-eslint/no-floating-promises
