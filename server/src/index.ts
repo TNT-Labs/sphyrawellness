@@ -66,6 +66,25 @@ app.post('/api/trigger-reminders', async (req, res) => {
   }
 });
 
+// Root route
+app.get('/', (req, res) => {
+  const response: ApiResponse = {
+    success: true,
+    data: {
+      name: 'Sphyra Wellness API',
+      version: '1.0.0',
+      endpoints: {
+        health: '/health',
+        reminders: '/api/reminders',
+        appointments: '/api/appointments',
+        settings: '/api/settings'
+      }
+    },
+    message: 'Welcome to Sphyra Wellness API'
+  };
+  res.json(response);
+});
+
 // Error handlers (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
