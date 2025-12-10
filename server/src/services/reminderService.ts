@@ -53,10 +53,10 @@ export class ReminderService {
   }> {
     try {
       // 1. Get appointment
-      const doc = await db.appointments.get(appointmentId);
+      const appointmentDoc = await db.appointments.get(appointmentId);
       const appointment = {
-        ...doc,
-        id: doc._id
+        ...appointmentDoc,
+        id: appointmentDoc._id
       } as unknown as Appointment;
 
       if (!appointment) {
@@ -102,15 +102,20 @@ export class ReminderService {
 
       // 3. Generate confirmation token if not exists
       let confirmationToken = appointment.confirmationToken;
+      let updatedAppointmentDoc = appointmentDoc;
+
       if (!confirmationToken) {
         confirmationToken = uuidv4();
 
-        // Update appointment with token
-        await db.appointments.put({
-          ...appointment,
+        // Update appointment with token and get the updated doc
+        const result = await db.appointments.put({
+          ...appointmentDoc,
           confirmationToken,
           updatedAt: new Date().toISOString()
         });
+
+        // Fetch the updated document to get the new _rev
+        updatedAppointmentDoc = await db.appointments.get(appointmentId);
       }
 
       // 4. Prepare email data
@@ -133,8 +138,9 @@ export class ReminderService {
       if (!emailResult.success) {
         console.error(`Failed to send reminder email to ${customer.email}:`, emailResult.error);
         // Create failed reminder record
+        const reminderId = uuidv4();
         const failedReminder: Reminder = {
-          id: uuidv4(),
+          id: reminderId,
           appointmentId,
           type: 'email',
           scheduledFor: new Date().toISOString(),
@@ -143,7 +149,10 @@ export class ReminderService {
           createdAt: new Date().toISOString()
         };
 
-        await db.reminders.put(failedReminder);
+        await db.reminders.put({
+          ...failedReminder,
+          _id: reminderId
+        });
 
         return {
           success: false,
@@ -153,8 +162,9 @@ export class ReminderService {
       }
 
       // 6. Create successful reminder record
+      const reminderId = uuidv4();
       const reminder: Reminder = {
-        id: uuidv4(),
+        id: reminderId,
         appointmentId,
         type: 'email',
         scheduledFor: new Date().toISOString(),
@@ -163,11 +173,14 @@ export class ReminderService {
         createdAt: new Date().toISOString()
       };
 
-      await db.reminders.put(reminder);
+      await db.reminders.put({
+        ...reminder,
+        _id: reminderId
+      });
 
       // 7. Update appointment reminderSent flag
       await db.appointments.put({
-        ...appointment,
+        ...updatedAppointmentDoc,
         reminderSent: true,
         confirmationToken,
         updatedAt: new Date().toISOString()
@@ -277,13 +290,17 @@ export class ReminderService {
       }
 
       // Update appointment status to confirmed
+      await db.appointments.put({
+        ...doc,
+        status: 'confirmed' as const,
+        updatedAt: new Date().toISOString()
+      });
+
       const updatedAppointment = {
         ...appointment,
         status: 'confirmed' as const,
         updatedAt: new Date().toISOString()
       };
-
-      await db.appointments.put(updatedAppointment);
 
       console.log(`✅ Appointment ${appointmentId} confirmed by customer`);
 
