@@ -590,10 +590,13 @@ node scripts/setup-couchdb.js http://localhost:5984 admin password
 - Test di connessione fallisce nell'app
 - Errori CORS nella console del browser (F12 > Console)
 
+**📖 Guida Completa CORS**: Per istruzioni dettagliate e troubleshooting approfondito, consulta:
+**[CONFIGURAZIONE-COUCHDB-CORS.md](CONFIGURAZIONE-COUCHDB-CORS.md)**
+
 **Soluzione Automatica (Consigliato)** ⭐:
 ```bash
 # Usa lo script di configurazione automatica
-node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password
+node scripts/configure-couchdb-cors.cjs http://192.168.1.93:5984 admin password
 
 # Poi riavvia CouchDB
 # Docker:
