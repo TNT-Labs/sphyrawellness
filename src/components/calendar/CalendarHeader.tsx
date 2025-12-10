@@ -4,7 +4,7 @@ import { Calendar, Grid3x3, List } from 'lucide-react';
 
 interface CalendarHeaderProps {
   viewMode: CalendarView;
-  onViewModeChange: (mode: CalendarView) => void;
+  onViewModeChange: (_mode: CalendarView) => void;
 }
 
 const CalendarHeader: React.FC<CalendarHeaderProps> = ({

@@ -18,7 +18,7 @@ export function initializeDailyReminderCron() {
       let settings: Settings;
       try {
         settings = await db.settings.get(DEFAULT_SETTINGS_ID) as Settings;
-      } catch (error: any) {
+      } catch (_error: any) {
         // Use defaults if settings don't exist
         settings = {
           id: DEFAULT_SETTINGS_ID,

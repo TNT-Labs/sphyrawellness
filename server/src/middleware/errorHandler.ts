@@ -8,7 +8,7 @@ export function errorHandler(
   error: Error,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   console.error('❌ Unhandled error:', error);
 
@@ -26,7 +26,7 @@ export function errorHandler(
 export function notFoundHandler(
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) {
   const response: ApiResponse = {
     success: false,
