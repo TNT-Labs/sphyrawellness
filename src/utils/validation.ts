@@ -25,7 +25,7 @@ export const customerSchema = z.object({
     .optional()
     .or(z.literal('')),
   phone: z.string()
-    .regex(/^[\d\s\-\+\(\)]+$/, 'Numero di telefono non valido')
+    .regex(/^[\d\s\-+()]+$/, 'Numero di telefono non valido')
     .min(8, 'Numero di telefono troppo corto')
     .max(20, 'Numero di telefono troppo lungo'),
   dateOfBirth: z.string().optional(),
@@ -80,7 +80,7 @@ export const staffSchema = z.object({
     .optional()
     .or(z.literal('')),
   phone: z.string()
-    .regex(/^[\d\s\-\+\(\)]+$/, 'Numero di telefono non valido')
+    .regex(/^[\d\s\-+()]+$/, 'Numero di telefono non valido')
     .min(8, 'Numero di telefono troppo corto')
     .max(20, 'Numero di telefono troppo lungo'),
   role: z.string().min(1, 'Ruolo richiesto'),
@@ -228,11 +228,19 @@ export function validateData<T>(
 
 /**
  * Sanitize string input (trim whitespace, remove control characters)
+ * Security: Remove null bytes and control characters
+ * Preserves tabs (\x09), line feeds (\x0A), and carriage returns (\x0D)
+ * This prevents injection attacks while allowing formatted text
+ * \x00-\x08: NULL to BACKSPACE
+ * \x0B-\x0C: Vertical tab, form feed
+ * \x0E-\x1F: Shift out to unit separator
+ * \x7F: DELETE
  */
 export function sanitizeString(input: string): string {
   return input
     .trim()
-    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters (except tab, LF, CR)
     .replace(/\s+/g, ' '); // Normalize whitespace
 }
 
@@ -240,7 +248,7 @@ export function sanitizeString(input: string): string {
  * Sanitize phone number (remove non-numeric characters except +)
  */
 export function sanitizePhone(phone: string): string {
-  return phone.replace(/[^\d\s\-\+\(\)]/g, '');
+  return phone.replace(/[^\d\s\-+()]/g, '');
 }
 
 /**
