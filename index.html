@@ -53,21 +53,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- SPA redirect handler for GitHub Pages -->
-    <!-- This script restores the correct route after a 404 redirect -->
-    <script>
-      (function() {
-        const redirectPath = sessionStorage.getItem('redirectPath');
-        if (redirectPath && redirectPath !== '/' && redirectPath !== '') {
-          sessionStorage.removeItem('redirectPath');
-          // Use history.replaceState to update the URL without reloading
-          // This needs to happen before React Router initializes
-          const basePath = '/sphyrawellness';
-          const fullPath = basePath + redirectPath;
-          history.replaceState(null, '', fullPath);
-        }
-      })();
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
