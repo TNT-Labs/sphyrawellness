@@ -1,8 +1,42 @@
 import express from 'express';
 import reminderService from '../services/reminderService.js';
-import type { ApiResponse } from '../types/index.js';
+import db from '../config/database.js';
+import type { ApiResponse, Appointment } from '../types/index.js';
 
 const router = express.Router();
+
+/**
+ * GET /api/appointments
+ * Get all appointments from the backend database
+ */
+router.get('/', async (req, res) => {
+  try {
+    const result = await db.appointments.allDocs({
+      include_docs: true
+    });
+
+    const appointments: Appointment[] = result.rows
+      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .map(row => ({
+        ...row.doc,
+        id: row.id
+      })) as Appointment[];
+
+    const response: ApiResponse = {
+      success: true,
+      data: appointments
+    };
+
+    res.json(response);
+  } catch (error: any) {
+    console.error('Error fetching appointments:', error);
+    const response: ApiResponse = {
+      success: false,
+      error: error.message || 'Internal server error'
+    };
+    res.status(500).json(response);
+  }
+});
 
 /**
  * POST /api/appointments/:appointmentId/confirm

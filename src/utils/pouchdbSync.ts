@@ -9,7 +9,8 @@ import PouchDB from 'pouchdb-browser';
 import PouchDBFind from 'pouchdb-find';
 import { logger } from './logger';
 import { loadSettingsWithPassword } from './storage';
-import type { SyncStatus } from '../types';
+import * as IndexedDB from './indexedDB';
+import type { SyncStatus, Appointment, Reminder } from '../types';
 
 // Enable PouchDB Find plugin for queries
 PouchDB.plugin(PouchDBFind);
@@ -57,6 +58,38 @@ const syncStatusCallbacks: Set<(_status: SyncStatus) => void> = new Set();
 // Throttling for sync status notifications
 let lastNotificationTime = 0;
 const NOTIFICATION_THROTTLE_MS = 1000; // Max 1 notification per second
+
+/**
+ * Sync changed documents from PouchDB to IndexedDB
+ */
+async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<void> {
+  try {
+    for (const doc of docs) {
+      // Skip design documents and deleted documents
+      if (doc._id.startsWith('_design/') || doc._deleted) {
+        continue;
+      }
+
+      // Map PouchDB document to application format
+      const appDoc = {
+        ...doc,
+        id: doc._id,
+      };
+
+      // Update IndexedDB based on database name
+      if (dbName === 'sphyra-appointments') {
+        await IndexedDB.updateAppointment(appDoc as Appointment);
+        logger.debug(`Updated appointment ${doc._id} in IndexedDB from sync`);
+      } else if (dbName === 'sphyra-reminders') {
+        await IndexedDB.updateReminder(appDoc as Reminder);
+        logger.debug(`Updated reminder ${doc._id} in IndexedDB from sync`);
+      }
+      // Add other collections as needed
+    }
+  } catch (error) {
+    logger.error(`Error syncing docs to IndexedDB for ${dbName}:`, error);
+  }
+}
 
 /**
  * Subscribe to sync status changes
@@ -471,6 +504,13 @@ export async function startSync(): Promise<boolean> {
         // Count documents synced
         const docsChanged = (info.change?.docs?.length || 0);
         const currentCount = syncStatus.documentsSynced || 0;
+
+        // Sync changed documents to IndexedDB
+        if (info.change?.docs && info.change.docs.length > 0) {
+          syncChangedDocsToIndexedDB(remoteName, info.change.docs).catch((error) => {
+            logger.error(`Failed to sync docs to IndexedDB for ${remoteName}:`, error);
+          });
+        }
 
         // Throttled notification (not forced)
         notifySyncStatusChange({
