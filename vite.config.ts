@@ -67,7 +67,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'mask-icon.svg'],
+        includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'mask-icon.svg', 'version.json'],
         manifest: {
           name: 'Sphyra Wellness - Gestione Centro Estetico',
           short_name: 'Sphyra',
@@ -99,6 +99,8 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
           globIgnores: ['**/offline.html'], // Exclude offline.html from automatic caching
           navigateFallback: null, // Disable automatic offline fallback
+          skipWaiting: true, // Force new service worker to activate immediately
+          clientsClaim: true, // Take control of all clients immediately
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -111,6 +113,18 @@ export default defineConfig(({ mode }) => {
                 },
                 cacheableResponse: {
                   statuses: [0, 200]
+                }
+              }
+            },
+            {
+              // Cache version.json with NetworkFirst strategy to check for updates
+              urlPattern: /version\.json$/,
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'version-cache',
+                expiration: {
+                  maxEntries: 1,
+                  maxAgeSeconds: 60 * 5 // 5 minutes
                 }
               }
             }

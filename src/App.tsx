@@ -7,6 +7,7 @@ import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import IdleSplashScreen from './components/IdleSplashScreen';
+import UpdateNotification from './components/UpdateNotification';
 import { useIdleDetection } from './hooks/useIdleDetection';
 import { loadSettings } from './utils/storage';
 
@@ -69,6 +70,9 @@ const AppContent: React.FC = () => {
     <AppProvider>
       {(isLoading) => (
         <>
+          {/* Update notification banner */}
+          <UpdateNotification />
+
           {isIdle && !isLoading && <IdleSplashScreen onDismiss={resetIdle} />}
           {isLoading ? (
             <GlobalLoader />

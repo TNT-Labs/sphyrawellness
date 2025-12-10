@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "npm run generate:version && tsc && vite build",
     "preview": "vite preview",
+    "generate:version": "node scripts/generate-version.js",
     "lint": "eslint . --report-unused-disable-directives --max-warnings 100",
     "lint:fix": "eslint . --fix",
     "lint:strict": "eslint . --report-unused-disable-directives --max-warnings 0",
