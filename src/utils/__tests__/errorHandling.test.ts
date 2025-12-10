@@ -94,18 +94,19 @@ describe('Retry with Backoff', () => {
   });
 
   it('should throw after max retries', async () => {
+    // Use real timers for this test to avoid unhandled rejection issues
+    vi.useRealTimers();
+
     const fn = vi.fn(async () => {
       throw new Error('Always fails');
     });
 
-    const promise = retryWithBackoff(fn, { maxRetries: 2, baseDelay: 10 });
+    // Properly assert promise rejection with Vitest
+    await expect(
+      retryWithBackoff(fn, { maxRetries: 2, baseDelay: 10 })
+    ).rejects.toThrow('Always fails');
 
-    await vi.runAllTimersAsync();
-
-    await expect(promise).rejects.toThrow('Always fails');
     expect(fn).toHaveBeenCalledTimes(3); // Initial + 2 retries
-
-    vi.useRealTimers();
   });
 
   it('should call onRetry callback', async () => {
