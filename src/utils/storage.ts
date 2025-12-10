@@ -67,8 +67,8 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
       // Clear corrupted data
       try {
         localStorage.removeItem(key);
-      } catch (_e) {
-        logger.error('Failed to remove corrupted data:', _e);
+      } catch (error) {
+        logger.error('Failed to remove corrupted data:', error);
       }
       return defaultValue;
     }
@@ -79,7 +79,7 @@ export const loadFromStorage = <T>(key: string, defaultValue: T): T => {
     // Try to clear corrupted data
     try {
       localStorage.removeItem(key);
-    } catch (_e) {
+    } catch {
       // Ignore cleanup errors
     }
     return defaultValue;
