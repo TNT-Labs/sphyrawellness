@@ -19,9 +19,23 @@ export const ReminderSettingsCard: React.FC = () => {
   const [enableAutoReminders, setEnableAutoReminders] = useState(true);
 
   useEffect(() => {
-    loadSettings();
-    checkServer();
+    initializeSettings();
   }, []);
+
+  const initializeSettings = async () => {
+    // First check if server is available
+    await checkServer();
+    // Only load settings if server is healthy
+    // Note: we need to check the server health result directly since state update is async
+    try {
+      const healthy = await checkServerHealth();
+      if (healthy) {
+        await loadSettings();
+      }
+    } catch (error) {
+      // Server check already failed, skip loading settings
+    }
+  };
 
   const loadSettings = async () => {
     setIsLoading(true);
@@ -33,10 +47,7 @@ export const ReminderSettingsCard: React.FC = () => {
       setEnableAutoReminders(data.enableAutoReminders);
     } catch (error: any) {
       logger.error('Failed to load reminder settings:', error);
-      // Don't show error if server is not running (expected during initial setup)
-      if (!error.message?.includes('Failed to fetch')) {
-        showError('Impossibile caricare le impostazioni reminder');
-      }
+      showError('Impossibile caricare le impostazioni reminder');
     } finally {
       setIsLoading(false);
     }
