@@ -8,6 +8,7 @@ import { User, UserRole } from '../types';
 import { getUserByUsername } from '../utils/db';
 import { verifyPassword, getStoredSession, storeSession, clearSession } from '../utils/auth';
 import { logger } from '../utils/logger';
+import { useDB } from './DBContext';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -36,9 +37,15 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { isDBReady } = useDB();
 
-  // Restore session on mount
+  // Restore session only after database is ready
   useEffect(() => {
+    // Wait for database to be initialized
+    if (!isDBReady) {
+      return;
+    }
+
     const restoreSession = async () => {
       try {
         const session = getStoredSession();
@@ -63,7 +70,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
     };
 
     restoreSession();
-  }, []);
+  }, [isDBReady]);
 
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     try {

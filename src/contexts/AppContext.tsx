@@ -11,7 +11,6 @@ import {
   User,
 } from '../types';
 import {
-  initDB,
   getAllCustomers,
   addCustomer as dbAddCustomer,
   updateCustomer as dbUpdateCustomer,
@@ -52,6 +51,7 @@ import { initAutoBackup } from '../utils/autoBackup';
 import { initStoragePersistence } from '../utils/storagePersistence';
 import { initializeSync } from '../utils/pouchdbSync';
 import { hashPassword } from '../utils/auth';
+import { useDB } from './DBContext';
 
 interface AppContextType {
   // Loading state
@@ -125,19 +125,23 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
   const [staffRoles, setStaffRoles] = useState<StaffRole[]>([]);
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const { isDBReady } = useDB();
 
-  // Initialize database and load data
+  // Load data after database is ready
   useEffect(() => {
+    // Wait for database to be initialized
+    if (!isDBReady) {
+      return;
+    }
+
     let isMounted = true;
 
     const initializeApp = async () => {
       try {
         setIsLoading(true);
 
-        // Step 1: Initialize database infrastructure
-        await initDB();
-        if (!isMounted) return;
-        logger.log('✓ IndexedDB initialized');
+        // Database is already initialized by DBProvider
+        logger.log('✓ IndexedDB ready, loading data...');
 
         // Step 2: Request storage persistence to prevent data loss
         await initStoragePersistence();
@@ -268,7 +272,7 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [isDBReady]);
 
   // Customers
   const addCustomer = async (customer: Customer) => {
