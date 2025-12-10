@@ -817,15 +817,22 @@ export async function testCouchDBConnection(
 
       // Analizza l'errore per fornire messaggi più chiari
       if (fetchError?.message === 'Failed to fetch' || fetchError?.name === 'TypeError') {
+        // Estrai l'URL pulito per il comando suggerito
+        const serverUrlForCommand = baseUrl.replace(/\/$/, '');
+
         return {
           success: false,
-          error: 'Impossibile raggiungere il server. Possibili cause:\n' +
-                 '• CouchDB non è in esecuzione\n' +
-                 '• L\'URL non è corretto\n' +
-                 '• CORS non è configurato correttamente su CouchDB\n' +
-                 '• Problema di rete o firewall\n\n' +
-                 'Soluzione: Esegui lo script di configurazione CORS:\n' +
-                 'node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password'
+          error: '❌ Impossibile raggiungere il server CouchDB.\n\n' +
+                 '🔍 Possibili cause:\n' +
+                 '  • CORS non configurato su CouchDB (causa più comune)\n' +
+                 '  • CouchDB non è in esecuzione\n' +
+                 '  • URL non corretto o server non raggiungibile\n' +
+                 '  • Firewall o problema di rete\n\n' +
+                 '✅ SOLUZIONE RAPIDA:\n' +
+                 'Esegui questo comando per configurare CORS:\n\n' +
+                 `  node scripts/configure-couchdb-cors.cjs ${serverUrlForCommand} admin <password>\n\n` +
+                 '📖 Per istruzioni dettagliate, consulta:\n' +
+                 '  CONFIGURAZIONE-COUCHDB-CORS.md'
         };
       } else if (fetchError?.message?.includes('NetworkError')) {
         return {
