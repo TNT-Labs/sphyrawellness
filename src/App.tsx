@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
           {isLoading ? (
             <GlobalLoader />
           ) : (
-            <Router basename="/sphyrawellness">
+            <Router>
               <Routes>
                 {/* Public route for login */}
                 <Route path="/login" element={<Login />} />
