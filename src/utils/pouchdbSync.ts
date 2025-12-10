@@ -49,7 +49,7 @@ let connectionCheckInterval: NodeJS.Timeout | null = null;
 
 // Connection check configuration
 const CONNECTION_CHECK_INTERVAL_MS = 30000; // Check every 30 seconds
-const CONNECTION_CHECK_TIMEOUT_MS = 5000; // 5 second timeout for connection test
+const CONNECTION_CHECK_TIMEOUT_MS = 10000; // 10 second timeout for connection test
 
 // Sync status callbacks
 const syncStatusCallbacks: Set<(_status: SyncStatus) => void> = new Set();
@@ -1168,22 +1168,30 @@ async function testActualConnectivity(): Promise<boolean> {
       setTimeout(() => reject(new Error('Connection test timeout')), CONNECTION_CHECK_TIMEOUT_MS);
     });
 
-    // Create a promise that tests the connection
+    // Create a promise that tests the connection using lightweight HTTP request
     const testPromise = async (): Promise<boolean> => {
       let remoteUrl = settings.couchdbUrl!.trim().replace(/\/+$/, '');
 
+      // Build authorization header if credentials are provided
+      const headers: HeadersInit = {
+        'Accept': 'application/json',
+      };
+
       if (settings.couchdbUsername && settings.couchdbPassword) {
-        const url = new URL(remoteUrl);
-        url.username = encodeURIComponent(settings.couchdbUsername);
-        url.password = encodeURIComponent(settings.couchdbPassword);
-        remoteUrl = url.toString();
+        const credentials = btoa(`${settings.couchdbUsername}:${settings.couchdbPassword}`);
+        headers['Authorization'] = `Basic ${credentials}`;
       }
 
-      // Try to access a lightweight endpoint
-      const testDB = new PouchDB(`${remoteUrl}/_users`);
-      await testDB.info();
-      await testDB.close();
-      return true;
+      // Use a lightweight HEAD request to test connectivity
+      // CouchDB root endpoint (/) returns basic server info
+      const response = await fetch(remoteUrl, {
+        method: 'HEAD',
+        headers,
+        mode: 'cors',
+        credentials: 'include',
+      });
+
+      return response.ok || response.status === 401; // 401 means server is reachable but auth failed
     };
 
     // Race between timeout and actual test
