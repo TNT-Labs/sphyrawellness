@@ -1,0 +1,709 @@
+================================================================================
+  ELEMENTI NON VERIFICATI - SPHYRA WELLNESS LAB PWA
+================================================================================
+
+Data: 2025-12-11
+Progetto: Sphyra Wellness Lab v1.0.0
+Branch: claude/technical-audit-012UcKWbjvwhzpUrZyf4bwqJ
+
+================================================================================
+  NOTA IMPORTANTE
+================================================================================
+
+I seguenti elementi NON sono stati verificati durante l'audit tecnico a causa
+di limitazioni tecniche, mancanza di credenziali, o necessità di risorse
+esterne non disponibili nell'ambiente di test.
+
+Questo file elenca PRECISAMENTE cosa non è stato testato, perché, quali
+artefatti/credenziali servono, e come eseguire la verifica manualmente.
+
+Gli elementi sono ordinati per PRIORITÀ.
+
+================================================================================
+
+PRIORITÀ 1: CRITICAL - Richiede verifica immediata prima di produzione
+PRIORITÀ 2: HIGH - Importante ma può essere verificato in staging
+PRIORITÀ 3: MEDIUM - Raccomandato per assicurare qualità completa
+PRIORITÀ 4: LOW - Nice to have, non bloccante
+
+================================================================================
+  1. DOCKER COMPOSE UP - Test Container Stack Completo
+================================================================================
+
+PRIORITÀ: 1 (CRITICAL)
+
+MOTIVO NON VERIFICATO:
+  Richiede file .env con credenziali valide:
+  - SENDGRID_API_KEY (API key valida SendGrid)
+  - COUCHDB_PASSWORD (password sicura per CouchDB)
+
+  Il comando docker-start.sh blocca l'avvio se COUCHDB_PASSWORD non è impostata
+  o usa il valore di default "password".
+
+COSA SERVE:
+  1. Account SendGrid gratuito (100 email/giorno)
+     - Registrazione: https://signup.sendgrid.com/
+     - API Key con permessi "Mail Send"
+     - Sender Identity verificata
+
+  2. Password sicura per CouchDB
+     - Generare con: openssl rand -base64 24
+     - Minimo 16 caratteri, alfanumerici + simboli
+
+ARTEFATTI RICHIESTI:
+  - File: .env (copiato da .env.docker.example)
+  - Variabili:
+      SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxx
+      SENDGRID_FROM_EMAIL=noreply@tuodominio.com
+      SENDGRID_FROM_NAME=Sphyra Wellness Lab
+      COUCHDB_PASSWORD=<password-sicura-generata>
+      FRONTEND_URL=http://localhost
+
+COME VERIFICARE:
+  1. Creare file .env
+     $ cp .env.docker.example .env
+
+  2. Configurare variabili richieste
+     $ nano .env
+     # Impostare SENDGRID_API_KEY e COUCHDB_PASSWORD
+
+  3. Avviare stack Docker
+     $ docker compose up --build
+
+  4. Verificare che tutti i servizi siano healthy
+     $ docker compose ps
+
+     Output atteso:
+     NAME                STATUS         HEALTH
+     sphyra-frontend     Up X minutes   healthy
+     sphyra-backend      Up X minutes   healthy
+     sphyra-couchdb      Up X minutes   healthy
+
+  5. Verificare accessibilità servizi
+     $ curl http://localhost:5984/_up
+     $ curl http://localhost:3001/health
+     $ curl -I http://localhost/
+
+  6. Salvare log di avvio
+     $ docker compose logs --no-color > audit-output/artifacts/docker-compose-up-verified.log
+
+CRITERI SUCCESSO:
+  ✅ Tutti e 3 i container in stato "healthy"
+  ✅ Frontend accessibile su http://localhost
+  ✅ Backend risponde su http://localhost:3001/health
+  ✅ CouchDB risponde su http://localhost:5984/_up
+  ✅ Nessun errore nei log
+
+IMPATTO SE NON VERIFICATO:
+  - Non si ha garanzia che lo stack Docker funzioni correttamente
+  - Possibili problemi di configurazione non rilevati
+  - Problemi di networking tra container non verificati
+  - Healthcheck potrebbero fallire in produzione
+
+================================================================================
+  2. TEST END-TO-END (E2E) - Flussi Utente Completi
+================================================================================
+
+PRIORITÀ: 1 (CRITICAL)
+
+MOTIVO NON VERIFICATO:
+  Playwright non è configurato nel progetto.
+  I test E2E richiedono:
+  - Installazione framework di testing E2E (Playwright o Cypress)
+  - Configurazione ambiente di test
+  - Implementazione script di test per flussi critici
+  - Server applicazione in esecuzione
+
+COSA SERVE:
+  1. Framework E2E
+     - Playwright (raccomandato): npm install -D @playwright/test
+     - O Cypress: npm install -D cypress
+
+  2. Server applicazione running
+     - Frontend: npm run preview (porta 4173)
+     - Backend: cd server && npm start (porta 3001)
+     - CouchDB: docker run o installazione locale
+
+  3. Dati di test
+     - Clienti di esempio
+     - Appuntamenti di test
+     - Credenziali test SendGrid (per email confirmation)
+
+ARTEFATTI RICHIESTI:
+  - File: playwright.config.ts (o cypress.config.ts)
+  - Directory: e2e/ o cypress/e2e/
+  - Test data: audit-output/e2e/test-data.json
+
+FLUSSI CRITICI DA TESTARE:
+
+  FLUSSO 1: Gestione Clienti (CRUD)
+  ---------------------------------
+  [ ] Creare nuovo cliente
+  [ ] Visualizzare lista clienti
+  [ ] Modificare cliente esistente
+  [ ] Eliminare cliente
+  [ ] Ricerca/filtro clienti
+
+  FLUSSO 2: Gestione Appuntamenti
+  --------------------------------
+  [ ] Creare nuovo appuntamento
+  [ ] Visualizzare calendario
+  [ ] Modificare orario appuntamento
+  [ ] Cancellare appuntamento
+  [ ] Filtrare per data/operatore
+
+  FLUSSO 3: Conferma Appuntamento via Email
+  -----------------------------------------
+  [ ] Sistema invia email reminder
+  [ ] Cliente clicca link conferma in email
+  [ ] Appuntamento marcato come "confirmed"
+  [ ] Status aggiornato nel calendario
+
+  FLUSSO 4: Funzionamento Offline (PWA)
+  --------------------------------------
+  [ ] Aprire app con connessione
+  [ ] Disattivare rete (DevTools → Network → Offline)
+  [ ] Navigare tra pagine
+  [ ] Visualizzare dati cached
+  [ ] Creare nuovo cliente (salva in local DB)
+  [ ] Riattivare rete
+  [ ] Verificare sincronizzazione automatica
+
+  FLUSSO 5: Gestione Servizi
+  ---------------------------
+  [ ] Creare nuovo servizio
+  [ ] Modificare prezzo servizio
+  [ ] Assegnare servizio ad appuntamento
+  [ ] Eliminare servizio (verificare constraint)
+
+COME VERIFICARE (Playwright):
+
+  1. Installare Playwright
+     $ npm install -D @playwright/test
+     $ npx playwright install
+
+  2. Creare configurazione
+     $ cat > playwright.config.ts << 'EOF'
+     import { defineConfig, devices } from '@playwright/test';
+
+     export default defineConfig({
+       testDir: './audit-output/e2e',
+       fullyParallel: true,
+       forbidOnly: !!process.env.CI,
+       retries: process.env.CI ? 2 : 0,
+       workers: process.env.CI ? 1 : undefined,
+       reporter: 'html',
+       use: {
+         baseURL: 'http://localhost:4173',
+         trace: 'on-first-retry',
+         screenshot: 'only-on-failure',
+       },
+       projects: [
+         {
+           name: 'chromium',
+           use: { ...devices['Desktop Chrome'] },
+         },
+       ],
+       webServer: {
+         command: 'npm run preview',
+         port: 4173,
+       },
+     });
+     EOF
+
+  3. Implementare test esempio
+     $ mkdir -p audit-output/e2e
+     $ cat > audit-output/e2e/clienti.spec.ts << 'EOF'
+     import { test, expect } from '@playwright/test';
+
+     test('CRUD clienti', async ({ page }) => {
+       await page.goto('/');
+
+       // Navigare a Clienti
+       await page.click('text=Clienti');
+
+       // Creare cliente
+       await page.click('button:has-text("Nuovo Cliente")');
+       await page.fill('input[name="nome"]', 'Mario Rossi');
+       await page.fill('input[name="email"]', 'mario.rossi@test.com');
+       await page.fill('input[name="telefono"]', '3331234567');
+       await page.click('button:has-text("Salva")');
+
+       // Verificare che il cliente sia nella lista
+       await expect(page.locator('text=Mario Rossi')).toBeVisible();
+
+       // ... ulteriori test CRUD
+     });
+     EOF
+
+  4. Avviare server e eseguire test
+     $ npx playwright test
+
+  5. Salvare report
+     $ npx playwright show-report
+
+CRITERI SUCCESSO:
+  ✅ Tutti i flussi critici passano
+  ✅ Screenshot salvati in audit-output/e2e/screenshots/
+  ✅ Video dei test in audit-output/e2e/videos/
+  ✅ Report HTML generato
+  ✅ 0 test falliti
+
+IMPATTO SE NON VERIFICATO:
+  - Nessuna garanzia che i flussi utente funzionino end-to-end
+  - Regressioni possibili durante modifiche UI
+  - Problemi di integrazione frontend-backend non rilevati
+  - Offline mode PWA non testato
+
+================================================================================
+  3. PERFORMANCE LIGHTHOUSE - Metriche Web Vitals
+================================================================================
+
+PRIORITÀ: 2 (HIGH)
+
+MOTIVO NON VERIFICATO:
+  Richiede server preview in esecuzione.
+  L'audit Lighthouse analizza:
+  - Performance (FCP, LCP, TTI, TBT, CLS)
+  - Accessibility
+  - Best Practices
+  - SEO
+  - PWA checklist
+
+COSA SERVE:
+  1. Server preview in esecuzione
+     $ npm run preview
+     (Porta 4173)
+
+  2. Chrome/Chromium installato (per Lighthouse CLI)
+
+ARTEFATTI RICHIESTI:
+  - File: audit-output/artifacts/lighthouse.json
+  - File: audit-output/artifacts/lighthouse.html
+
+COME VERIFICARE:
+
+  1. Avviare preview server
+     $ npm run build
+     $ npm run preview &
+     # Server disponibile su http://localhost:4173
+
+  2. Eseguire Lighthouse
+     $ npx lighthouse http://localhost:4173 \
+       --output=json \
+       --output=html \
+       --output-path=audit-output/artifacts/lighthouse \
+       --chrome-flags="--headless" \
+       --only-categories=performance,accessibility,best-practices,seo,pwa
+
+  3. Analizzare report
+     $ cat audit-output/artifacts/lighthouse.json | jq '.categories'
+
+  4. Aprire report HTML
+     $ open audit-output/artifacts/lighthouse.html
+     # O visualizzare in browser
+
+METRICHE ATTESE:
+
+  Performance
+  -----------
+  Target: Score >= 90
+  - First Contentful Paint (FCP): < 1.8s
+  - Largest Contentful Paint (LCP): < 2.5s
+  - Time to Interactive (TTI): < 3.8s
+  - Total Blocking Time (TBT): < 200ms
+  - Cumulative Layout Shift (CLS): < 0.1
+
+  Accessibility
+  -------------
+  Target: Score >= 90
+  - Contrasto colori sufficiente
+  - Labels su form inputs
+  - ARIA attributes corretti
+  - Navigazione da tastiera funzionante
+
+  Best Practices
+  --------------
+  Target: Score >= 90
+  - HTTPS (in produzione)
+  - Nessun errore console
+  - Immagini con dimensioni corrette
+  - Nessun uso di API deprecate
+
+  SEO
+  ---
+  Target: Score >= 90
+  - Meta description presente
+  - Title appropriato
+  - Viewport meta tag
+  - Link crawlabili
+
+  PWA
+  ---
+  Target: Score = 100
+  - Service worker registrato
+  - Manifest valido
+  - Installabile
+  - Funziona offline
+
+CRITERI SUCCESSO:
+  ✅ Performance score >= 90
+  ✅ Accessibility score >= 90
+  ✅ Best Practices score >= 90
+  ✅ SEO score >= 90
+  ✅ PWA score = 100
+
+IMPATTO SE NON VERIFICATO:
+  - Performance reali per utenti non note
+  - Possibili problemi di accessibilità non rilevati
+  - Core Web Vitals non misurati
+  - PWA compliance non verificato completamente
+
+================================================================================
+  4. ACCESSIBILITY AXE-CORE - Test WCAG Compliance
+================================================================================
+
+PRIORITÀ: 2 (HIGH)
+
+MOTIVO NON VERIFICATO:
+  Richiede server in esecuzione e tool axe-core.
+
+COSA SERVE:
+  1. Server in esecuzione (npm run preview)
+  2. axe-core CLI: npm install -D @axe-core/cli
+
+ARTEFATTI RICHIESTI:
+  - File: audit-output/artifacts/axe-results.json
+
+COME VERIFICARE:
+
+  1. Installare axe-core CLI
+     $ npm install -D @axe-core/cli
+
+  2. Avviare server
+     $ npm run preview &
+
+  3. Eseguire scan accessibility
+     $ npx axe http://localhost:4173 \
+       --save audit-output/artifacts/axe-results.json \
+       --tags wcag2a,wcag2aa,wcag21a,wcag21aa
+
+  4. Analizzare risultati
+     $ cat audit-output/artifacts/axe-results.json | jq '.violations | length'
+     # Output atteso: 0 violations
+
+  5. Se ci sono violations, estrarre dettagli
+     $ cat audit-output/artifacts/axe-results.json | jq '.violations[] | {
+       id: .id,
+       impact: .impact,
+       description: .description,
+       nodes: .nodes | length
+     }'
+
+LIVELLI WCAG DA TESTARE:
+  - WCAG 2.0 Level A
+  - WCAG 2.0 Level AA
+  - WCAG 2.1 Level A
+  - WCAG 2.1 Level AA
+
+CRITERI SUCCESSO:
+  ✅ 0 violations critiche
+  ✅ 0 violations serie
+  ✅ < 5 violations moderate
+  ✅ Tutti i form hanno labels
+  ✅ Contrasto colori >= 4.5:1 per testo normale
+  ✅ Contrasto colori >= 3:1 per testo large
+  ✅ Navigazione da tastiera funzionante
+
+IMPATTO SE NON VERIFICATO:
+  - Accessibilità per utenti con disabilità non garantita
+  - Possibile non conformità a normative (es. ADA, Section 508)
+  - Problemi con screen reader non rilevati
+  - Navigazione da tastiera potenzialmente problematica
+
+================================================================================
+  5. SCRIPT COUCHDB - Setup e Configurazione Database
+================================================================================
+
+PRIORITÀ: 2 (HIGH)
+
+MOTIVO NON VERIFICATO:
+  Richiede istanza CouchDB in esecuzione.
+  Gli script testati sono:
+  - scripts/setup-couchdb.js (creazione database)
+  - scripts/configure-couchdb-cors.cjs (configurazione CORS)
+
+COSA SERVE:
+  1. CouchDB in esecuzione
+     - Opzione Docker (raccomandato)
+     - Opzione installazione locale
+     - Opzione cloud (IBM Cloudant)
+
+  2. Credenziali admin CouchDB
+
+ARTEFATTI RICHIESTI:
+  - File: audit-output/artifacts/commands/setup-couchdb-verified.log
+  - File: audit-output/artifacts/commands/configure-cors-verified.log
+
+COME VERIFICARE:
+
+  METODO 1: Docker (Raccomandato)
+  --------------------------------
+
+  1. Avviare CouchDB container
+     $ docker run -d --name test-couchdb \
+       -p 5984:5984 \
+       -e COUCHDB_USER=admin \
+       -e COUCHDB_PASSWORD=testpassword \
+       apache/couchdb:latest
+
+  2. Verificare che CouchDB sia pronto
+     $ curl http://admin:testpassword@localhost:5984/
+     # Output atteso: {"couchdb":"Welcome",...}
+
+  3. Eseguire script setup
+     $ node scripts/setup-couchdb.js \
+       http://localhost:5984 \
+       admin \
+       testpassword \
+       2>&1 | tee audit-output/artifacts/commands/setup-couchdb-verified.log
+
+  4. Verificare output
+     Output atteso:
+     ═══════════════════════════════════════════
+       🗄️  CouchDB Setup - Sphyra Wellness Lab
+     ═══════════════════════════════════════════
+
+     📍 Server: http://localhost:5984
+     👤 Utente: admin
+
+     🔍 Verifico connessione a CouchDB...
+     ✅ Connesso a CouchDB 3.x.x
+
+     📦 Creazione database...
+       ✅ Database "sphyra-customers" creato
+       ✅ Database "sphyra-services" creato
+       ✅ Database "sphyra-staff" creato
+       ✅ Database "sphyra-appointments" creato
+       ✅ Database "sphyra-payments" creato
+       ✅ Database "sphyra-reminders" creato
+       ✅ Database "sphyra-staff-roles" creato
+       ✅ Database "sphyra-service-categories" creato
+
+     📊 Riepilogo:
+       ✅ Creati: 8
+       ⚠️  Già esistenti: 0
+       ❌ Errori: 0
+
+     ═══════════════════════════════════════════
+       ✅ Setup completato con successo!
+     ═══════════════════════════════════════════
+
+  5. Verificare database creati
+     $ curl http://admin:testpassword@localhost:5984/_all_dbs | jq
+
+     Output atteso:
+     [
+       "sphyra-appointments",
+       "sphyra-customers",
+       "sphyra-payments",
+       "sphyra-reminders",
+       "sphyra-service-categories",
+       "sphyra-services",
+       "sphyra-staff",
+       "sphyra-staff-roles"
+     ]
+
+  6. Eseguire script CORS
+     $ node scripts/configure-couchdb-cors.cjs \
+       http://localhost:5984 \
+       admin \
+       testpassword \
+       2>&1 | tee audit-output/artifacts/commands/configure-cors-verified.log
+
+  7. Verificare configurazione CORS
+     $ curl http://admin:testpassword@localhost:5984/_node/_local/_config/cors | jq
+
+     Output atteso:
+     {
+       "origins": "*",
+       "credentials": "true",
+       "methods": "GET, PUT, POST, HEAD, DELETE, OPTIONS",
+       "headers": "accept, authorization, content-type, origin, referer, x-requested-with"
+     }
+
+  8. Test CORS con browser
+     $ curl -H "Origin: http://localhost:3000" \
+          -H "Access-Control-Request-Method: GET" \
+          -H "Access-Control-Request-Headers: Content-Type" \
+          -X OPTIONS \
+          -v \
+          http://localhost:5984 2>&1 | grep "Access-Control"
+
+     # Verificare headers CORS nella risposta
+
+  9. Cleanup
+     $ docker stop test-couchdb
+     $ docker rm test-couchdb
+
+CRITERI SUCCESSO:
+  ✅ Script setup-couchdb.js completa senza errori
+  ✅ Tutti 8 database creati
+  ✅ Script configure-couchdb-cors.cjs completa senza errori
+  ✅ CORS configurato correttamente
+  ✅ Test CORS con curl passa
+
+IMPATTO SE NON VERIFICATO:
+  - Script potrebbero fallire in produzione
+  - Database non creati correttamente
+  - CORS potrebbe non funzionare
+  - Sincronizzazione frontend-CouchDB potrebbe fallire
+
+================================================================================
+  6. SCANSIONE CTA (Call-to-Action) - Mappatura Interazioni UI
+================================================================================
+
+PRIORITÀ: 3 (MEDIUM)
+
+MOTIVO NON VERIFICATO:
+  Richiede analisi statica del codice React + testing manuale o automatizzato
+  di tutte le interazioni possibili nell'interfaccia.
+
+COSA SERVE:
+  1. Tool di analisi statica (grep, ast-parser)
+  2. Browser con DevTools per testing manuale
+  3. Server applicazione in esecuzione
+
+ARTEFATTI RICHIESTI:
+  - File: audit-output/artifacts/ctas.json
+
+COME VERIFICARE:
+
+  1. Scansione automatica componenti
+     $ grep -r "onClick\|onSubmit\|href" src/ \
+       --include="*.tsx" \
+       --include="*.ts" \
+       -n > audit-output/artifacts/ctas-raw.txt
+
+  2. Estrarre CTA da componenti principali
+     # Cercare in:
+     - src/components/**/*.tsx
+     - src/pages/**/*.tsx
+     - src/App.tsx
+
+  3. Categorizzare CTA per tipo:
+     - Navigation (router links)
+     - Form submit
+     - Button actions
+     - Modal triggers
+     - API calls
+
+  4. Creare mappatura JSON
+     $ cat > audit-output/artifacts/ctas.json << 'EOF'
+     {
+       "ctas": [
+         {
+           "id": "btn-nuovo-cliente",
+           "label": "Nuovo Cliente",
+           "type": "button",
+           "action": "open_modal",
+           "file": "src/pages/Clienti.tsx",
+           "line": 45,
+           "selector": "button[data-testid='new-customer']"
+         },
+         ... (mappare tutte le CTA)
+       ]
+     }
+     EOF
+
+  5. Test manuale ogni CTA
+     - Aprire app in browser
+     - Cliccare ogni bottone/link
+     - Verificare comportamento atteso
+     - Verificare gestione errori
+     - Verificare stato loading
+
+CATEGORIE CTA DA MAPPARE:
+
+  NAVIGAZIONE
+  -----------
+  [ ] Link menu laterale
+  [ ] Breadcrumbs
+  [ ] Back buttons
+  [ ] Tabs
+
+  CRUD OPERATIONS
+  ---------------
+  [ ] Crea nuovo (Cliente, Servizio, Appuntamento, ecc.)
+  [ ] Modifica esistente
+  [ ] Elimina
+  [ ] Ricerca/Filtra
+
+  FORMS
+  -----
+  [ ] Submit form
+  [ ] Reset form
+  [ ] Validazione campi
+  [ ] Upload file
+
+  MODALS/DIALOGS
+  --------------
+  [ ] Apri modale
+  [ ] Chiudi modale
+  [ ] Conferma azione
+  [ ] Annulla azione
+
+  INTEGRATIONS
+  ------------
+  [ ] Sync CouchDB
+  [ ] Invia email reminder
+  [ ] Export dati
+
+CRITERI SUCCESSO:
+  ✅ Tutte le CTA mappate in ctas.json
+  ✅ Ogni CTA testata manualmente o via E2E
+  ✅ Validazione form funzionante
+  ✅ Gestione errori presente
+  ✅ Stati loading implementati
+  ✅ Idempotenza verificata
+
+IMPATTO SE NON VERIFICATO:
+  - CTA non funzionanti potrebbero non essere rilevate
+  - UX degradata per utenti
+  - Possibili dead clicks
+
+================================================================================
+  RIEPILOGO PRIORITÀ
+================================================================================
+
+PRIORITY 1 (CRITICAL) - Da verificare prima di produzione:
+  [1] Docker Compose Up
+  [2] Test E2E (Playwright)
+  [5] Script CouchDB
+
+PRIORITY 2 (HIGH) - Importante per qualità:
+  [3] Performance Lighthouse
+  [4] Accessibility axe-core
+
+PRIORITY 3 (MEDIUM) - Raccomandato:
+  [6] Scansione CTA
+
+================================================================================
+  NOTE FINALI
+================================================================================
+
+Tutti gli elementi sopra elencati sono stati INTENZIONALMENTE non verificati
+durante l'audit automatico a causa di limitazioni tecniche o mancanza di
+credenziali/risorse.
+
+Per un audit completo al 100%, è necessario:
+1. Configurare credenziali (SendGrid, CouchDB)
+2. Eseguire verifiche manuali documentate sopra
+3. Salvare artifacts in audit-output/
+4. Aggiornare questo file con risultati
+
+Per domande: vedere audit-output/report.md
+
+================================================================================
+  FINE DOCUMENTO
+================================================================================
