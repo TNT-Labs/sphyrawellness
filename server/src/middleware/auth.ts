@@ -39,7 +39,8 @@ export function authenticateToken(
   }
 
   try {
-    const user = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
+    const decoded = jwt.verify(token, JWT_SECRET!);
+    const user = decoded as unknown as { id: string; role: string };
     req.user = user;
     next();
   } catch {
