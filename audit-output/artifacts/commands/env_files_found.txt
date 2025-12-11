@@ -1,4 +1,0 @@
-./.env.docker.example
-./.env.example
-./.env.production
-./server/.env.example
