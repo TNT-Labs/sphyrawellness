@@ -50,9 +50,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 px-4 py-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-primary-600">
-            <img 
-                src="/Sphyra_logo.png" 
-                alt="Sphyra Wellness Lab Logo" 
+            <img
+                src={`${import.meta.env.BASE_URL}Sphyra_logo.png`}
+                alt="Sphyra Wellness Lab Logo"
                 className="h-8 w-auto" // Dimensione adatta per l'intestazione mobile
             />
         </h1>
@@ -80,9 +80,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="p-6 border-b border-gray-200 hidden lg:block">
           <h1 className="text-2xl font-bold text-primary-600">
               {/* Sostituzione del testo con il tag <img> per il logo */}
-              <img 
-                  src="/Sphyra_logo.png" 
-                  alt="Sphyra Wellness Lab Logo" 
+              <img
+                  src={`${import.meta.env.BASE_URL}Sphyra_logo.png`}
+                  alt="Sphyra Wellness Lab Logo"
                   className="h-24 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
               />
           </h1>
