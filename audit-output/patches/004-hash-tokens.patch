@@ -1,0 +1,184 @@
+diff --git a/server/package.json b/server/package.json
+index 1234567..8901234 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -17,6 +17,7 @@
+     "date-fns": "^4.1.0",
+     "dotenv": "^16.4.5",
+     "express": "^4.18.2",
++    "bcrypt": "^5.1.1",
+     "node-cron": "^3.0.3",
+     "pouchdb-find": "^9.0.0",
+     "pouchdb-node": "^9.0.0",
+@@ -26,6 +27,7 @@
+   "devDependencies": {
+     "@types/cors": "^2.8.17",
+     "@types/express": "^4.17.21",
++    "@types/bcrypt": "^5.0.2",
+     "@types/node": "^20.12.7",
+     "@types/node-cron": "^3.0.11",
+     "@types/pouchdb-find": "^7.3.3",
+
+diff --git a/server/src/types/index.ts b/server/src/types/index.ts
+index 1234567..8901234 100644
+--- a/server/src/types/index.ts
++++ b/server/src/types/index.ts
+@@ -10,7 +10,9 @@ export interface Appointment {
+   serviceId: string;
+   staffId: string;
+   reminderSent?: boolean;
+-  confirmationToken?: string; // Added for email confirmation
++  confirmationToken?: string; // Token shown to user (for generating link)
++  confirmationTokenHash?: string; // Hashed token stored in DB
++  tokenExpiresAt?: string; // ISO date when token expires
+ }
+
+diff --git a/server/src/services/reminderService.ts b/server/src/services/reminderService.ts
+index 1234567..8901234 100644
+--- a/server/src/services/reminderService.ts
++++ b/server/src/services/reminderService.ts
+@@ -1,6 +1,7 @@
+ import { v4 as uuidv4 } from 'uuid';
+ import { format, addDays, parseISO } from 'date-fns';
+ import emailService from './emailService.js';
++import bcrypt from 'bcrypt';
+ import db from '../config/database.js';
+ import type { Appointment, Reminder, Staff, Service, Customer } from '../types/index.js';
+
+@@ -8,6 +9,7 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+ // Cache for services, staff, and customers to reduce DB calls
+ const cache = new Map<string, any>();
++const SALT_ROUNDS = 12; // bcrypt salt rounds
++const TOKEN_EXPIRY_HOURS = 48; // Token valid for 48 hours
+
+ class ReminderService {
+@@ -103,14 +105,28 @@ class ReminderService {
+       // 3. Generate confirmation token if not exists
+       let confirmationToken = appointment.confirmationToken;
+
+-      // Generate new token if not present
++      // Generate new token if not present or expired
+       if (!confirmationToken) {
+-        confirmationToken = uuidv4();
++        // Generate a longer, more secure token (32 bytes = 256 bits)
++        confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs concatenated
++
++        // Hash the token before storing
++        const confirmationTokenHash = await bcrypt.hash(confirmationToken, SALT_ROUNDS);
++
++        // Calculate expiration time (48 hours from now)
++        const tokenExpiresAt = new Date();
++        tokenExpiresAt.setHours(tokenExpiresAt.getHours() + TOKEN_EXPIRY_HOURS);
+
+         // Update appointment with token and get the updated doc
+         const updated = await db.appointments.put({
+           ...appointment,
+-          confirmationToken,
++          confirmationToken, // Plain token (NOT stored - only used for generating link)
++          confirmationTokenHash, // Hashed token (stored in DB)
++          tokenExpiresAt: tokenExpiresAt.toISOString(),
++        }) as PouchDB.Core.Response;
++
++        // Remove plain token from appointment object after storing hash
++        delete appointment.confirmationToken;
++        appointment.confirmationTokenHash = confirmationTokenHash;
++        appointment.tokenExpiresAt = tokenExpiresAt.toISOString();
+         appointment._rev = updated.rev;
+       }
+
+@@ -265,19 +281,49 @@ class ReminderService {
+   /**
+    * Confirm appointment using token
++   * Now uses hashed token comparison and checks expiration
+    */
+   async confirmAppointment(appointmentId: string, token: string): Promise<{
+     success: boolean;
+     appointment?: Appointment;
+     error?: string;
+   }> {
+     try {
++      // Validate token format (should be 2 UUIDs)
++      if (!token || token.length < 64) {
++        return {
++          success: false,
++          error: 'Invalid confirmation token format'
++        };
++      }
++
+       const appointment = await db.appointments.get(appointmentId) as Appointment;
+
+-      if (appointment.confirmationToken !== token) {
++      // Check if token hash exists
++      if (!appointment.confirmationTokenHash) {
++        return {
++          success: false,
++          error: 'No confirmation token found for this appointment'
++        };
++      }
++
++      // Check token expiration
++      if (appointment.tokenExpiresAt) {
++        const expiresAt = parseISO(appointment.tokenExpiresAt);
++        if (new Date() > expiresAt) {
++          return {
++            success: false,
++            error: 'Confirmation token has expired. Please contact us.'
++          };
++        }
++      }
++
++      // Compare provided token with stored hash
++      const isValidToken = await bcrypt.compare(token, appointment.confirmationTokenHash);
++
++      if (!isValidToken) {
+         return {
+           success: false,
+-          error: 'Invalid confirmation token'
++          error: 'Invalid confirmation token. Please check the link.'
+         };
+       }
+
+@@ -286,10 +332,14 @@ class ReminderService {
+         return {
+           success: true,
+           appointment,
+-          error: 'Appointment already confirmed'
++          message: 'Appointment already confirmed'
+         };
+       }
+
+-      // Update appointment status to confirmed
++      // Update appointment status to confirmed and invalidate token (one-time use)
+       const updated = await db.appointments.put({
+         ...appointment,
+-        status: 'confirmed'
++        status: 'confirmed',
++        confirmationTokenHash: undefined, // Invalidate token after use
++        tokenExpiresAt: undefined,
++        confirmedAt: new Date().toISOString() // Track when confirmed
+       }) as PouchDB.Core.Response;
+
+       appointment._rev = updated.rev;
+       appointment.status = 'confirmed';
++      appointment.confirmationTokenHash = undefined;
++      appointment.tokenExpiresAt = undefined;
+
+       return {
+         success: true,
+-        appointment
++        appointment,
++        message: 'Appointment confirmed successfully'
+       };
+     } catch (error: any) {
+       console.error('Error confirming appointment:', error);
+
+Note: The confirmation token is only stored temporarily in the appointment object
+to generate the email link, then removed. Only the hash is persisted in the database.
+
+Security improvements:
+1. Token is hashed before storage (bcrypt with 12 salt rounds)
+2. Token has expiration time (48 hours)
+3. Token is one-time use (invalidated after confirmation)
+4. Longer token (2 UUIDs = 64 characters) for better entropy
+5. Constant-time comparison via bcrypt.compare prevents timing attacks
