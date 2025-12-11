@@ -1,9 +1,9 @@
-# 🐳 Manuale di Installazione Docker - Sphyra Wellness
+# 🐳 Manuale di Installazione Docker - Sphyra Wellness Lab
 
 **Versione:** 1.0
 **Ultima modifica:** Dicembre 2024
 
-Questo manuale guida l'installazione completa di **Sphyra Wellness** utilizzando Docker su piattaforme Windows e Linux (incluso Raspberry Pi 5).
+Questo manuale guida l'installazione completa di **Sphyra Wellness Lab** utilizzando Docker su piattaforme Windows e Linux (incluso Raspberry Pi 5).
 
 ---
 
@@ -15,7 +15,7 @@ Questo manuale guida l'installazione completa di **Sphyra Wellness** utilizzando
    - [Windows](#installazione-docker-su-windows)
    - [Linux (Ubuntu/Debian)](#installazione-docker-su-linux-ubuntudebian)
    - [Raspberry Pi 5](#installazione-docker-su-raspberry-pi-5)
-4. [Installazione Sphyra Wellness](#installazione-sphyra-wellness)
+4. [Installazione Sphyra Wellness Lab](#installazione-sphyra-wellness)
 5. [Configurazione](#configurazione)
 6. [Avvio dell'Applicazione](#avvio-dellapplicazione)
 7. [Configurazione Iniziale CouchDB](#configurazione-iniziale-couchdb)
@@ -30,7 +30,7 @@ Questo manuale guida l'installazione completa di **Sphyra Wellness** utilizzando
 
 ## 🎯 Introduzione
 
-Sphyra Wellness è una Progressive Web App (PWA) completa per la gestione di centri estetici e spa. L'applicazione è composta da:
+Sphyra Wellness Lab è una Progressive Web App (PWA) completa per la gestione di centri estetici e spa. L'applicazione è composta da:
 
 - **Frontend PWA**: Interfaccia utente React (porta 80)
 - **Backend API**: Server Node.js Express (porta 3001)
@@ -262,7 +262,7 @@ sudo systemctl restart docker
 
 ---
 
-## 📦 Installazione Sphyra Wellness
+## 📦 Installazione Sphyra Wellness Lab
 
 ### Opzione 1: Clona il Repository (Consigliato)
 
@@ -315,7 +315,7 @@ Apri il file `.env` e modifica i seguenti valori:
 # Vai su https://app.sendgrid.com/settings/api_keys e crea una API Key
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 SENDGRID_FROM_EMAIL=noreply@tuodominio.com
-SENDGRID_FROM_NAME=Sphyra Wellness
+SENDGRID_FROM_NAME=Sphyra Wellness Lab
 
 # ============================================================================
 # FRONTEND URL
@@ -368,7 +368,7 @@ SendGrid è necessario per l'invio di email di promemoria ai clienti.
 3. **Crea una API Key**:
    - Vai su Settings → API Keys
    - Clicca "Create API Key"
-   - Nome: "Sphyra Wellness"
+   - Nome: "Sphyra Wellness Lab"
    - Permissions: "Full Access"
    - Copia la chiave (la vedrai solo una volta!)
 
@@ -955,7 +955,7 @@ Dopo l'installazione:
 
 ---
 
-**🎉 Congratulazioni! Sphyra Wellness è ora installato e pronto all'uso!**
+**🎉 Congratulazioni! Sphyra Wellness Lab è ora installato e pronto all'uso!**
 
 Per domande o problemi, apri una issue su GitHub o consulta la documentazione.
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================================================
-# Script di avvio Docker per Sphyra Wellness
+# Script di avvio Docker per Sphyra Wellness Lab
 # ============================================================================
 # Questo script facilita l'avvio dell'applicazione con Docker Compose
 # ============================================================================
@@ -122,6 +122,6 @@ echo -n "   Frontend... "
 timeout 60 bash -c 'until curl -s http://localhost > /dev/null; do sleep 2; done' && echo "✅" || echo "⚠️ timeout"
 
 echo ""
-echo "🎉 Sphyra Wellness è pronto!"
+echo "🎉 Sphyra Wellness Lab è pronto!"
 echo "   Apri il browser su: http://localhost"
 echo ""

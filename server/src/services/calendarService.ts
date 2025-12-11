@@ -30,7 +30,7 @@ export class CalendarService {
     // Escape text for iCalendar format
     const summary = this.escapeICSText(service.name);
     const description = this.escapeICSText(
-      `Appuntamento presso Sphyra Wellness\n` +
+      `Appuntamento presso Sphyra Wellness Lab\n` +
       `Servizio: ${service.name}\n` +
       `Operatore: ${staff.firstName} ${staff.lastName}\n` +
       `Durata: ${service.duration} minuti\n\n` +
@@ -45,7 +45,7 @@ export class CalendarService {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Sphyra Wellness//Appointment Reminder//IT',
+      'PRODID:-//Sphyra Wellness Lab//Appointment Reminder//IT',
       'CALSCALE:GREGORIAN',
       'METHOD:REQUEST',
       'BEGIN:VEVENT',
@@ -55,8 +55,8 @@ export class CalendarService {
       `DTEND:${dtEnd}`,
       `SUMMARY:${summary}`,
       `DESCRIPTION:${description}`,
-      'LOCATION:Sphyra Wellness',
-      `ORGANIZER;CN=Sphyra Wellness:mailto:${organizerEmail}`,
+      'LOCATION:Sphyra Wellness Lab',
+      `ORGANIZER;CN=Sphyra Wellness Lab:mailto:${organizerEmail}`,
       `ATTENDEE;CN=${this.escapeICSText(attendeeName)};RSVP=TRUE:mailto:${attendeeEmail}`,
       'STATUS:CONFIRMED',
       'SEQUENCE:0',

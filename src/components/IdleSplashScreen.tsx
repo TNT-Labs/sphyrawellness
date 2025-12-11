@@ -114,7 +114,7 @@ const IdleSplashScreen: React.FC<IdleSplashScreenProps> = ({ onDismiss }) => {
 
         {/* Brand Name */}
         <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-4 drop-shadow-lg">
-          Sphyra Wellness
+          Sphyra Wellness Lab
         </h1>
 
         {/* Tagline */}

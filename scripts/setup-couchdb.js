@@ -4,7 +4,7 @@
  * CouchDB Setup Script
  *
  * Questo script crea automaticamente tutti i database necessari per
- * l'applicazione Sphyra Wellness su un server CouchDB.
+ * l'applicazione Sphyra Wellness Lab su un server CouchDB.
  *
  * Utilizzo:
  *   node scripts/setup-couchdb.js <couchdb-url> [username] [password]
@@ -224,7 +224,7 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
-    log('\n🗄️  CouchDB Setup Script - Sphyra Wellness', 'cyan');
+    log('\n🗄️  CouchDB Setup Script - Sphyra Wellness Lab', 'cyan');
     log('\nUtilizzo:', 'blue');
     log('  node scripts/setup-couchdb.js <couchdb-url> [username] [password]');
     log('\nEsempi:', 'blue');
@@ -243,7 +243,7 @@ async function main() {
   const auth = username && password ? { username, password } : null;
 
   log('\n═══════════════════════════════════════════', 'cyan');
-  log('  🗄️  CouchDB Setup - Sphyra Wellness', 'cyan');
+  log('  🗄️  CouchDB Setup - Sphyra Wellness Lab', 'cyan');
   log('═══════════════════════════════════════════', 'cyan');
   log(`\n📍 Server: ${baseUrl}`);
   log(`👤 Utente: ${username || 'Nessuna autenticazione'}`);

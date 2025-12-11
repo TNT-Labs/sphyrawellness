@@ -36,7 +36,7 @@ services:
       # SendGrid Configuration (MODIFICARE CON I PROPRI VALORI)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
-      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness}
+      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness Lab}
       # Frontend URL
       - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
       # CouchDB Configuration

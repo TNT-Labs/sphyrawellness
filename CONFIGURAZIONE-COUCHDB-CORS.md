@@ -135,7 +135,7 @@ Dovresti vedere un output simile a questo:
 Dopo aver configurato CORS:
 
 1. **Riavvia CouchDB** (se necessario)
-2. **Apri l'applicazione Sphyra Wellness**
+2. **Apri l'applicazione Sphyra Wellness Lab**
 3. **Vai su Impostazioni → Configurazione Server**
 4. **Inserisci i dati di connessione:**
    - URL: `http://192.168.1.93:5984`

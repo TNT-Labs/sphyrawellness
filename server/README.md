@@ -1,6 +1,6 @@
-# Sphyra Wellness - Backend Server
+# Sphyra Wellness Lab - Backend Server
 
-Backend API server per il sistema di reminder email di Sphyra Wellness.
+Backend API server per il sistema di reminder email di Sphyra Wellness Lab.
 
 ## 📋 Funzionalità
 
@@ -37,7 +37,7 @@ NODE_ENV=development
 # SendGrid Configuration
 SENDGRID_API_KEY=your_sendgrid_api_key_here
 SENDGRID_FROM_EMAIL=noreply@tuodominio.com
-SENDGRID_FROM_NAME=Sphyra Wellness
+SENDGRID_FROM_NAME=Sphyra Wellness Lab
 
 # Frontend URL (per link email)
 FRONTEND_URL=http://localhost:5173
@@ -105,7 +105,7 @@ Nel file `.env`:
 ```env
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxx
 SENDGRID_FROM_EMAIL=noreply@tuodominio.com  # Deve essere verificato
-SENDGRID_FROM_NAME=Sphyra Wellness
+SENDGRID_FROM_NAME=Sphyra Wellness Lab
 ```
 
 ## 🗄️ Database
@@ -196,7 +196,7 @@ Le email inviate ai clienti contengono:
 - 📅 Dettagli completi dell'appuntamento (data, ora, servizio, operatore)
 - ✅ **Pulsante CTA** per confermare l'appuntamento
 - 📱 Compatibilità mobile e desktop
-- 🌈 Branding Sphyra Wellness
+- 🌈 Branding Sphyra Wellness Lab
 
 ## 🧪 Test Manuale
 

@@ -1,6 +1,6 @@
-# 🗄️ Guida Configurazione CouchDB - Sphyra Wellness
+# 🗄️ Guida Configurazione CouchDB - Sphyra Wellness Lab
 
-Guida completa per configurare CouchDB e abilitare la sincronizzazione multi-dispositivo nell'applicazione Sphyra Wellness.
+Guida completa per configurare CouchDB e abilitare la sincronizzazione multi-dispositivo nell'applicazione Sphyra Wellness Lab.
 
 ---
 
@@ -23,7 +23,7 @@ Guida completa per configurare CouchDB e abilitare la sincronizzazione multi-dis
 
 ### Cos'è CouchDB?
 
-**CouchDB** è un database NoSQL document-oriented che permette la sincronizzazione bidirezionale dei dati tra dispositivi. Sphyra Wellness lo usa per:
+**CouchDB** è un database NoSQL document-oriented che permette la sincronizzazione bidirezionale dei dati tra dispositivi. Sphyra Wellness Lab lo usa per:
 
 - ✅ **Sincronizzazione multi-dispositivo**: Accedi ai tuoi dati da qualsiasi dispositivo
 - ✅ **Backup automatico**: I dati sono salvati su un server remoto
@@ -408,7 +408,7 @@ node scripts/setup-couchdb.js http://localhost:5984
 
 ```
 ═══════════════════════════════════════════
-  🗄️  CouchDB Setup - Sphyra Wellness
+  🗄️  CouchDB Setup - Sphyra Wellness Lab
 ═══════════════════════════════════════════
 
 📍 Server: http://localhost:5984
@@ -467,7 +467,7 @@ curl -X PUT "$COUCHDB_URL/sphyra-service-categories" -u "$USERNAME:$PASSWORD"
 
 ### 1. Apri Impostazioni
 
-Nell'app Sphyra Wellness:
+Nell'app Sphyra Wellness Lab:
 1. Vai su **Impostazioni** (icona ingranaggio)
 2. Scorri fino a "Sincronizzazione CouchDB"
 

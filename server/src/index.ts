@@ -133,7 +133,7 @@ app.get('/', (req, res) => {
   const response: ApiResponse = {
     success: true,
     data: {
-      name: 'Sphyra Wellness API',
+      name: 'Sphyra Wellness Lab API',
       version: '1.0.0',
       endpoints: {
         health: '/health',
@@ -142,7 +142,7 @@ app.get('/', (req, res) => {
         settings: '/api/settings'
       }
     },
-    message: 'Welcome to Sphyra Wellness API'
+    message: 'Welcome to Sphyra Wellness Lab API'
   };
   res.json(response);
 });
@@ -154,7 +154,7 @@ app.use(errorHandler);
 // Initialize database indexes and start server
 async function startServer() {
   try {
-    console.log('🚀 Starting Sphyra Wellness Server...\n');
+    console.log('🚀 Starting Sphyra Wellness Lab Server...\n');
 
     // Initialize database indexes
     await initializeIndexes();
@@ -165,7 +165,7 @@ async function startServer() {
     // Start Express server
     app.listen(PORT, () => {
       console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('✅ Sphyra Wellness Server is running!');
+      console.log('✅ Sphyra Wellness Lab Server is running!');
       console.log(`📍 Server URL: http://localhost:${PORT}`);
       console.log(`🏥 Health check: http://localhost:${PORT}/health`);
       console.log(`📧 Reminders API: http://localhost:${PORT}/api/reminders`);

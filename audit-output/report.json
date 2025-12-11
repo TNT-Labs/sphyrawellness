@@ -1,6 +1,6 @@
 {
   "audit_metadata": {
-    "project": "Sphyra Wellness PWA",
+    "project": "Sphyra Wellness Lab PWA",
     "audit_date": "2025-12-11",
     "auditor": "Claude Technical Audit",
     "scope": "Full stack: Frontend (React/Vite), Backend (Node/Express), Database (CouchDB), Docker, PWA, CI/CD",

@@ -1,7 +1,7 @@
 {
   "name": "sphyra-wellness-server",
   "version": "1.0.0",
-  "description": "Backend API for Sphyra Wellness PWA - Email reminders and appointment management",
+  "description": "Backend API for Sphyra Wellness Lab PWA - Email reminders and appointment management",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

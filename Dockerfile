@@ -1,4 +1,4 @@
-# Dockerfile per il Frontend Sphyra Wellness PWA
+# Dockerfile per il Frontend Sphyra Wellness Lab PWA
 # Multi-stage build per ottimizzare dimensioni immagine
 
 # Stage 1: Build

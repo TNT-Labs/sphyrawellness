@@ -90,9 +90,9 @@ export class EmailService {
           email: sendGridConfig.fromEmail,
           name: sendGridConfig.fromName
         },
-        subject: 'Test Email - Sphyra Wellness',
-        text: 'This is a test email from Sphyra Wellness reminder system.',
-        html: '<p>This is a test email from <strong>Sphyra Wellness</strong> reminder system.</p>'
+        subject: 'Test Email - Sphyra Wellness Lab',
+        text: 'This is a test email from Sphyra Wellness Lab reminder system.',
+        html: '<p>This is a test email from <strong>Sphyra Wellness Lab</strong> reminder system.</p>'
       };
 
       await sgMail.send(msg);

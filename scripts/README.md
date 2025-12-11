@@ -1,6 +1,6 @@
-# Scripts Utility - Sphyra Wellness
+# Scripts Utility - Sphyra Wellness Lab
 
-Questa directory contiene script di utility per la configurazione e manutenzione dell'applicazione Sphyra Wellness.
+Questa directory contiene script di utility per la configurazione e manutenzione dell'applicazione Sphyra Wellness Lab.
 
 ## 📜 Script Disponibili
 

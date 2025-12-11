@@ -1,4 +1,4 @@
-# 🔍 Elementi Non Verificabili - Technical Audit Sphyra Wellness
+# 🔍 Elementi Non Verificabili - Technical Audit Sphyra Wellness Lab
 
 Questo documento elenca tutti gli elementi che non è stato possibile verificare completamente durante l'audit tecnico a causa di:
 - Mancanza di credenziali per servizi esterni

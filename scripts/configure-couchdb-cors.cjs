@@ -4,7 +4,7 @@
  * Script per configurare CORS su CouchDB
  *
  * Questo script configura correttamente CORS su CouchDB per permettere
- * l'accesso dall'applicazione web Sphyra Wellness.
+ * l'accesso dall'applicazione web Sphyra Wellness Lab.
  *
  * Uso:
  *   node scripts/configure-couchdb-cors.js <couchdb-url> <username> <password>
@@ -353,7 +353,7 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
-    log('\n🔒 Script Configurazione CORS CouchDB - Sphyra Wellness\n', 'cyan');
+    log('\n🔒 Script Configurazione CORS CouchDB - Sphyra Wellness Lab\n', 'cyan');
     log('Utilizzo:', 'blue');
     log('  node scripts/configure-couchdb-cors.js <couchdb-url> <username> <password>\n');
     log('Esempi:', 'blue');

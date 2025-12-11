@@ -73,7 +73,7 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.svg', 'mask-icon.svg', 'version.json'],
         manifest: {
-          name: 'Sphyra Wellness - Gestione Centro Estetico',
+          name: 'Sphyra Wellness Lab - Gestione Centro Estetico',
           short_name: 'Sphyra',
           description: 'Applicazione per la gestione completa di centri estetici',
           theme_color: '#db2777',

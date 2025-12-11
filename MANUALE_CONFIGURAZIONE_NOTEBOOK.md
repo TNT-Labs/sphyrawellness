@@ -1,6 +1,6 @@
-# 📖 Manuale Configurazione Notebook - Sphyra Wellness PWA
+# 📖 Manuale Configurazione Notebook - Sphyra Wellness Lab PWA
 
-Guida completa per configurare il tuo notebook e iniziare a sviluppare l'applicazione Sphyra Wellness.
+Guida completa per configurare il tuo notebook e iniziare a sviluppare l'applicazione Sphyra Wellness Lab.
 
 ---
 

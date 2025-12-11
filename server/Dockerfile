@@ -1,4 +1,4 @@
-# Dockerfile per il Backend Sphyra Wellness API
+# Dockerfile per il Backend Sphyra Wellness Lab API
 # Multi-stage build per ottimizzare dimensioni immagine
 
 # Stage 1: Build

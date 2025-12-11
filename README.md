@@ -1,4 +1,4 @@
-# 💆‍♀️ Sphyra Wellness - PWA Gestione Centro Estetico
+# 💆‍♀️ Sphyra Wellness Lab - PWA Gestione Centro Estetico
 
 Applicazione Progressive Web App (PWA) per la gestione completa di centri estetici e spa.
 
