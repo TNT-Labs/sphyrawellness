@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { format, parseISO, addDays } from 'date-fns';
 import { it } from 'date-fns/locale';
+import bcrypt from 'bcrypt';
 import db from '../config/database.js';
 import emailService from './emailService.js';
 import type {
@@ -11,6 +12,9 @@ import type {
   Reminder,
   ReminderEmailData
 } from '../types/index.js';
+
+const SALT_ROUNDS = 12; // bcrypt salt rounds
+const TOKEN_EXPIRY_HOURS = 48; // Token valid for 48 hours
 
 export class ReminderService {
   /**
@@ -100,17 +104,31 @@ export class ReminderService {
 
       console.log(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
 
-      // 3. Generate confirmation token if not exists
+      // 3. Generate confirmation token if not exists or if expired
       let confirmationToken = appointment.confirmationToken;
       let updatedAppointmentDoc = appointmentDoc;
 
-      if (!confirmationToken) {
-        confirmationToken = uuidv4();
+      // Check if token exists and is not expired
+      const needsNewToken = !confirmationToken ||
+        !appointmentDoc.tokenExpiresAt ||
+        new Date() > parseISO(appointmentDoc.tokenExpiresAt);
 
-        // Update appointment with token and get the updated doc
+      if (needsNewToken) {
+        // Generate a longer, more secure token (32 bytes = 256 bits)
+        confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs concatenated
+
+        // Hash the token before storing
+        const confirmationTokenHash = await bcrypt.hash(confirmationToken, SALT_ROUNDS);
+
+        // Calculate expiration time (48 hours from now)
+        const tokenExpiresAt = new Date();
+        tokenExpiresAt.setHours(tokenExpiresAt.getHours() + TOKEN_EXPIRY_HOURS);
+
+        // Update appointment with hashed token
         await db.appointments.put({
           ...appointmentDoc,
-          confirmationToken,
+          confirmationTokenHash, // Store only the hash
+          tokenExpiresAt: tokenExpiresAt.toISOString(),
           updatedAt: new Date().toISOString()
         });
 
@@ -264,13 +282,23 @@ export class ReminderService {
 
   /**
    * Confirm appointment using token
+   * Now uses hashed token comparison and checks expiration
    */
   async confirmAppointment(appointmentId: string, token: string): Promise<{
     success: boolean;
     appointment?: Appointment;
+    message?: string;
     error?: string;
   }> {
     try {
+      // Validate token format (should be 2 UUIDs)
+      if (!token || token.length < 64) {
+        return {
+          success: false,
+          error: 'Invalid confirmation token format'
+        };
+      }
+
       const doc = await db.appointments.get(appointmentId);
       const appointment = {
         ...doc,
@@ -281,24 +309,60 @@ export class ReminderService {
         return { success: false, error: 'Appointment not found' };
       }
 
-      if (appointment.confirmationToken !== token) {
-        return { success: false, error: 'Invalid confirmation token' };
+      // Check if token hash exists
+      if (!doc.confirmationTokenHash) {
+        return {
+          success: false,
+          error: 'No confirmation token found for this appointment'
+        };
       }
 
+      // Check token expiration
+      if (doc.tokenExpiresAt) {
+        const expiresAt = parseISO(doc.tokenExpiresAt);
+        if (new Date() > expiresAt) {
+          return {
+            success: false,
+            error: 'Confirmation token has expired. Please contact us.'
+          };
+        }
+      }
+
+      // Compare provided token with stored hash
+      const isValidToken = await bcrypt.compare(token, doc.confirmationTokenHash);
+
+      if (!isValidToken) {
+        return {
+          success: false,
+          error: 'Invalid confirmation token. Please check the link.'
+        };
+      }
+
+      // Check if already confirmed
       if (appointment.status === 'confirmed') {
-        return { success: true, appointment }; // Already confirmed
+        return {
+          success: true,
+          appointment,
+          message: 'Appointment already confirmed'
+        };
       }
 
-      // Update appointment status to confirmed
+      // Update appointment status to confirmed and invalidate token (one-time use)
       await db.appointments.put({
         ...doc,
         status: 'confirmed' as const,
+        confirmationTokenHash: undefined, // Invalidate token after use
+        tokenExpiresAt: undefined,
+        confirmedAt: new Date().toISOString(), // Track when confirmed
         updatedAt: new Date().toISOString()
       });
 
       const updatedAppointment = {
         ...appointment,
         status: 'confirmed' as const,
+        confirmationTokenHash: undefined,
+        tokenExpiresAt: undefined,
+        confirmedAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
 
@@ -306,7 +370,8 @@ export class ReminderService {
 
       return {
         success: true,
-        appointment: updatedAppointment
+        appointment: updatedAppointment,
+        message: 'Appointment confirmed successfully'
       };
     } catch (error: any) {
       console.error('❌ Error confirming appointment:', error);
