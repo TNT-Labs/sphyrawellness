@@ -108,7 +108,7 @@ export class ReminderService {
         confirmationToken = uuidv4();
 
         // Update appointment with token and get the updated doc
-        const result = await db.appointments.put({
+        await db.appointments.put({
           ...appointmentDoc,
           confirmationToken,
           updatedAt: new Date().toISOString()
