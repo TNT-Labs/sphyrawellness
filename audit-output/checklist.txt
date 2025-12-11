@@ -1,0 +1,492 @@
+# ✅ Validation Checklist - Sphyra Wellness Security Fixes
+
+This checklist helps verify that all critical security fixes have been properly implemented and tested.
+
+Use this in your staging environment before deploying to production.
+
+---
+
+## 📋 PRE-DEPLOYMENT CHECKLIST
+
+### Phase 1: Apply Security Patches
+
+- [ ] **Patch 001: Authentication**
+  - [ ] Install dependencies: `cd server && npm install jsonwebtoken bcrypt`
+  - [ ] Apply patch: Review and merge changes from `patches/001-add-authentication.patch`
+  - [ ] Create auth middleware: `server/src/middleware/auth.ts`
+  - [ ] Add JWT_SECRET to .env: `JWT_SECRET=<generate-random-256-bit-key>`
+  - [ ] Protect API routes with authenticateToken middleware
+  - [ ] Create login endpoint (not in patch - implement as needed)
+
+- [ ] **Patch 002: CORS & Helmet**
+  - [ ] Install dependencies: `cd server && npm install helmet`
+  - [ ] Apply patch: Review and merge changes from `patches/002-fix-cors-and-helmet.patch`
+  - [ ] Configure ALLOWED_ORIGINS in .env
+  - [ ] Test CORS blocks unauthorized origins
+  - [ ] Verify security headers in responses
+
+- [ ] **Patch 004: Hash Tokens**
+  - [ ] Ensure bcrypt is installed (from Patch 001)
+  - [ ] Apply patch: Review and merge changes from `patches/004-hash-tokens.patch`
+  - [ ] Migrate existing tokens (if any in production DB)
+  - [ ] Test token hashing and verification
+  - [ ] Test token expiration (48 hours)
+  - [ ] Test one-time use enforcement
+
+- [ ] **Patch 005: Rate Limiting**
+  - [ ] Install dependencies: `cd server && npm install express-rate-limit`
+  - [ ] Apply patch: Review and merge changes from `patches/005-add-rate-limiting.patch`
+  - [ ] Create rateLimiter middleware: `server/src/middleware/rateLimiter.ts`
+  - [ ] Test rate limits are enforced
+  - [ ] Verify 429 responses when limit exceeded
+
+---
+
+## 🧪 FUNCTIONAL TESTING
+
+### Authentication Tests
+
+- [ ] **Login Endpoint**
+  ```bash
+  # Test login with valid credentials
+  curl -X POST http://localhost:3001/api/auth/login \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"admin","password":"test123"}'
+
+  # Expected: 200 OK with JWT token
+  ```
+
+- [ ] **Protected Endpoints**
+  ```bash
+  # Test access without token
+  curl http://localhost:3001/api/settings
+  # Expected: 401 Unauthorized
+
+  # Test access with valid token
+  curl http://localhost:3001/api/settings \
+    -H 'Authorization: Bearer <your-jwt-token>'
+  # Expected: 200 OK with settings data
+
+  # Test access with invalid token
+  curl http://localhost:3001/api/settings \
+    -H 'Authorization: Bearer invalid-token'
+  # Expected: 403 Forbidden
+  ```
+
+- [ ] **Token Expiration**
+  ```bash
+  # Wait for token to expire (configure short expiry for testing)
+  # Try to access protected endpoint
+  # Expected: 403 Forbidden with "expired token" message
+  ```
+
+### CORS Tests
+
+- [ ] **Allowed Origin**
+  ```bash
+  curl -H 'Origin: http://localhost:5173' \
+    -I http://localhost:3001/api/health
+  # Expected: Access-Control-Allow-Origin: http://localhost:5173
+  ```
+
+- [ ] **Blocked Origin**
+  ```bash
+  curl -H 'Origin: http://malicious-site.com' \
+    -I http://localhost:3001/api/health
+  # Expected: No Access-Control-Allow-Origin header, or error
+  ```
+
+- [ ] **Preflight Request**
+  ```bash
+  curl -X OPTIONS http://localhost:3001/api/settings \
+    -H 'Origin: http://localhost:5173' \
+    -H 'Access-Control-Request-Method: PUT'
+  # Expected: 200/204 with appropriate CORS headers
+  ```
+
+### Security Headers Tests
+
+- [ ] **Helmet Headers Present**
+  ```bash
+  curl -I http://localhost:3001/health | grep -E '(X-Frame-Options|X-Content-Type-Options|Strict-Transport-Security|Content-Security-Policy)'
+
+  # Expected headers:
+  # X-Frame-Options: DENY
+  # X-Content-Type-Options: nosniff
+  # Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  # Content-Security-Policy: (with appropriate directives)
+  ```
+
+### Token Hashing Tests
+
+- [ ] **Token Generation**
+  ```bash
+  # Send a reminder to generate token
+  curl -X POST http://localhost:3001/api/reminders/send/:appointmentId \
+    -H 'Authorization: Bearer <token>'
+
+  # Check database - confirmationToken should NOT be in plaintext
+  curl http://admin:password@localhost:5984/sphyra-appointments/:appointmentId
+  # Verify: confirmationTokenHash present, confirmationToken absent
+  ```
+
+- [ ] **Token Verification**
+  ```bash
+  # Use confirmation link from email
+  curl http://localhost:3001/api/appointments/:id/confirm/:token
+
+  # Expected: Redirect to success page
+  # Check DB: token should be invalidated after use
+  ```
+
+- [ ] **Token Expiration**
+  ```bash
+  # Generate token
+  # Wait 48+ hours (or modify code for shorter expiry in testing)
+  # Try to confirm with expired token
+  # Expected: "Token has expired" error
+  ```
+
+- [ ] **One-Time Use**
+  ```bash
+  # Confirm appointment once
+  # Try to use same token again
+  # Expected: "Token not found" or "Already confirmed"
+  ```
+
+### Rate Limiting Tests
+
+- [ ] **Global Rate Limit**
+  ```bash
+  # Send 101 requests in 15 minutes
+  for i in {1..101}; do
+    curl http://localhost:3001/health &
+  done
+
+  # Expected: First 100 succeed, 101st gets 429 Too Many Requests
+  ```
+
+- [ ] **Email Rate Limit**
+  ```bash
+  # Send 6 email requests in 1 hour
+  for i in {1..6}; do
+    curl -X POST http://localhost:3001/api/reminders/send-all \
+      -H 'Authorization: Bearer <token>'
+    sleep 1
+  done
+
+  # Expected: First 5 succeed, 6th gets 429 Too Many Requests
+  ```
+
+- [ ] **Strict Rate Limit (Settings)**
+  ```bash
+  # Send 11 PUT requests to settings in 1 hour
+  for i in {1..11}; do
+    curl -X PUT http://localhost:3001/api/settings \
+      -H 'Authorization: Bearer <token>' \
+      -H 'Content-Type: application/json' \
+      -d '{"reminderSendHour":10}'
+    sleep 1
+  done
+
+  # Expected: First 10 succeed, 11th gets 429 Too Many Requests
+  ```
+
+- [ ] **Rate Limit Headers**
+  ```bash
+  curl -I http://localhost:3001/api/settings \
+    -H 'Authorization: Bearer <token>'
+
+  # Expected headers:
+  # RateLimit-Limit: 100
+  # RateLimit-Remaining: 99
+  # RateLimit-Reset: (timestamp)
+  ```
+
+---
+
+## 🔍 SECURITY VERIFICATION
+
+### Penetration Testing (Manual)
+
+- [ ] **SQL Injection** (if applicable)
+  - [ ] Test with `'; DROP TABLE appointments;--` in inputs
+  - [ ] Expected: Sanitized/rejected
+
+- [ ] **XSS Attempts**
+  - [ ] Test with `<script>alert('XSS')</script>` in inputs
+  - [ ] Expected: Escaped or rejected
+
+- [ ] **CSRF**
+  - [ ] Try to make request from unauthorized origin
+  - [ ] Expected: CORS blocks or CSRF token required
+
+- [ ] **Authentication Bypass**
+  - [ ] Try to access protected endpoints without token
+  - [ ] Try with manipulated/expired tokens
+  - [ ] Expected: All attempts blocked
+
+- [ ] **Rate Limit Bypass**
+  - [ ] Try from multiple IPs (if possible)
+  - [ ] Try to exceed limits
+  - [ ] Expected: All IPs limited independently
+
+### Logging & Monitoring
+
+- [ ] **No Secrets in Logs**
+  ```bash
+  # Check server logs
+  grep -r "SENDGRID_API_KEY\|JWT_SECRET\|password" server/logs/
+  # Expected: No matches (or only sanitized references)
+  ```
+
+- [ ] **Rate Limit Violations Logged**
+  ```bash
+  # Trigger rate limit
+  # Check logs for warnings
+  # Expected: "Rate limit exceeded for IP: ..."
+  ```
+
+- [ ] **Failed Auth Attempts Logged**
+  ```bash
+  # Try invalid login
+  # Check logs
+  # Expected: Failed login attempt logged with IP
+  ```
+
+---
+
+## 🌐 INTEGRATION TESTING
+
+### SendGrid Email
+
+- [ ] **Configure SendGrid**
+  - [ ] Valid API key in .env
+  - [ ] From email verified in SendGrid
+  - [ ] Test mode or real account configured
+
+- [ ] **Send Test Email**
+  ```bash
+  curl -X POST http://localhost:3001/api/reminders/send/:appointmentId \
+    -H 'Authorization: Bearer <token>'
+  ```
+  - [ ] Email received in inbox (check spam too)
+  - [ ] Email template renders correctly
+  - [ ] Confirmation link works
+  - [ ] Link goes to correct frontend URL
+
+### CouchDB Sync
+
+- [ ] **CouchDB Running**
+  ```bash
+  curl http://localhost:5984/_up
+  # Expected: {"status":"ok"}
+  ```
+
+- [ ] **Database Created**
+  ```bash
+  node scripts/setup-couchdb.js http://localhost:5984 admin password
+  # Expected: All 8 databases created
+  ```
+
+- [ ] **CORS Configured**
+  ```bash
+  node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password
+  # Expected: CORS enabled and configured
+  ```
+
+- [ ] **Frontend Sync Works**
+  - [ ] Open app in browser
+  - [ ] Configure sync in settings
+  - [ ] Test data appears in CouchDB
+  - [ ] Modify data in CouchDB
+  - [ ] Verify appears in frontend
+
+### Docker Deployment
+
+- [ ] **Build Images**
+  ```bash
+  docker-compose build --no-cache
+  # Expected: Builds complete successfully
+  ```
+
+- [ ] **Start Services**
+  ```bash
+  docker-compose up -d
+  # Expected: All services start (frontend, backend, couchdb)
+  ```
+
+- [ ] **Health Checks Pass**
+  ```bash
+  docker-compose ps
+  # Expected: All services show "healthy" status
+  ```
+
+- [ ] **Access Application**
+  - [ ] Frontend: http://localhost
+  - [ ] Backend: http://localhost:3001
+  - [ ] CouchDB: http://localhost:5984/_utils
+
+---
+
+## 📊 PERFORMANCE TESTING
+
+### Response Times
+
+- [ ] **Health endpoint < 50ms**
+  ```bash
+  curl -w "@curl-format.txt" -o /dev/null -s http://localhost:3001/health
+  ```
+
+- [ ] **API endpoints < 500ms** (with empty DB)
+- [ ] **API endpoints < 2s** (with realistic data)
+
+### Load Testing
+
+- [ ] **Concurrent Users Test**
+  ```bash
+  ab -n 1000 -c 50 http://localhost:3001/api/health
+  # Analyze: requests/sec, failed requests, response times
+  ```
+
+- [ ] **Database Query Performance**
+  - [ ] Test with 1000+ appointments
+  - [ ] Test with 500+ customers
+  - [ ] Verify query times acceptable
+
+### Memory & CPU
+
+- [ ] **No Memory Leaks**
+  ```bash
+  # Monitor memory usage over 1 hour
+  docker stats sphyra-backend
+  # Expected: Memory usage stable, not constantly increasing
+  ```
+
+- [ ] **CPU Usage Reasonable**
+  - [ ] Idle: < 5%
+  - [ ] Under load: < 80%
+
+---
+
+## 🎨 FRONTEND TESTING
+
+### PWA
+
+- [ ] **Install PWA** on desktop Chrome
+- [ ] **Install PWA** on Android Chrome
+- [ ] **Install PWA** on iOS Safari
+- [ ] **Offline Mode** works
+- [ ] **Service Worker** caching works
+- [ ] **Icons** display correctly
+
+### Responsive Design
+
+- [ ] **Mobile (320px)** layout correct
+- [ ] **Tablet (768px)** layout correct
+- [ ] **Desktop (1920px)** layout correct
+- [ ] **Touch gestures** work on mobile
+- [ ] **Keyboard navigation** works
+
+### Accessibility
+
+- [ ] Run Lighthouse accessibility audit
+  ```bash
+  npx lighthouse http://localhost:5173 \
+    --only-categories=accessibility \
+    --view
+  ```
+  - [ ] Score > 90
+
+- [ ] **Screen reader** compatible (test with NVDA/VoiceOver)
+- [ ] **Keyboard only** navigation works
+- [ ] **Color contrast** meets WCAG AA standards
+
+---
+
+## 📝 PRE-PRODUCTION CHECKLIST
+
+### Environment Configuration
+
+- [ ] **Production .env configured**
+  - [ ] Real SendGrid API key
+  - [ ] Strong JWT_SECRET (256-bit random)
+  - [ ] Correct ALLOWED_ORIGINS
+  - [ ] Correct FRONTEND_URL
+  - [ ] Strong CouchDB password
+
+- [ ] **HTTPS Configured**
+  - [ ] SSL certificate installed
+  - [ ] Certificate valid and not expired
+  - [ ] Redirects HTTP → HTTPS
+  - [ ] HSTS header enabled
+
+- [ ] **Domain & DNS**
+  - [ ] Domain pointing to server
+  - [ ] DNS propagated
+  - [ ] Subdomain configured (if needed)
+
+### Monitoring & Alerting
+
+- [ ] **Error Tracking** configured (Sentry, Rollbar, etc.)
+- [ ] **Uptime Monitoring** configured (UptimeRobot, Pingdom, etc.)
+- [ ] **Log Aggregation** configured (Papertrail, Loggly, etc.)
+- [ ] **Alerts** configured for:
+  - [ ] Server down
+  - [ ] High error rate
+  - [ ] Rate limit violations
+  - [ ] Failed email sends
+
+### Backup & Recovery
+
+- [ ] **CouchDB Backup** automated
+  - [ ] Daily backups configured
+  - [ ] Backups stored off-server
+  - [ ] Test restore procedure
+
+- [ ] **Disaster Recovery Plan** documented
+  - [ ] RTO (Recovery Time Objective) defined
+  - [ ] RPO (Recovery Point Objective) defined
+  - [ ] Rollback procedure documented
+
+### Documentation
+
+- [ ] **API Documentation** updated
+- [ ] **Environment Variables** documented
+- [ ] **Deployment Guide** updated
+- [ ] **Security Procedures** documented
+- [ ] **Incident Response Plan** created
+
+---
+
+## ✅ FINAL SIGN-OFF
+
+Before deploying to production, verify:
+
+- [ ] All critical patches applied and tested
+- [ ] All checklist items above completed
+- [ ] Staging environment mirrors production
+- [ ] Security review completed
+- [ ] Performance acceptable
+- [ ] Backups configured and tested
+- [ ] Monitoring and alerts active
+- [ ] Team trained on new security features
+- [ ] Incident response plan ready
+
+**Signed off by:**
+
+- [ ] Developer: _________________ Date: _______
+- [ ] Tech Lead: _________________ Date: _______
+- [ ] Security: __________________ Date: _______
+- [ ] DevOps: ____________________ Date: _______
+
+---
+
+**End of Checklist**
+
+For questions or issues during validation, refer to:
+- `audit-output/report.md` - Full audit report
+- `audit-output/patches/` - Implementation patches
+- `audit-output/unverified.txt` - Items requiring external services
+
+*Generated by Claude Technical Audit System - December 11, 2025*

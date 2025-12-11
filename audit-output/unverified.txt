@@ -1,0 +1,417 @@
+# 🔍 Elementi Non Verificabili - Technical Audit Sphyra Wellness
+
+Questo documento elenca tutti gli elementi che non è stato possibile verificare completamente durante l'audit tecnico a causa di:
+- Mancanza di credenziali per servizi esterni
+- Necessità di ambiente runtime attivo
+- Requisiti di dispositivi fisici
+- Servizi cloud non configurati
+
+Gli elementi sono ordinati per priorità di verifica raccomandata.
+
+---
+
+## 🚨 PRIORITÀ ALTA - Richiedono Verifica Immediata
+
+### 1. SendGrid Email Delivery & Configuration
+
+**Non Verificato:**
+- Invio effettivo di email tramite SendGrid API
+- Deliverability delle email (non finiscono in spam)
+- Rate limits e quote SendGrid
+- Comportamento con API key invalida
+- Template HTML email rendering nei vari client
+- Link di conferma nelle email funzionanti end-to-end
+
+**Cosa Serve:**
+- SendGrid API Key valida con permessi Mail Send
+- Email mittente verificata in SendGrid
+- Account SendGrid attivo (piano gratuito sufficiente per test)
+- Email di test per ricevere reminder
+
+**Come Verificare:**
+```bash
+# 1. Configurare .env con API key valida
+cd server
+cp .env.example .env
+# Editare .env e aggiungere SENDGRID_API_KEY reale
+
+# 2. Avviare backend
+npm run dev
+
+# 3. Creare appointment di test via frontend o API
+curl -X POST http://localhost:3001/api/reminders/send/:appointmentId
+
+# 4. Verificare ricezione email e link funzionante
+```
+
+**Rischi se Non Verificato:**
+- Email potrebbero non essere consegnate
+- Email potrebbero finire in spam
+- Link di conferma potrebbero essere malformati
+- Template potrebbe non renderizzare correttamente
+- Rate limits potrebbero bloccare invii in produzione
+
+---
+
+### 2. CouchDB Synchronization & CORS
+
+**Non Verificato:**
+- Connessione al database CouchDB locale o remoto
+- Sincronizzazione bidirezionale PouchDB ↔ CouchDB
+- Conflitti di sincronizzazione con modifiche concorrenti
+- Comportamento offline → online sync
+- Performance con grandi volumi di dati
+- CORS configuration su CouchDB funzionante
+
+**Cosa Serve:**
+- CouchDB running (Docker o installazione locale)
+- Credenziali CouchDB (username/password)
+- Database creati (eseguire script setup-couchdb.js)
+- CORS configurato (eseguire configure-couchdb-cors.cjs)
+
+**Come Verificare:**
+```bash
+# 1. Avviare CouchDB con Docker
+docker-compose up -d couchdb
+
+# 2. Creare database
+node scripts/setup-couchdb.js http://localhost:5984 admin password
+
+# 3. Configurare CORS
+node scripts/configure-couchdb-cors.cjs http://localhost:5984 admin password
+
+# 4. Testare sync dal frontend
+# - Aprire app in browser
+# - Andare su Impostazioni → Sincronizzazione
+# - Configurare URL CouchDB e credenziali
+# - Abilitare sincronizzazione
+# - Verificare che status mostri "Sincronizzato"
+
+# 5. Test multi-device
+# - Modificare dato su device 1
+# - Verificare che appaia su device 2
+```
+
+**Rischi se Non Verificato:**
+- Sincronizzazione potrebbe non funzionare
+- CORS errors nel browser
+- Dati potrebbero non persistere correttamente
+- Conflitti potrebbero causare perdita dati
+- Performance scadenti con molti dati
+
+---
+
+### 3. Production Deployment & HTTPS
+
+**Non Verificato:**
+- Deploy completo in ambiente produzione
+- Configurazione HTTPS/SSL
+- Performance sotto carico reale
+- Comportamento con utenti reali
+- Scalabilità dell'architettura
+- Backup e disaster recovery
+
+**Cosa Serve:**
+- Server produzione o staging environment
+- Dominio e certificato SSL
+- DNS configurato
+- Load balancer (se necessario)
+- Monitoring tools configurati
+
+**Come Verificare:**
+```bash
+# 1. Deploy su staging
+# Usando Docker:
+docker-compose -f docker-compose.yml up -d
+
+# 2. Configurare HTTPS con Let's Encrypt
+# (esempio con Traefik o Nginx Proxy Manager)
+
+# 3. Test carico
+ab -n 1000 -c 10 https://your-domain.com/api/health
+
+# 4. Monitoring
+# Configurare Prometheus + Grafana o servizio equivalente
+```
+
+**Rischi se Non Verificato:**
+- Problemi performance in produzione
+- HTTPS configurato male o mancante
+- Single point of failure
+- Nessun monitoring di problemi
+- Nessuna strategia di backup
+
+---
+
+## 🟠 PRIORITÀ MEDIA - Consigliato Verificare
+
+### 4. PWA Installation & Offline Functionality
+
+**Non Verificato:**
+- Installazione PWA su dispositivi iOS
+- Installazione PWA su dispositivi Android
+- Funzionalità offline completa
+- Service worker caching strategies
+- Update automatici dell'app
+- Icons rendering su tutti i dispositivi
+
+**Cosa Serve:**
+- App in esecuzione su server accessibile (anche localhost)
+- Dispositivi fisici iOS e Android
+- Browser Chrome/Safari aggiornati
+
+**Come Verificare:**
+```bash
+# 1. Avviare app
+npm run dev  # o npm run build && npm run preview
+
+# 2. Su Chrome Desktop:
+# - Aprire http://localhost:5173
+# - Click icona "Install" nella barra indirizzi
+# - Verificare installazione
+
+# 3. Su Android Chrome:
+# - Aprire app
+# - Menu → "Install app" o "Add to Home screen"
+# - Verificare installazione e lancio
+
+# 4. Su iOS Safari:
+# - Aprire app
+# - Share → "Add to Home Screen"
+# - Verificare installazione
+
+# 5. Test offline:
+# - Installare app
+# - Disconnettere rete (Airplane mode)
+# - Aprire app → deve funzionare
+# - Fare modifiche offline
+# - Riconnettere → deve sincronizzare
+```
+
+**Rischi se Non Verificato:**
+- PWA potrebbe non installare su iOS
+- Offline mode potrebbe non funzionare
+- Icon potrebbe non renderizzare correttamente
+- Update automatici potrebbero fallire
+
+---
+
+### 5. Browser Compatibility & Responsive Design
+
+**Non Verificato:**
+- Funzionamento su tutti i browser principali
+- Layout responsive su tutte le risoluzioni
+- Touch gestures su mobile
+- Keyboard navigation
+- Screen reader compatibility
+
+**Cosa Serve:**
+- Browser diversi (Chrome, Firefox, Safari, Edge)
+- Dispositivi con risoluzioni diverse
+- Strumenti dev browser (DevTools)
+
+**Come Verificare:**
+```bash
+# 1. Test browser multipli
+# Chrome, Firefox, Safari, Edge (ultimi 2 major versions)
+
+# 2. Test responsive
+# DevTools → Device Mode
+# Testare breakpoints: 320px, 768px, 1024px, 1920px
+
+# 3. Lighthouse audit
+npx lighthouse http://localhost:5173 --view
+
+# 4. Accessibility audit
+# DevTools → Lighthouse → Accessibility
+# O usare axe DevTools extension
+```
+
+**Rischi se Non Verificato:**
+- Layout rotto su alcuni browser
+- Features non funzionanti su Safari
+- UI inaccessibile su mobile
+- Poor accessibility score
+
+---
+
+### 6. Performance Under Load
+
+**Non Verificato:**
+- Response time con database popolato
+- Comportamento con molti utenti simultanei
+- Memory leaks con uso prolungato
+- Database query performance
+- Bundle size impact on load time
+
+**Cosa Serve:**
+- Database con dati realistici (100+ customers, 1000+ appointments)
+- Load testing tools (Apache Bench, k6, Artillery)
+- Performance monitoring (New Relic, Datadog, etc.)
+
+**Come Verificare:**
+```bash
+# 1. Popolare database con dati test
+# Script per generare dati dummy
+
+# 2. Load test API
+ab -n 10000 -c 50 http://localhost:3001/api/reminders/appointments-needing-reminders
+
+# 3. Stress test database
+# Query con grandi dataset
+
+# 4. Memory profiling
+# DevTools → Memory
+# node --inspect backend, poi Chrome DevTools
+
+# 5. Bundle analysis
+npm run build
+npx vite-bundle-visualizer
+```
+
+**Rischi se Non Verificato:**
+- Performance degradation con molti dati
+- Out of memory errors
+- Slow database queries
+- Large bundle impacting load time
+
+---
+
+## 🔵 PRIORITÀ BASSA - Nice to Have
+
+### 7. E2E User Flows
+
+**Non Verificato:**
+- Complete user journeys dall'inizio alla fine
+- Edge cases e error scenarios
+- Browser back/forward behavior
+- Session persistence
+- Multi-tab synchronization
+
+**Cosa Serve:**
+- Playwright o Cypress test suite
+- Test data fixtures
+- CI/CD integration
+
+**Come Verificare:**
+Implementare test suite come suggerito in ISSUE-009 del report.
+
+---
+
+### 8. Security Penetration Testing
+
+**Non Verificato:**
+- Actual exploitation of vulnerabilities
+- SQL injection attempts (se applicabile)
+- XSS attacks simulation
+- CSRF attacks
+- Session hijacking
+- Brute force attacks
+
+**Cosa Serve:**
+- Security testing tools (OWASP ZAP, Burp Suite)
+- Ethical hacker o security firm
+- Test environment isolato
+
+**Nota:**
+Dopo aver implementato le fix di sicurezza dal report (autenticazione, CORS, rate limiting, etc.), è FORTEMENTE RACCOMANDATO un penetration test professionale prima del lancio in produzione.
+
+---
+
+### 9. Mobile Device Push Notifications
+
+**Non Verificato:**
+- Push notifications su iOS
+- Push notifications su Android
+- Notification permissions handling
+- Notification click behavior
+
+**Nota:**
+Le push notifications per PWA richiedono service worker e potrebbero non funzionare su iOS Safari. Verificare supporto browser e implementazione.
+
+---
+
+### 10. Backup & Recovery Procedures
+
+**Non Verificato:**
+- CouchDB backup scripts
+- Restore procedures
+- Data migration scripts
+- Disaster recovery time
+
+**Cosa Serve:**
+- Backup automation scripts
+- Test restore su ambiente pulito
+- Disaster recovery plan documentato
+
+---
+
+## 📊 Summary of Unverified Items
+
+### By Priority
+
+**ALTA (Blockers per Production):** 3 items
+- SendGrid email delivery
+- CouchDB synchronization
+- Production deployment
+
+**MEDIA (Consigliato prima di Prod):** 3 items
+- PWA installation & offline
+- Browser compatibility & responsive
+- Performance under load
+
+**BASSA (Post-Launch OK):** 4 items
+- E2E user flows
+- Security pentest
+- Push notifications
+- Backup procedures
+
+### By Category
+
+**External Services:** 3
+- SendGrid (email)
+- CouchDB (database)
+- Production hosting
+
+**Runtime Testing:** 4
+- PWA functionality
+- Browser compatibility
+- Performance testing
+- E2E flows
+
+**Security:** 1
+- Penetration testing
+
+**Infrastructure:** 2
+- Production deployment
+- Backup/recovery
+
+---
+
+## 🎯 Recommended Verification Order
+
+1. **Week 1:** Setup local CouchDB and verify database sync
+2. **Week 1:** Configure test SendGrid account and verify email delivery
+3. **Week 2:** Test PWA installation on iOS and Android devices
+4. **Week 2:** Run Lighthouse and accessibility audits
+5. **Week 3:** Deploy to staging environment with HTTPS
+6. **Week 3:** Performance testing with realistic data
+7. **Week 4:** Browser compatibility testing
+8. **Post-Launch:** Security penetration testing
+9. **Post-Launch:** Backup/recovery drill
+
+---
+
+## 📞 Questions?
+
+Per domande su come verificare questi elementi, consultare:
+- README.md e guide di deployment nel repository
+- DOCKER_INSTALL_GUIDE.md per setup locale completo
+- EMAIL_REMINDERS_GUIDE.md per configurazione SendGrid
+- COUCHDB_SETUP.md per database sync setup
+
+---
+
+**Fine Documento - Unverified Items**
+
+*Generato da Claude Technical Audit System - 11 Dicembre 2025*

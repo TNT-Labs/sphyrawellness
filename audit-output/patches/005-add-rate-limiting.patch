@@ -1,0 +1,232 @@
+diff --git a/server/package.json b/server/package.json
+index 1234567..8901234 100644
+--- a/server/package.json
++++ b/server/package.json
+@@ -17,6 +17,7 @@
+     "date-fns": "^4.1.0",
+     "dotenv": "^16.4.5",
+     "express": "^4.18.2",
++    "express-rate-limit": "^7.1.5",
+     "node-cron": "^3.0.3",
+     "pouchdb-find": "^9.0.0",
+     "pouchdb-node": "^9.0.0",
+
+diff --git a/server/src/middleware/rateLimiter.ts b/server/src/middleware/rateLimiter.ts
+new file mode 100644
+index 0000000..1234567
+--- /dev/null
++++ b/server/src/middleware/rateLimiter.ts
+@@ -0,0 +1,88 @@
++import rateLimit from 'express-rate-limit';
++import type { Request, Response } from 'express';
++
++/**
++ * Global rate limiter
++ * Applies to all routes
++ */
++export const globalLimiter = rateLimit({
++  windowMs: 15 * 60 * 1000, // 15 minutes
++  max: 100, // Limit each IP to 100 requests per windowMs
++  message: {
++    success: false,
++    error: 'Too many requests from this IP, please try again after 15 minutes.'
++  },
++  standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
++  legacyHeaders: false, // Disable `X-RateLimit-*` headers
++  // Skip rate limiting for successful responses (optional)
++  skip: (req: Request, res: Response) => {
++    // Skip rate limiting for health check endpoint
++    return req.path === '/health';
++  },
++  // Custom handler for rate limit exceeded
++  handler: (req: Request, res: Response) => {
++    console.warn(`⚠️ Rate limit exceeded for IP: ${req.ip} on ${req.path}`);
++    res.status(429).json({
++      success: false,
++      error: 'Too many requests, please try again later.',
++      retryAfter: Math.ceil((req.rateLimit?.resetTime?.getTime() ?? Date.now()) / 1000)
++    });
++  }
++});
++
++/**
++ * Strict rate limiter for sensitive operations
++ * Use for endpoints that send emails, modify settings, etc.
++ */
++export const strictLimiter = rateLimit({
++  windowMs: 60 * 60 * 1000, // 1 hour
++  max: 10, // Limit each IP to 10 requests per hour
++  message: {
++    success: false,
++    error: 'Too many requests for this operation, please try again after 1 hour.'
++  },
++  standardHeaders: true,
++  legacyHeaders: false,
++  handler: (req: Request, res: Response) => {
++    console.warn(`🚨 Strict rate limit exceeded for IP: ${req.ip} on ${req.path}`);
++    res.status(429).json({
++      success: false,
++      error: 'Rate limit exceeded for this operation. Please try again later.',
++      retryAfter: Math.ceil((req.rateLimit?.resetTime?.getTime() ?? Date.now()) / 1000)
++    });
++  }
++});
++
++/**
++ * Very strict rate limiter for email sending
++ * Prevents email spam abuse
++ */
++export const emailLimiter = rateLimit({
++  windowMs: 60 * 60 * 1000, // 1 hour
++  max: 5, // Limit each IP to 5 email sends per hour
++  message: {
++    success: false,
++    error: 'Email rate limit exceeded. Please try again later.'
++  },
++  standardHeaders: true,
++  legacyHeaders: false,
++  handler: (req: Request, res: Response) => {
++    console.error(`🚨 Email rate limit exceeded for IP: ${req.ip} on ${req.path}`);
++    res.status(429).json({
++      success: false,
++      error: 'You have exceeded the email sending limit. Please try again in 1 hour.',
++      retryAfter: Math.ceil((req.rateLimit?.resetTime?.getTime() ?? Date.now()) / 1000)
++    });
++  }
++});
++
++/**
++ * Auth rate limiter for login attempts
++ * Prevent brute force attacks
++ */
++export const authLimiter = rateLimit({
++  windowMs: 15 * 60 * 1000, // 15 minutes
++  max: 5, // 5 failed login attempts per 15 minutes
++  skipSuccessfulRequests: true, // Don't count successful logins
++  message: 'Too many login attempts, please try again after 15 minutes.'
++});
+
+diff --git a/server/src/index.ts b/server/src/index.ts
+index 1234567..8901234 100644
+--- a/server/src/index.ts
++++ b/server/src/index.ts
+@@ -1,6 +1,7 @@
+ import express from 'express';
+ import cors from 'cors';
+ import dotenv from 'dotenv';
++import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
+ import { initializeIndexes } from './config/database.js';
+ import { initializeDailyReminderCron, triggerReminderJobManually } from './jobs/dailyReminderCron.js';
+ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+@@ -18,6 +19,9 @@ const PORT = process.env.PORT || 3001;
+ // Middleware
+ app.use(cors());
+ app.use(express.json());
+ app.use(express.urlencoded({ extended: true }));
++
++// Apply global rate limiting to all routes
++app.use(globalLimiter);
+
+ // Request logging
+ app.use((req, res, next) => {
+@@ -44,9 +48,9 @@ app.use('/api/reminders', remindersRouter);
+ app.use('/api/appointments', appointmentsRouter);
+ app.use('/api/settings', settingsRouter);
+
+-// Manual trigger for testing (protected endpoint - add authentication in production!)
+-app.post('/api/trigger-reminders', async (req, res) => {
++// Manual trigger for testing (now with strict rate limiting)
++app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
+   try {
+     console.log('🔧 Manual reminder trigger requested');
+     const result = await triggerReminderJobManually();
+
+diff --git a/server/src/routes/reminders.ts b/server/src/routes/reminders.ts
+index 1234567..8901234 100644
+--- a/server/src/routes/reminders.ts
++++ b/server/src/routes/reminders.ts
+@@ -1,5 +1,6 @@
+ import express from 'express';
+ import reminderService from '../services/reminderService.js';
++import { emailLimiter, strictLimiter } from '../middleware/rateLimiter.js';
+ import type { ApiResponse } from '../types/index.js';
+
+ const router = express.Router();
+@@ -8,7 +9,7 @@ const router = express.Router();
+  * POST /api/reminders/send/:appointmentId
+  * Send reminder for a specific appointment
+  */
+-router.post('/send/:appointmentId', async (req, res) => {
++router.post('/send/:appointmentId', emailLimiter, async (req, res) => {
+   try {
+     const { appointmentId } = req.params;
+
+@@ -43,7 +44,7 @@ router.post('/send/:appointmentId', async (req, res) => {
+  * POST /api/reminders/send-all
+  * Send reminders for all appointments that need them
+  */
+-router.post('/send-all', async (req, res) => {
++router.post('/send-all', emailLimiter, async (req, res) => {
+   try {
+     const result = await reminderService.sendAllDueReminders();
+
+@@ -68,7 +69,7 @@ router.post('/send-all', async (req, res) => {
+  * GET /api/reminders/appointments-needing-reminders
+  * Get list of appointments that need reminders
+  */
+-router.get('/appointments-needing-reminders', async (req, res) => {
++router.get('/appointments-needing-reminders', strictLimiter, async (req, res) => {
+   try {
+     const appointments = await reminderService.getAppointmentsNeedingReminders();
+
+diff --git a/server/src/routes/settings.ts b/server/src/routes/settings.ts
+index 1234567..8901234 100644
+--- a/server/src/routes/settings.ts
++++ b/server/src/routes/settings.ts
+@@ -1,5 +1,6 @@
+ import express from 'express';
+ import db from '../config/database.js';
++import { strictLimiter } from '../middleware/rateLimiter.js';
+ import type { Settings, ApiResponse } from '../types/index.js';
+
+ const router = express.Router();
+@@ -54,7 +55,7 @@ router.get('/', async (req, res) => {
+  * PUT /api/settings
+  * Update application settings
+  */
+-router.put('/', async (req, res) => {
++router.put('/', strictLimiter, async (req, res) => {
+   try {
+     const {
+       reminderSendHour,
+
+Summary of rate limiting applied:
+
+1. **Global Limiter (100 req/15min)**
+   - Applied to all API routes
+   - Prevents general abuse and DoS
+   - Skips health check endpoint
+
+2. **Strict Limiter (10 req/hour)**
+   - Applied to: settings updates, appointments list, manual triggers
+   - Prevents configuration tampering
+   - Protects resource-intensive operations
+
+3. **Email Limiter (5 req/hour)**
+   - Applied to: all email sending endpoints
+   - Prevents email spam
+   - Protects SendGrid quota
+   - Most important for abuse prevention
+
+4. **Auth Limiter (5 req/15min)**
+   - Prepared for authentication endpoints
+   - Prevents brute force attacks
+   - Skips successful attempts
+
+Benefits:
+- Prevents DoS attacks
+- Protects against email spam abuse
+- Preserves SendGrid quota and reputation
+- Rate limit info returned in standard headers
+- Custom error messages for better UX
+- Logging of rate limit violations for monitoring
