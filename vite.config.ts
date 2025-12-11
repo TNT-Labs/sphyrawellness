@@ -4,7 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const base = '/'
+  // Use BASE_URL environment variable or default to '/' for Docker
+  // For GitHub Pages, set BASE_URL=/sphyrawellness/
+  const base = process.env.BASE_URL || process.env.VITE_BASE_PATH || '/'
+
+  console.log(`Building with base path: ${base}`)
 
   return {
     base,
