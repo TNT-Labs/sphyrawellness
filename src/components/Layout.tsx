@@ -77,8 +77,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-gray-200 hidden lg:block">
-          <h1 className="text-2xl font-bold text-primary-600">
+          <div className="p-6 border-b border-gray-200 hidden lg:block flex flex-col items-center">
+          <h1 className="text-2xl font-bold text-primary-600 flex justify-center">
               {/* Sostituzione del testo con il tag <img> per il logo */}
               <img
                   src={`${import.meta.env.BASE_URL}Sphyra_logo.png`}
@@ -86,7 +86,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   className="h-24 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
               />
           </h1>
-          <p className="text-sm text-gray-500 mt-1">Gestione Centro Estetico</p>
+          <p className="text-sm text-gray-500 mt-1 text-center">Gestione Centro Estetico</p>
           </div>
 
           {/* Navigation */}
