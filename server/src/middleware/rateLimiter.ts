@@ -15,7 +15,7 @@ export const globalLimiter = rateLimit({
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
   // Skip rate limiting for successful responses (optional)
-  skip: (req: Request, res: Response) => {
+  skip: (req: Request, _res: Response) => {
     // Skip rate limiting for health check endpoint
     return req.path === '/health';
   },

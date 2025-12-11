@@ -18,6 +18,12 @@ export interface Appointment {
   updatedAt?: string;
 }
 
+// PouchDB document type for Appointment (includes _id and _rev)
+export interface AppointmentDoc extends Omit<Appointment, 'id'> {
+  _id: string;
+  _rev?: string;
+}
+
 export interface Customer {
   id: string;
   firstName: string;

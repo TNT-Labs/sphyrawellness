@@ -6,6 +6,7 @@ import db from '../config/database.js';
 import emailService from './emailService.js';
 import type {
   Appointment,
+  AppointmentDoc,
   Customer,
   Service,
   Staff,
@@ -57,7 +58,7 @@ export class ReminderService {
   }> {
     try {
       // 1. Get appointment
-      const appointmentDoc = await db.appointments.get(appointmentId);
+      const appointmentDoc = await db.appointments.get(appointmentId) as AppointmentDoc;
       const appointment = {
         ...appointmentDoc,
         id: appointmentDoc._id
@@ -133,7 +134,7 @@ export class ReminderService {
         });
 
         // Fetch the updated document to get the new _rev
-        updatedAppointmentDoc = await db.appointments.get(appointmentId);
+        updatedAppointmentDoc = await db.appointments.get(appointmentId) as AppointmentDoc;
       }
 
       // 4. Prepare email data
@@ -299,7 +300,7 @@ export class ReminderService {
         };
       }
 
-      const doc = await db.appointments.get(appointmentId);
+      const doc = await db.appointments.get(appointmentId) as AppointmentDoc;
       const appointment = {
         ...doc,
         id: doc._id
