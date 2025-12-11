@@ -82,7 +82,7 @@ function makeRequest(url, method = 'GET', auth = null) {
             statusCode: res.statusCode,
             data: jsonData,
           });
-        } catch (e) {
+        } catch {
           resolve({
             statusCode: res.statusCode,
             data: data,
@@ -127,7 +127,7 @@ async function databaseExists(baseUrl, dbName, auth) {
   try {
     const response = await makeRequest(`${baseUrl}/${dbName}`, 'HEAD', auth);
     return response.statusCode === 200;
-  } catch (error) {
+  } catch {
     return false;
   }
 }
@@ -211,7 +211,7 @@ async function checkCORS(baseUrl, auth) {
         log('  💡 Per abilitare CORS, esegui: curl -X PUT http://admin:password@localhost:5984/_node/_local/_config/httpd/enable_cors -d \'"true"\'', 'blue');
       }
     }
-  } catch (error) {
+  } catch {
     log('  ℹ️  Impossibile verificare CORS (richiede permessi admin)', 'yellow');
   }
 }
