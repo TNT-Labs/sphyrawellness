@@ -1,6 +1,6 @@
 # Configurazione Multi-Ambiente per Deploy
 
-Questo documento spiega come l'applicazione Sphyra Wellness gestisce i deployment in diversi ambienti (Docker e GitHub Pages) con configurazioni diverse per i percorsi base.
+Questo documento spiega come l'applicazione Sphyra Wellness Lab gestisce i deployment in diversi ambienti (Docker e GitHub Pages) con configurazioni diverse per i percorsi base.
 
 ## Il Problema
 

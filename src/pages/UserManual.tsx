@@ -68,15 +68,15 @@ const UserManual: React.FC = () => {
           <h1 className="text-3xl font-bold text-gray-900">Manuale Utente</h1>
         </div>
         <p className="text-gray-600">
-          Guida completa all'utilizzo di Sphyra Wellness - Gestionale per Centri Estetici e Spa
+          Guida completa all'utilizzo di Sphyra Wellness Lab - Gestionale per Centri Estetici e Spa
         </p>
       </div>
 
       <Section id="intro" title="Introduzione" icon={BookOpen}>
         <div>
-          <h3 className="font-semibold text-lg mb-2">Cos'è Sphyra Wellness?</h3>
+          <h3 className="font-semibold text-lg mb-2">Cos'è Sphyra Wellness Lab?</h3>
           <p className="mb-4">
-            Sphyra Wellness è una Progressive Web App (PWA) completa per la gestione di centri estetici e spa.
+            Sphyra Wellness Lab è una Progressive Web App (PWA) completa per la gestione di centri estetici e spa.
             L'applicazione è progettata per funzionare completamente offline e può essere installata su qualsiasi
             dispositivo (smartphone, tablet, computer) come un'app nativa.
           </p>
@@ -93,7 +93,7 @@ const UserManual: React.FC = () => {
 
           <h3 className="font-semibold text-lg mb-2 mt-4">Installazione come App</h3>
           <p className="mb-2">
-            Per installare Sphyra Wellness sul tuo dispositivo:
+            Per installare Sphyra Wellness Lab sul tuo dispositivo:
           </p>
           <ul className="list-disc list-inside space-y-2 ml-4">
             <li><strong>Desktop (Chrome/Edge):</strong> Clicca sull'icona di installazione nella barra degli indirizzi</li>
@@ -585,7 +585,7 @@ const UserManual: React.FC = () => {
           <div>
             <p className="font-semibold mb-1">L'app funziona senza connessione internet?</p>
             <p className="text-sm">
-              Sì, Sphyra Wellness è progettata per funzionare completamente offline. Tutti i dati sono
+              Sì, Sphyra Wellness Lab è progettata per funzionare completamente offline. Tutti i dati sono
               salvati localmente sul dispositivo. La connessione internet è necessaria solo se vuoi
               sincronizzare i dati con altri dispositivi tramite CouchDB.
             </p>
@@ -674,7 +674,7 @@ const UserManual: React.FC = () => {
           <div>
             <p className="font-semibold mb-1">📱 Installala come App</p>
             <p className="text-sm">
-              Installa Sphyra Wellness sul tuo dispositivo per un'esperienza simile a un'app nativa,
+              Installa Sphyra Wellness Lab sul tuo dispositivo per un'esperienza simile a un'app nativa,
               con accesso rapido e modalità fullscreen.
             </p>
           </div>

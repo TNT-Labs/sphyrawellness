@@ -1,6 +1,6 @@
 # 📧 Guida Completa: Sistema di Reminder Email
 
-Questa guida spiega come utilizzare il sistema di reminder email per gli appuntamenti di Sphyra Wellness.
+Questa guida spiega come utilizzare il sistema di reminder email per gli appuntamenti di Sphyra Wellness Lab.
 
 ## 📑 Indice
 
@@ -85,7 +85,7 @@ Prima di poter inviare email, devi verificare un'identità mittente:
 1. Nel menu: **Settings** → **Sender Authentication**
 2. Clicca **Verify a Single Sender**
 3. Compila il form:
-   - **From Name**: `Sphyra Wellness`
+   - **From Name**: `Sphyra Wellness Lab`
    - **From Email Address**: La tua email (es. `noreply@tuoemail.com`)
    - **Reply To**: La tua email
    - **Company Address**: Indirizzo della tua attività
@@ -113,7 +113,7 @@ NODE_ENV=development
 # SendGrid - INSERISCI I TUOI DATI QUI
 SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxx  # API Key copiata
 SENDGRID_FROM_EMAIL=noreply@tuaemail.com     # Email verificata
-SENDGRID_FROM_NAME=Sphyra Wellness
+SENDGRID_FROM_NAME=Sphyra Wellness Lab
 
 # Frontend URL
 FRONTEND_URL=http://localhost:5173
@@ -145,7 +145,7 @@ Il frontend sarà su `http://localhost:5173`
 
 ### Impostazioni Reminder (Frontend)
 
-1. Apri Sphyra Wellness in browser: `http://localhost:5173`
+1. Apri Sphyra Wellness Lab in browser: `http://localhost:5173`
 2. Vai su **Impostazioni** (menu laterale)
 3. Scorri fino alla sezione **"Impostazioni Reminder Email"**
 

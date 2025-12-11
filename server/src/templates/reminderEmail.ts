@@ -7,7 +7,7 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Promemoria Appuntamento - Sphyra Wellness</title>
+  <title>Promemoria Appuntamento - Sphyra Wellness Lab</title>
   <style>
     body {
       margin: 0;
@@ -132,7 +132,7 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <h1>🌸 Sphyra Wellness</h1>
+      <h1>🌸 Sphyra Wellness Lab</h1>
     </div>
 
     <!-- Content -->
@@ -181,13 +181,13 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
 
       <p style="margin-top: 30px; font-size: 14px; color: #333333;">
         A presto,<br>
-        <strong>Il Team di Sphyra Wellness</strong>
+        <strong>Il Team di Sphyra Wellness Lab</strong>
       </p>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <p><strong>Sphyra Wellness</strong></p>
+      <p><strong>Sphyra Wellness Lab</strong></p>
       <p>Centro Estetico & Benessere</p>
       <p style="margin-top: 15px;">
         Questa è una email automatica, ti preghiamo di non rispondere.<br>
@@ -204,7 +204,7 @@ export function generateReminderEmailText(data: ReminderEmailData): string {
   return `
 Gentile ${data.customerName},
 
-Ti ricordiamo che hai un appuntamento presso Sphyra Wellness domani.
+Ti ricordiamo che hai un appuntamento presso Sphyra Wellness Lab domani.
 
 DETTAGLI APPUNTAMENTO:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -222,7 +222,7 @@ Se non puoi presentarti, ti preghiamo di contattarci il prima possibile.
 Non vediamo l'ora di accoglierti nel nostro centro!
 
 A presto,
-Il Team di Sphyra Wellness
+Il Team di Sphyra Wellness Lab
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Questa è una email automatica, ti preghiamo di non rispondere.

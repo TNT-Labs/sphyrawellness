@@ -49,7 +49,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Mobile menu button */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary-600">Sphyra Wellness</h1>
+          <h1 className="text-xl font-bold text-primary-600">Sphyra Wellness Lab</h1>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 touch-manipulation"
@@ -73,7 +73,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Logo */}
           <div className="p-6 border-b border-gray-200 hidden lg:block">
             <h1 className="text-2xl font-bold text-primary-600">
-              Sphyra Wellness
+              Sphyra Wellness Lab
             </h1>
             <p className="text-sm text-gray-500 mt-1">Gestione Centro Estetico</p>
           </div>
@@ -132,7 +132,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
             )}
             <div className="text-xs text-gray-500 text-center">
-              © {new Date().getFullYear()} Sphyra Wellness
+              © {new Date().getFullYear()} Sphyra Wellness Lab
             </div>
           </div>
         </div>

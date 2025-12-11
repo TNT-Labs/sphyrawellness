@@ -1,5 +1,5 @@
 # ============================================================================
-# Script di avvio Docker per Sphyra Wellness (Windows PowerShell)
+# Script di avvio Docker per Sphyra Wellness Lab (Windows PowerShell)
 # ============================================================================
 # Questo script facilita l'avvio dell'applicazione con Docker Compose su Windows
 # ============================================================================
@@ -153,7 +153,7 @@ Test-ServiceUrl -url "http://localhost:3001" -name "Backend"
 Test-ServiceUrl -url "http://localhost" -name "Frontend"
 
 Write-Host ""
-Write-Host "🎉 Sphyra Wellness è pronto!" -ForegroundColor Green
+Write-Host "🎉 Sphyra Wellness Lab è pronto!" -ForegroundColor Green
 Write-Host "   Apri il browser su: " -NoNewline; Write-Host "http://localhost" -ForegroundColor Yellow
 Write-Host ""
 

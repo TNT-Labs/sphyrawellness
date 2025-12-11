@@ -33,7 +33,7 @@ const GlobalLoader: React.FC = () => (
       <div className="mb-6">
         <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent"></div>
       </div>
-      <h1 className="text-3xl font-bold text-white mb-2">Sphyra Wellness</h1>
+      <h1 className="text-3xl font-bold text-white mb-2">Sphyra Wellness Lab</h1>
       <p className="text-primary-100">Caricamento dati...</p>
     </div>
   </div>

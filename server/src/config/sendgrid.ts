@@ -15,7 +15,7 @@ if (!SENDGRID_API_KEY) {
 
 export const sendGridConfig = {
   fromEmail: process.env.SENDGRID_FROM_EMAIL || 'noreply@sphyrawellness.com',
-  fromName: process.env.SENDGRID_FROM_NAME || 'Sphyra Wellness',
+  fromName: process.env.SENDGRID_FROM_NAME || 'Sphyra Wellness Lab',
   isConfigured: !!SENDGRID_API_KEY
 };
 

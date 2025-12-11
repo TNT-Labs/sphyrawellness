@@ -1,6 +1,6 @@
-# 🔍 Technical Audit Report - Sphyra Wellness PWA
+# 🔍 Technical Audit Report - Sphyra Wellness Lab PWA
 
-**Project:** Sphyra Wellness - Gestione Centro Estetico
+**Project:** Sphyra Wellness Lab - Gestione Centro Estetico
 **Audit Date:** December 11, 2025
 **Auditor:** Claude Technical Audit System
 **Repository:** https://github.com/TNT-Labs/sphyrawellness
@@ -9,7 +9,7 @@
 
 ## 📋 Executive Summary
 
-This audit conducted a comprehensive security and technical review of the Sphyra Wellness PWA application, covering:
+This audit conducted a comprehensive security and technical review of the Sphyra Wellness Lab PWA application, covering:
 - Frontend (React 18 + Vite + TypeScript)
 - Backend API (Node.js + Express + TypeScript)
 - Database (CouchDB/PouchDB)
