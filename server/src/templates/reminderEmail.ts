@@ -161,15 +161,21 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
         </div>
       </div>
 
-      <!-- CTA Button -->
+      <!-- Calendar Info -->
       <div class="cta-container">
-        <a href="${data.calendarUrl}" class="cta-button">
-          📅 Aggiungi al Calendario
-        </a>
+        <div style="background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 20px; text-align: left;">
+          <p style="margin: 0 0 10px 0; font-size: 16px; font-weight: 600; color: #166534;">
+            📅 File Calendario Allegato
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #166534; line-height: 1.6;">
+            Abbiamo allegato un file <strong>appuntamento.ics</strong> a questa email.
+            Scaricalo e aprilo per aggiungere l'appuntamento al tuo calendario
+            (Google Calendar, Outlook, Apple Calendar, ecc.).
+          </p>
+        </div>
       </div>
 
       <p class="info-text">
-        Clicca sul pulsante qui sopra per aggiungere l'appuntamento al tuo calendario (Google Calendar, Outlook, Apple Calendar, ecc.).
         Se non puoi presentarti, ti preghiamo di contattarci il prima possibile.
       </p>
 
@@ -214,8 +220,10 @@ DETTAGLI APPUNTAMENTO:
 👤 Operatore: ${data.staffName}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Per aggiungere l'appuntamento al tuo calendario, clicca sul link seguente:
-${data.calendarUrl}
+📎 FILE CALENDARIO ALLEGATO
+Abbiamo allegato un file "appuntamento.ics" a questa email.
+Scaricalo e aprilo per aggiungere l'appuntamento al tuo calendario
+(Google Calendar, Outlook, Apple Calendar, ecc.).
 
 Se non puoi presentarti, ti preghiamo di contattarci il prima possibile.
 

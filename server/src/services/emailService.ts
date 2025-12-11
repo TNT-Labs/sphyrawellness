@@ -20,7 +20,7 @@ export class EmailService {
     }
 
     try {
-      const msg = {
+      const msg: any = {
         to: recipientEmail,
         from: {
           email: sendGridConfig.fromEmail,
@@ -30,6 +30,19 @@ export class EmailService {
         text: generateReminderEmailText(data),
         html: generateReminderEmailHTML(data)
       };
+
+      // Add .ics file as attachment if provided
+      if (data.icsContent) {
+        const icsBase64 = Buffer.from(data.icsContent, 'utf-8').toString('base64');
+        msg.attachments = [
+          {
+            content: icsBase64,
+            filename: 'appuntamento.ics',
+            type: 'text/calendar',
+            disposition: 'attachment'
+          }
+        ];
+      }
 
       const response = await sgMail.send(msg);
 
