@@ -35,7 +35,7 @@ export function authenticateToken(
     const user = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
     req.user = user;
     next();
-  } catch (error) {
+  } catch {
     const response: ApiResponse = {
       success: false,
       error: 'Invalid or expired token'
