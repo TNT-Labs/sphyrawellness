@@ -75,7 +75,7 @@ function makeRequest(url, method = 'GET', auth = null, data = null) {
             statusCode: res.statusCode,
             data: responseData,
           });
-        } catch (e) {
+        } catch {
           resolve({
             statusCode: res.statusCode,
             data: body,
@@ -280,7 +280,7 @@ async function configureCORS(baseUrl, auth) {
           log(`     Attuale: ${currentValue}`, 'dim');
         }
       }
-    } catch (error) {
+    } catch {
       // Ignora errori di verifica
     }
   }
