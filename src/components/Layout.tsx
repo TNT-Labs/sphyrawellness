@@ -49,7 +49,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Mobile menu button */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-primary-600">Sphyra Wellness Lab</h1>
+          <h1 className="text-xl font-bold text-primary-600">
+            <img 
+                src="/Sphyra_logo.png" 
+                alt="Sphyra Wellness Lab Logo" 
+                className="h-8 w-auto" // Dimensione adatta per l'intestazione mobile
+            />
+        </h1>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 touch-manipulation"
@@ -75,7 +81,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <h1 className="text-2xl font-bold text-primary-600">
               {/* Sostituzione del testo con il tag <img> per il logo */}
               <img 
-                  src="/Sphyra_logo.png" 
+                  src="/public/Sphyra_logo.png" 
                   alt="Sphyra Wellness Lab Logo" 
                   className="h-32 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
               />
