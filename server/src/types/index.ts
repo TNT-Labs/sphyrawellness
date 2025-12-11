@@ -87,7 +87,7 @@ export interface ReminderEmailData {
   appointmentTime: string;
   serviceName: string;
   staffName: string;
-  calendarUrl: string;
+  icsContent?: string; // .ics file content to attach to email
 }
 
 // API Response types

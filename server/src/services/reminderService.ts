@@ -4,6 +4,7 @@ import { it } from 'date-fns/locale';
 import bcrypt from 'bcrypt';
 import db from '../config/database.js';
 import emailService from './emailService.js';
+import calendarService from './calendarService.js';
 import type {
   Appointment,
   AppointmentDoc,
@@ -137,20 +138,25 @@ export class ReminderService {
         updatedAppointmentDoc = await db.appointments.get(appointmentId) as AppointmentDoc;
       }
 
-      // 4. Prepare email data
-      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
-      const calendarUrl = `${backendUrl}/api/appointments/${appointmentId}/calendar.ics`;
+      // 4. Generate .ics file content for calendar attachment
+      const icsContent = calendarService.generateICS({
+        appointment,
+        customer,
+        service,
+        staff
+      });
 
+      // 5. Prepare email data
       const emailData: ReminderEmailData = {
         customerName: `${customer.firstName} ${customer.lastName}`,
         appointmentDate: format(parseISO(appointment.date), 'EEEE d MMMM yyyy', { locale: it }),
         appointmentTime: appointment.startTime,
         serviceName: service.name,
         staffName: `${staff.firstName} ${staff.lastName}`,
-        calendarUrl
+        icsContent
       };
 
-      // 5. Send email
+      // 6. Send email with .ics attachment
       console.log(`Sending reminder email to ${customer.email} for appointment on ${emailData.appointmentDate}...`);
       const emailResult = await emailService.sendReminderEmail(customer.email, emailData);
 
@@ -180,7 +186,7 @@ export class ReminderService {
         };
       }
 
-      // 6. Create successful reminder record
+      // 7. Create successful reminder record
       const reminderId = uuidv4();
       const reminder: Reminder = {
         id: reminderId,
@@ -197,7 +203,7 @@ export class ReminderService {
         _id: reminderId
       });
 
-      // 7. Update appointment reminderSent flag
+      // 8. Update appointment reminderSent flag
       await db.appointments.put({
         ...updatedAppointmentDoc,
         reminderSent: true,
