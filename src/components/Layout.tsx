@@ -83,7 +83,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <img 
                   src="/Sphyra_logo.png" 
                   alt="Sphyra Wellness Lab Logo" 
-                  className="h-32 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
+                  className="h-24 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
               />
           </h1>
           <p className="text-sm text-gray-500 mt-1">Gestione Centro Estetico</p>
