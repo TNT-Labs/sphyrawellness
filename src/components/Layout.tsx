@@ -75,7 +75,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <h1 className="text-2xl font-bold text-primary-600">
               {/* Sostituzione del testo con il tag <img> per il logo */}
               <img 
-                  src="/public/Sphyra_logo.png" 
+                  src="/Sphyra_logo.png" 
                   alt="Sphyra Wellness Lab Logo" 
                   className="h-8 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
               />
