@@ -16,6 +16,10 @@ RUN npm ci
 # Copia tutto il codice sorgente
 COPY . .
 
+# Set BASE_URL for Docker deployment (root path)
+ENV BASE_URL=/
+ENV VITE_BASE_PATH=/
+
 # Build dell'applicazione per produzione
 RUN npm run build
 
