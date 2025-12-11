@@ -1,8 +1,9 @@
 import express from 'express';
 import reminderService from '../services/reminderService.js';
+import calendarService from '../services/calendarService.js';
 import db from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
-import type { ApiResponse, Appointment } from '../types/index.js';
+import type { ApiResponse, Appointment, Customer, Service, Staff } from '../types/index.js';
 
 const router = express.Router();
 
@@ -110,6 +111,63 @@ router.get('/:appointmentId/confirm/:token', async (req, res) => {
     console.error('Error in GET /confirm:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     res.redirect(`${frontendUrl}/confirm-appointment/error?message=${encodeURIComponent('An error occurred')}`);
+  }
+});
+
+/**
+ * GET /api/appointments/:appointmentId/calendar.ics
+ * Generate and download iCalendar (.ics) file for an appointment
+ * Public: No authentication required (allows direct download from email)
+ */
+router.get('/:appointmentId/calendar.ics', async (req, res) => {
+  try {
+    const { appointmentId } = req.params;
+
+    // Fetch appointment
+    const appointmentDoc = await db.appointments.get(appointmentId);
+    const appointment: Appointment = {
+      ...appointmentDoc,
+      id: appointmentDoc._id
+    } as any;
+
+    // Fetch related data
+    const customerDoc = await db.customers.get(appointment.customerId);
+    const customer: Customer = {
+      ...customerDoc,
+      id: customerDoc._id
+    } as any;
+
+    const serviceDoc = await db.services.get(appointment.serviceId);
+    const service: Service = {
+      ...serviceDoc,
+      id: serviceDoc._id
+    } as any;
+
+    const staffDoc = await db.staff.get(appointment.staffId);
+    const staff: Staff = {
+      ...staffDoc,
+      id: staffDoc._id
+    } as any;
+
+    // Generate .ics file content
+    const icsContent = calendarService.generateICS({
+      appointment,
+      customer,
+      service,
+      staff
+    });
+
+    // Set headers for .ics file download
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="appuntamento-${appointmentId}.ics"`);
+    res.send(icsContent);
+  } catch (error: any) {
+    console.error('Error generating calendar file:', error);
+    const response: ApiResponse = {
+      success: false,
+      error: error.message || 'Failed to generate calendar file'
+    };
+    res.status(500).json(response);
   }
 });
 

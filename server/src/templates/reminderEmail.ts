@@ -163,13 +163,13 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
 
       <!-- CTA Button -->
       <div class="cta-container">
-        <a href="${data.confirmationUrl}" class="cta-button">
-          ✓ Conferma Appuntamento
+        <a href="${data.calendarUrl}" class="cta-button">
+          📅 Aggiungi al Calendario
         </a>
       </div>
 
       <p class="info-text">
-        Cliccando sul pulsante qui sopra confermerai la tua presenza all'appuntamento.
+        Clicca sul pulsante qui sopra per aggiungere l'appuntamento al tuo calendario (Google Calendar, Outlook, Apple Calendar, ecc.).
         Se non puoi presentarti, ti preghiamo di contattarci il prima possibile.
       </p>
 
@@ -214,8 +214,8 @@ DETTAGLI APPUNTAMENTO:
 👤 Operatore: ${data.staffName}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Per confermare la tua presenza, clicca sul link seguente:
-${data.confirmationUrl}
+Per aggiungere l'appuntamento al tuo calendario, clicca sul link seguente:
+${data.calendarUrl}
 
 Se non puoi presentarti, ti preghiamo di contattarci il prima possibile.
 
