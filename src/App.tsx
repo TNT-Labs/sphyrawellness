@@ -78,7 +78,7 @@ const AppContent: React.FC = () => {
           {isLoading ? (
             <GlobalLoader />
           ) : (
-            <Router>
+            <Router basename={import.meta.env.BASE_URL}>
               <Routes>
                 {/* Public route for login */}
                 <Route path="/login" element={<Login />} />
