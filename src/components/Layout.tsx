@@ -137,7 +137,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               </div>
             )}
             <div className="text-xs text-gray-500 text-center">
-              © {new Date().getFullYear()} Sphyra Wellness Lab
+              © {new Date().getFullYear()} by{' '}
+              <a
+                href="https://github.com/TNT-Labs"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-primary-600 transition-colors"
+              >
+                TNT-Labs
+              </a>
             </div>
           </div>
         </div>
