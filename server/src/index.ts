@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import { authenticateToken } from './middleware/auth.js';
 import { initializeIndexes } from './config/database.js';
 import { initializeDailyReminderCron, triggerReminderJobManually } from './jobs/dailyReminderCron.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
@@ -15,10 +17,32 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+const strictLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // limit each IP to 10 requests per hour
+  message: 'Too many requests, please try again later.'
+});
+
 // Middleware
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(limiter);
 
 // Request logging
 app.use((req, res, next) => {
@@ -40,14 +64,16 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
-app.use('/api/reminders', remindersRouter);
+// Note: Appointments router handles its own authentication selectively
+// to keep confirmation endpoints public
+app.use('/api/reminders', authenticateToken, remindersRouter);
 app.use('/api/appointments', appointmentsRouter);
-app.use('/api/settings', settingsRouter);
+app.use('/api/settings', authenticateToken, settingsRouter);
 
-// Manual trigger for testing (protected endpoint - add authentication in production!)
-app.post('/api/trigger-reminders', async (req, res) => {
+// Manual trigger for testing (now protected with authentication and strict rate limit)
+app.post('/api/trigger-reminders', authenticateToken, strictLimiter, async (req, res) => {
   try {
-    console.log('🔧 Manual reminder trigger requested');
+    console.log(`🔧 Manual reminder trigger requested by user ${(req as any).user?.id}`);
     const result = await triggerReminderJobManually();
 
     const response: ApiResponse = {
