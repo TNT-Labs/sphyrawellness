@@ -2,8 +2,15 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import type { ApiResponse } from '../types/index.js';
 
-// Use environment variable for JWT secret in production
-const JWT_SECRET = process.env.JWT_SECRET || 'CHANGE-THIS-IN-PRODUCTION-USE-ENV-VAR';
+// Use environment variable for JWT secret - REQUIRED for security
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error('❌ FATAL: JWT_SECRET environment variable is not set!');
+  console.error('   Please add JWT_SECRET to your .env file with a secure random value.');
+  console.error('   Example: JWT_SECRET=$(openssl rand -base64 32)');
+  process.exit(1);
+}
 
 export interface AuthRequest extends Request {
   user?: {
