@@ -138,8 +138,8 @@ export class ReminderService {
       }
 
       // 4. Prepare email data
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      const confirmationUrl = `${frontendUrl}/confirm-appointment/${appointmentId}/${confirmationToken}`;
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+      const calendarUrl = `${backendUrl}/api/appointments/${appointmentId}/calendar.ics`;
 
       const emailData: ReminderEmailData = {
         customerName: `${customer.firstName} ${customer.lastName}`,
@@ -147,7 +147,7 @@ export class ReminderService {
         appointmentTime: appointment.startTime,
         serviceName: service.name,
         staffName: `${staff.firstName} ${staff.lastName}`,
-        confirmationUrl
+        calendarUrl
       };
 
       // 5. Send email

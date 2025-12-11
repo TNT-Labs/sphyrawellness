@@ -87,7 +87,7 @@ export interface ReminderEmailData {
   appointmentTime: string;
   serviceName: string;
   staffName: string;
-  confirmationUrl: string;
+  calendarUrl: string;
 }
 
 // API Response types
