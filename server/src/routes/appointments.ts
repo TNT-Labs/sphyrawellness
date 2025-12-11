@@ -1,6 +1,7 @@
 import express from 'express';
 import reminderService from '../services/reminderService.js';
 import db from '../config/database.js';
+import { authenticateToken } from '../middleware/auth.js';
 import type { ApiResponse, Appointment } from '../types/index.js';
 
 const router = express.Router();
@@ -8,8 +9,9 @@ const router = express.Router();
 /**
  * GET /api/appointments
  * Get all appointments from the backend database
+ * Protected: Requires authentication
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const result = await db.appointments.allDocs({
       include_docs: true
@@ -41,6 +43,7 @@ router.get('/', async (req, res) => {
 /**
  * POST /api/appointments/:appointmentId/confirm
  * Confirm appointment using token
+ * Public: No authentication required (uses hashed token validation)
  */
 router.post('/:appointmentId/confirm', async (req, res) => {
   try {
@@ -86,6 +89,7 @@ router.post('/:appointmentId/confirm', async (req, res) => {
  * GET /api/appointments/:appointmentId/confirm/:token
  * Confirm appointment via GET (for direct link clicks)
  * This redirects to the frontend confirmation page
+ * Public: No authentication required (uses hashed token validation)
  */
 router.get('/:appointmentId/confirm/:token', async (req, res) => {
   try {
