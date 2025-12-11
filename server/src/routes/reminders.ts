@@ -1,5 +1,6 @@
 import express from 'express';
 import reminderService from '../services/reminderService.js';
+import { emailLimiter, strictLimiter } from '../middleware/rateLimiter.js';
 import type { ApiResponse } from '../types/index.js';
 
 const router = express.Router();
@@ -8,7 +9,7 @@ const router = express.Router();
  * POST /api/reminders/send/:appointmentId
  * Send reminder for a specific appointment
  */
-router.post('/send/:appointmentId', async (req, res) => {
+router.post('/send/:appointmentId', emailLimiter, async (req, res) => {
   try {
     const { appointmentId } = req.params;
 
@@ -43,7 +44,7 @@ router.post('/send/:appointmentId', async (req, res) => {
  * POST /api/reminders/send-all
  * Send reminders for all appointments that need them
  */
-router.post('/send-all', async (req, res) => {
+router.post('/send-all', emailLimiter, async (req, res) => {
   try {
     const result = await reminderService.sendAllDueReminders();
 
@@ -68,7 +69,7 @@ router.post('/send-all', async (req, res) => {
  * GET /api/reminders/appointments-needing-reminders
  * Get list of appointments that need reminders
  */
-router.get('/appointments-needing-reminders', async (req, res) => {
+router.get('/appointments-needing-reminders', strictLimiter, async (req, res) => {
   try {
     const appointments = await reminderService.getAppointmentsNeedingReminders();
 

@@ -1,5 +1,6 @@
 import express from 'express';
 import db from '../config/database.js';
+import { strictLimiter } from '../middleware/rateLimiter.js';
 import type { Settings, ApiResponse } from '../types/index.js';
 
 const router = express.Router();
@@ -54,7 +55,7 @@ router.get('/', async (req, res) => {
  * PUT /api/settings
  * Update application settings
  */
-router.put('/', async (req, res) => {
+router.put('/', strictLimiter, async (req, res) => {
   try {
     const {
       reminderSendHour,

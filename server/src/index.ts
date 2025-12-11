@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
+import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
 import { authenticateToken } from './middleware/auth.js';
 import { initializeIndexes } from './config/database.js';
 import { initializeDailyReminderCron, triggerReminderJobManually } from './jobs/dailyReminderCron.js';
@@ -45,19 +45,6 @@ app.use(helmet({
   xssFilter: true
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.'
-});
-
-const strictLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10, // limit each IP to 10 requests per hour
-  message: 'Too many requests, please try again later.'
-});
-
 // Middleware
 // CORS configuration with whitelist
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
@@ -89,7 +76,9 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(limiter);
+
+// Apply global rate limiting to all routes
+app.use(globalLimiter);
 
 // Request logging
 app.use((req, res, next) => {
@@ -117,7 +106,7 @@ app.use('/api/reminders', authenticateToken, remindersRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/settings', authenticateToken, settingsRouter);
 
-// Manual trigger for testing (now protected with authentication and strict rate limit)
+// Manual trigger for testing (now with strict rate limiting)
 app.post('/api/trigger-reminders', authenticateToken, strictLimiter, async (req, res) => {
   try {
     console.log(`🔧 Manual reminder trigger requested by user ${(req as any).user?.id}`);
