@@ -50,7 +50,7 @@ entryPoints:
 # Docker provider
 providers:
   docker:
-    endpoint: "tcp://host.docker.internal:2375"
+    endpoint: "tcp://192.168.65.254:2375"
     exposedByDefault: false
     network: traefik-public
     watch: true
