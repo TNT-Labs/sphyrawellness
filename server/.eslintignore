@@ -1,0 +1,5 @@
+# Ignore compiled output
+dist/
+
+# Ignore dependencies
+node_modules/

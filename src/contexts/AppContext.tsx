@@ -52,6 +52,7 @@ import { initStoragePersistence } from '../utils/storagePersistence';
 import { initializeSync } from '../utils/pouchdbSync';
 import { hashPassword } from '../utils/auth';
 import { useDB } from './DBContext';
+import { appointmentsApi } from '../utils/api';
 
 interface AppContextType {
   // Loading state
@@ -520,7 +521,6 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     try {
       // First, try to fetch from backend to sync latest data
       try {
-        const { appointmentsApi } = await import('../utils/api');
         const backendAppointments = await appointmentsApi.getAll();
 
         // Sync backend appointments to local IndexedDB
