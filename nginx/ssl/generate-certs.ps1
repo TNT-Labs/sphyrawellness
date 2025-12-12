@@ -1,7 +1,6 @@
 # ========================================
 # SSL Certificate Generation Script
-# Sphyra Wellness Lab - Private Network
-# PowerShell Version for Windows
+# Sphyra Wellness Lab
 # ========================================
 
 param(
@@ -11,45 +10,40 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Configuration
 $CertDir = $PSScriptRoot
 $KeyFile = Join-Path $CertDir "sphyra.key"
 $CertFile = Join-Path $CertDir "sphyra.crt"
 $CsrFile = Join-Path $CertDir "sphyra.csr"
 $CnfFile = Join-Path $CertDir "openssl.cnf"
 
-# Colors
-function Write-ColorOutput($Message, $Color = "White") {
-    Write-Host $Message -ForegroundColor $Color
-}
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "SSL Certificate Generator" -ForegroundColor Cyan
+Write-Host "Sphyra Wellness Lab" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
 
-# Header
-Write-ColorOutput "`n========================================" "Cyan"
-Write-ColorOutput "SSL Certificate Generator" "Cyan"
-Write-ColorOutput "Sphyra Wellness Lab" "Cyan"
-Write-ColorOutput "========================================`n" "Cyan"
-
-# Check if OpenSSL is available
+# Find OpenSSL
 $OpenSSL = $null
 $PossiblePaths = @(
     "openssl",
     "C:\Program Files\OpenSSL-Win64\bin\openssl.exe",
-    "C:\Program Files (x86)\OpenSSL-Win32\bin\openssl.exe",
-    "C:\OpenSSL-Win64\bin\openssl.exe",
-    "C:\OpenSSL-Win32\bin\openssl.exe"
+    "C:\Program Files (x86)\OpenSSL-Win32\bin\openssl.exe"
 )
 
 foreach ($Path in $PossiblePaths) {
     try {
-        $TestResult = if ($Path -eq "openssl") {
-            Get-Command openssl -ErrorAction SilentlyContinue
+        if ($Path -eq "openssl") {
+            $TestResult = Get-Command openssl -ErrorAction SilentlyContinue
+            if ($TestResult) {
+                $OpenSSL = "openssl"
+                break
+            }
         } else {
-            if (Test-Path $Path) { $Path } else { $null }
-        }
-
-        if ($TestResult) {
-            $OpenSSL = if ($Path -eq "openssl") { "openssl" } else { $Path }
-            break
+            if (Test-Path $Path) {
+                $OpenSSL = $Path
+                break
+            }
         }
     } catch {
         continue
@@ -57,27 +51,24 @@ foreach ($Path in $PossiblePaths) {
 }
 
 if (-not $OpenSSL) {
-    Write-ColorOutput "ERROR: OpenSSL is not installed or not found!" "Red"
-    Write-ColorOutput "`nOpenSSL is required to generate SSL certificates." "Yellow"
-    Write-ColorOutput "`nInstallation options:" "Yellow"
-    Write-ColorOutput "  1. Download from: https://slproweb.com/products/Win32OpenSSL.html" "White"
-    Write-ColorOutput "  2. Install via Chocolatey: choco install openssl" "White"
-    Write-ColorOutput "  3. Use Docker method (see README.md)`n" "White"
+    Write-Host "ERROR: OpenSSL is not installed!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Download from: https://slproweb.com/products/Win32OpenSSL.html" -ForegroundColor Yellow
     exit 1
 }
 
-Write-ColorOutput "✓ Found OpenSSL: $OpenSSL`n" "Green"
+Write-Host "Found OpenSSL: $OpenSSL" -ForegroundColor Green
+Write-Host ""
 
-# Check if config file exists
 if (-not (Test-Path $CnfFile)) {
-    Write-ColorOutput "ERROR: OpenSSL config file not found: $CnfFile" "Red"
+    Write-Host "ERROR: Config file not found: $CnfFile" -ForegroundColor Red
     exit 1
 }
 
-# Backup existing certificates
+# Backup existing certs
 if ((Test-Path $CertFile) -or (Test-Path $KeyFile)) {
-    Write-ColorOutput "⚠ Existing certificates found!" "Yellow"
-    $Response = Read-Host "Do you want to backup and regenerate? (y/N)"
+    Write-Host "Existing certificates found!" -ForegroundColor Yellow
+    $Response = Read-Host "Backup and regenerate? (y/N)"
 
     if ($Response -match '^[yY]') {
         $BackupDir = Join-Path $CertDir "backup-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
@@ -87,87 +78,77 @@ if ((Test-Path $CertFile) -or (Test-Path $KeyFile)) {
         if (Test-Path $CertFile) { Move-Item $CertFile $BackupDir -Force }
         if (Test-Path $CsrFile) { Move-Item $CsrFile $BackupDir -Force }
 
-        Write-ColorOutput "✓ Backed up to: $BackupDir`n" "Green"
+        Write-Host "Backed up to: $BackupDir" -ForegroundColor Green
     } else {
-        Write-ColorOutput "Aborted.`n" "Yellow"
+        Write-Host "Aborted." -ForegroundColor Yellow
         exit 0
     }
 }
 
 # Generate private key
-Write-ColorOutput "Step 1: Generating private key..." "Cyan"
+Write-Host ""
+Write-Host "Step 1: Generating private key..." -ForegroundColor Cyan
 & $OpenSSL genrsa -out $KeyFile 4096 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-ColorOutput "ERROR: Failed to generate private key" "Red"
+    Write-Host "ERROR: Failed to generate private key" -ForegroundColor Red
     exit 1
 }
-Write-ColorOutput "✓ Private key created: $KeyFile`n" "Green"
+Write-Host "Private key created: $KeyFile" -ForegroundColor Green
 
-# Generate Certificate Signing Request (CSR)
-Write-ColorOutput "Step 2: Generating Certificate Signing Request (CSR)..." "Cyan"
+# Generate CSR
+Write-Host ""
+Write-Host "Step 2: Generating CSR..." -ForegroundColor Cyan
 & $OpenSSL req -new -key $KeyFile -out $CsrFile -config $CnfFile 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-ColorOutput "ERROR: Failed to generate CSR" "Red"
+    Write-Host "ERROR: Failed to generate CSR" -ForegroundColor Red
     exit 1
 }
-Write-ColorOutput "✓ CSR created: $CsrFile`n" "Green"
+Write-Host "CSR created: $CsrFile" -ForegroundColor Green
 
-# Generate self-signed certificate
-Write-ColorOutput "Step 3: Generating self-signed certificate..." "Cyan"
+# Generate certificate
+Write-Host ""
+Write-Host "Step 3: Generating certificate..." -ForegroundColor Cyan
 & $OpenSSL x509 -req -in $CsrFile -signkey $KeyFile -out $CertFile -days $DaysValid -sha256 -extensions v3_ca -extfile $CnfFile 2>$null
 if ($LASTEXITCODE -ne 0) {
-    Write-ColorOutput "ERROR: Failed to generate certificate" "Red"
+    Write-Host "ERROR: Failed to generate certificate" -ForegroundColor Red
     exit 1
 }
-Write-ColorOutput "✓ Certificate created: $CertFile`n" "Green"
+Write-Host "Certificate created: $CertFile" -ForegroundColor Green
 
-# Display certificate information
-Write-ColorOutput "========================================" "Cyan"
-Write-ColorOutput "Certificate Information" "Cyan"
-Write-ColorOutput "========================================" "Cyan"
+# Verify
+Write-Host ""
+Write-Host "Step 4: Verifying certificate..." -ForegroundColor Cyan
 & $OpenSSL x509 -in $CertFile -noout -subject -dates
-
-Write-ColorOutput "`nSubject Alternative Names (SANs):" "Yellow"
-& $OpenSSL x509 -in $CertFile -noout -text | Select-String -Pattern "DNS:|IP Address:" -Context 0,0
-
-# Verify certificate
-Write-ColorOutput "`nStep 4: Verifying certificate..." "Cyan"
 & $OpenSSL verify -CAfile $CertFile $CertFile 2>$null
-Write-ColorOutput "✓ Certificate verification complete`n" "Green"
+Write-Host "Certificate verified!" -ForegroundColor Green
 
-# Clean up CSR
+# Cleanup
 if (Test-Path $CsrFile) {
     Remove-Item $CsrFile -Force
 }
 
 # Summary
-Write-ColorOutput "========================================" "Green"
-Write-ColorOutput "✓ SSL Certificates Generated Successfully!" "Green"
-Write-ColorOutput "========================================`n" "Green"
-
-Write-ColorOutput "Generated files:" "Yellow"
-Write-ColorOutput "  • Certificate: $CertFile" "White"
-Write-ColorOutput "  • Private Key: $KeyFile`n" "White"
-
-Write-ColorOutput "Valid for: $DaysValid days (~10 years)`n" "Yellow"
-
-Write-ColorOutput "Next steps:" "Cyan"
-Write-ColorOutput "  1. Add domain to hosts file:" "White"
-Write-ColorOutput "     File: C:\Windows\System32\drivers\etc\hosts" "Gray"
-Write-ColorOutput "     Run as Administrator and add:" "Gray"
-Write-ColorOutput "     127.0.0.1 $Domain`n" "White"
-
-Write-ColorOutput "  2. Restart Docker containers:" "White"
-Write-ColorOutput "     docker compose -f docker-compose.https-private.yml restart`n" "Gray"
-
-Write-ColorOutput "  3. (Optional) Import certificate to Windows Trusted Root:" "White"
-Write-ColorOutput "     Run: certutil -addstore -f `"ROOT`" `"$CertFile`"`n" "Gray"
-
-Write-ColorOutput "  4. Test your setup:" "White"
-Write-ColorOutput "     Open: https://$Domain" "Gray"
-Write-ColorOutput "     Open: https://$Domain/api/health`n" "Gray"
-
-Write-ColorOutput "⚠ Note: Self-signed certificates will show browser warnings" "Yellow"
-Write-ColorOutput "  This is normal for development environments.`n" "Gray"
-
-Write-ColorOutput "========================================`n" "Green"
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Green
+Write-Host "Certificates Generated Successfully!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Green
+Write-Host ""
+Write-Host "Generated files:" -ForegroundColor Yellow
+Write-Host "  Certificate: $CertFile"
+Write-Host "  Private Key: $KeyFile"
+Write-Host ""
+Write-Host "Valid for: $DaysValid days (~10 years)" -ForegroundColor Yellow
+Write-Host ""
+Write-Host "Next steps:" -ForegroundColor Cyan
+Write-Host "  1. Add to hosts file (as Administrator):"
+Write-Host "     C:\Windows\System32\drivers\etc\hosts"
+Write-Host "     Add: 127.0.0.1 $Domain"
+Write-Host ""
+Write-Host "  2. Restart Docker containers:"
+Write-Host "     docker compose -f docker-compose.https-private.yml restart"
+Write-Host ""
+Write-Host "  3. Test: https://$Domain"
+Write-Host ""
+Write-Host "Note: Self-signed certificates will show browser warnings" -ForegroundColor Yellow
+Write-Host "This is normal for development." -ForegroundColor Gray
+Write-Host ""
