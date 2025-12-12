@@ -78,9 +78,9 @@ DNS.2 = *.$DOMAIN
 DNS.3 = localhost
 DNS.4 = *.localhost
 IP.1 = 127.0.0.1
-IP.2 = 192.168.1.100
-IP.3 = 192.168.0.100
-IP.4 = 10.0.0.100
+IP.2 = 192.168.1.95
+IP.3 = 192.168.1.100
+IP.4 = 192.168.0.100
 EOF
 
 # Generate self-signed certificate (valid for 10 years)
