@@ -3,8 +3,6 @@
 # Self-Signed Certificates (NO Let's Encrypt)
 # ========================================
 
-version: '3.8'
-
 services:
   # ========================================
   # TRAEFIK - Reverse Proxy (Self-Signed SSL)
