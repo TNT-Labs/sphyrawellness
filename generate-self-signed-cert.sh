@@ -68,7 +68,7 @@ O = Sphyra Wellness Lab
 CN = $DOMAIN
 
 [v3_req]
-keyUsage = keyEncipherment, dataEncipherment
+keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = @alt_names
 
