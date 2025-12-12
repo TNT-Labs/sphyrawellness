@@ -21,8 +21,8 @@ services:
       # Dashboard (optional)
       - "8080:8080"
     volumes:
-      # Docker socket (read-only)
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Docker socket (read-write for compatibility with Docker Desktop on Windows)
+      - /var/run/docker.sock:/var/run/docker.sock
       # Traefik configuration
       - ./traefik/traefik-private.yml:/traefik.yml:ro
       - ./traefik/dynamic:/dynamic:ro
