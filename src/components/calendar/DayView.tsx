@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addDays, isSameDay } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -24,6 +24,7 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
 
   const dayAppointments = getAppointmentsForDay(currentDate);
   const isToday = isSameDay(currentDate, new Date());
+  const scheduleContainerRef = useRef<HTMLDivElement>(null);
 
   // Genera le fasce orarie dalle 8:00 alle 20:00
   const timeSlots = Array.from({ length: 13 }, (_, i) => {
@@ -38,6 +39,33 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
       return aptHour === slotHour;
     });
   };
+
+  // Auto-scroll to current time when viewing today
+  useEffect(() => {
+    if (isToday && scheduleContainerRef.current) {
+      const now = new Date();
+      const currentHour = now.getHours();
+
+      // Find the time slot element for the current hour or closest earlier hour
+      let targetHour = currentHour;
+      // Ensure we're within the visible range (8-20)
+      if (targetHour < 8) targetHour = 8;
+      if (targetHour > 20) targetHour = 20;
+
+      const timeSlotId = `time-slot-${targetHour}`;
+      const targetElement = document.getElementById(timeSlotId);
+
+      if (targetElement) {
+        // Scroll with a small delay to ensure DOM is fully rendered
+        setTimeout(() => {
+          targetElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }, 100);
+      }
+    }
+  }, [isToday, currentDate]);
 
   return (
     <div className="space-y-4">
@@ -79,14 +107,16 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
       </button>
 
       {/* Day Schedule */}
-      <div className="card">
+      <div className="card" ref={scheduleContainerRef}>
         <div className="space-y-1">
           {timeSlots.map((time) => {
             const slotAppointments = getAppointmentsForTimeSlot(time);
+            const slotHour = parseInt(time.split(':')[0]);
 
             return (
               <div
                 key={time}
+                id={`time-slot-${slotHour}`}
                 className="flex border-b border-gray-200 last:border-b-0"
               >
                 {/* Time Column */}

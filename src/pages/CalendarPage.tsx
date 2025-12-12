@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { Appointment } from '../types';
 import { useCalendarLogic } from '../hooks/useCalendarLogic';
+import { CalendarView } from '../hooks/useCalendarLogic';
 import CalendarHeader from '../components/calendar/CalendarHeader';
 import WeekView from '../components/calendar/WeekView';
 import DayView from '../components/calendar/DayView';
@@ -9,7 +11,16 @@ import MonthView from '../components/calendar/MonthView';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const CalendarPage: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const { viewMode, setViewMode } = useCalendarLogic();
+
+  // Set initial view mode from URL parameter
+  useEffect(() => {
+    const viewParam = searchParams.get('view') as CalendarView | null;
+    if (viewParam && ['day', 'week', 'month'].includes(viewParam)) {
+      setViewMode(viewParam);
+    }
+  }, [searchParams, setViewMode]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(

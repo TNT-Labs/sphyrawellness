@@ -93,7 +93,7 @@ const Dashboard: React.FC = () => {
       icon: Calendar,
       color: 'text-blue-600',
       bg: 'bg-blue-100',
-      link: '/calendario',
+      link: '/calendario?view=day',
     },
     {
       name: 'Clienti Oggi',
