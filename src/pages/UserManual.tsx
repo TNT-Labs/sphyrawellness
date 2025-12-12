@@ -112,9 +112,10 @@ const UserManual: React.FC = () => {
 
           <h3 className="font-semibold mb-2">Informazioni Visualizzate</h3>
           <ul className="list-disc list-inside space-y-2 ml-4">
-            <li><strong>Appuntamenti Oggi:</strong> Numero totale di appuntamenti programmati per oggi</li>
+            <li><strong>Appuntamenti Oggi:</strong> Numero totale di appuntamenti programmati per oggi (clicca per andare alla vista giornaliera)</li>
             <li><strong>Clienti Unici Oggi:</strong> Numero di clienti diversi con appuntamenti oggi</li>
             <li><strong>Servizi Erogati Oggi:</strong> Numero di servizi diversi prenotati per oggi</li>
+            <li><strong>Personale Oggi:</strong> Numero di operatori impegnati negli appuntamenti di oggi</li>
             <li><strong>Prossimi Appuntamenti:</strong> Lista dei prossimi 5 appuntamenti in ordine cronologico</li>
           </ul>
 
@@ -125,8 +126,15 @@ const UserManual: React.FC = () => {
           <ul className="list-disc list-inside space-y-2 ml-4">
             <li>Visualizzare i dettagli di un appuntamento (cliccando sulla card)</li>
             <li>Vedere se i reminder sono stati inviati (icona campanella)</li>
+            <li>Andare direttamente alla vista giornaliera (cliccando su "Appuntamenti Oggi")</li>
             <li>Navigare alle diverse sezioni dell'applicazione</li>
           </ul>
+
+          <h3 className="font-semibold mb-2 mt-4">Aggiornamento Automatico</h3>
+          <p>
+            La Dashboard si aggiorna automaticamente ogni 30 secondi per mostrare sempre le informazioni più recenti
+            senza dover ricaricare manualmente la pagina.
+          </p>
         </div>
       </Section>
 
@@ -140,11 +148,12 @@ const UserManual: React.FC = () => {
           <div className="space-y-3 ml-4">
             <div>
               <p className="font-medium">Vista Giorno</p>
-              <p className="text-sm">Mostra tutti gli appuntamenti di un singolo giorno in formato timeline</p>
+              <p className="text-sm">Mostra tutti gli appuntamenti di un singolo giorno in formato timeline con orari dalle 6:00 alle 22:00.
+              Quando visualizzi il giorno corrente, il calendario scorre automaticamente all'ora attuale per facilitare la navigazione.</p>
             </div>
             <div>
               <p className="font-medium">Vista Settimana</p>
-              <p className="text-sm">Visualizza 7 giorni consecutivi per una pianificazione settimanale</p>
+              <p className="text-sm">Visualizza 7 giorni consecutivi per una pianificazione settimanale con orari dalle 6:00 alle 22:00</p>
             </div>
             <div>
               <p className="font-medium">Vista Mese</p>
@@ -176,8 +185,10 @@ const UserManual: React.FC = () => {
           <ul className="list-disc list-inside space-y-2 ml-4">
             <li><strong>Drag & Drop:</strong> Nelle viste Giorno e Settimana puoi spostare gli appuntamenti trascinandoli</li>
             <li><strong>Filtraggio per Specializzazione:</strong> Mostra solo gli operatori qualificati per il servizio selezionato</li>
+            <li><strong>Controllo Conflitti:</strong> Il sistema avvisa automaticamente se stai creando un appuntamento in sovrapposizione con uno esistente (stesso cliente o stesso operatore)</li>
             <li><strong>Colorazione:</strong> Gli appuntamenti sono colorati in base allo stato e all'operatore</li>
             <li><strong>Modifica Rapida:</strong> Clicca su un appuntamento per modificarlo o aggiornarne lo stato</li>
+            <li><strong>Calcolo Automatico:</strong> L'ora di fine viene calcolata automaticamente in base alla durata del servizio</li>
           </ul>
         </div>
       </Section>
@@ -221,6 +232,19 @@ const UserManual: React.FC = () => {
           <p className="mt-2 text-sm italic">
             La ricerca è in tempo reale e filtra i risultati mentre digiti.
           </p>
+
+          <h3 className="font-semibold mb-2 mt-4">Filtro "Solo Oggi"</h3>
+          <p>
+            Attiva il filtro "Solo Oggi" per visualizzare rapidamente solo i clienti che hanno appuntamenti nella giornata corrente.
+            Questa funzione è particolarmente utile per preparare i trattamenti o consultare rapidamente le informazioni dei clienti del giorno.
+          </p>
+
+          <h3 className="font-semibold mb-2 mt-4">Validazioni e Formattazione Automatica</h3>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>Email:</strong> Il sistema valida automaticamente il formato dell'indirizzo email</li>
+            <li><strong>Telefono:</strong> Il numero di telefono viene formattato automaticamente mentre digiti per facilitare la lettura</li>
+            <li><strong>Allergie:</strong> Se presenti, vengono evidenziate in rosso nelle card dei clienti per massima visibilità</li>
+          </ul>
 
           <h3 className="font-semibold mb-2 mt-4">Modificare o Eliminare un Cliente</h3>
           <ul className="list-disc list-inside space-y-2 ml-4">
@@ -282,6 +306,12 @@ const UserManual: React.FC = () => {
             Cerca servizi per nome, categoria o descrizione usando la barra di ricerca.
           </p>
 
+          <h3 className="font-semibold mb-2 mt-4">Filtro "Solo Oggi"</h3>
+          <p>
+            Il filtro "Solo Oggi" mostra solo i servizi che sono stati prenotati negli appuntamenti della giornata corrente.
+            Utile per vedere rapidamente quali trattamenti verranno erogati oggi.
+          </p>
+
           <h3 className="font-semibold mb-2 mt-4">Modificare o Eliminare un Servizio</h3>
           <p className="mb-2">
             Ogni card servizio ha i pulsanti per modificare o eliminare.
@@ -313,6 +343,12 @@ const UserManual: React.FC = () => {
             </li>
             <li>Clicca su "Salva"</li>
           </ol>
+
+          <h3 className="font-semibold mb-2 mt-4">Filtro "Solo Oggi"</h3>
+          <p className="mb-2">
+            Attiva il filtro "Solo Oggi" per visualizzare solo il personale che ha appuntamenti programmati nella giornata corrente.
+            Utile per vedere quali operatori sono impegnati oggi.
+          </p>
 
           <h3 className="font-semibold mb-2 mt-4">Specializzazioni</h3>
           <p className="mb-2">
@@ -404,9 +440,9 @@ const UserManual: React.FC = () => {
             <li>Vengono mostrati nella lista "Appuntamenti Imminenti"</li>
             <li>Puoi inviare reminder tramite:
               <ul className="list-disc list-inside ml-6 mt-1">
-                <li>Email</li>
-                <li>SMS</li>
-                <li>WhatsApp</li>
+                <li><strong>Email</strong> (completamente funzionante con file .ics calendario allegato)</li>
+                <li>SMS (placeholder, non ancora implementato)</li>
+                <li>WhatsApp (placeholder, non ancora implementato)</li>
               </ul>
             </li>
             <li>Una volta inviato, il reminder viene contrassegnato (icona campanella verde)</li>
@@ -421,11 +457,34 @@ const UserManual: React.FC = () => {
           </ul>
 
           <h3 className="font-semibold mb-2 mt-4">Inviare un Reminder</h3>
+          <p className="mb-2">Hai due opzioni per inviare i reminder via email:</p>
           <ol className="list-decimal list-inside space-y-2 ml-4">
-            <li>Trova l'appuntamento nella lista "Appuntamenti Imminenti"</li>
-            <li>Clicca sul pulsante del canale desiderato (Email/SMS/WhatsApp)</li>
-            <li>Il sistema registra l'invio del reminder</li>
+            <li><strong>Invio Singolo:</strong> Trova l'appuntamento nella lista e clicca sul pulsante Email</li>
+            <li><strong>Invio Massivo:</strong> Clicca il pulsante "Invia Tutti i Reminder Email" per inviare reminder a tutti gli appuntamenti nelle prossime 24 ore che non hanno ancora ricevuto un reminder</li>
           </ol>
+
+          <h3 className="font-semibold mb-2 mt-4">Contenuto Email Reminder</h3>
+          <p className="mb-2">Ogni email reminder include:</p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li>Dettagli completi dell'appuntamento (data, ora, servizio)</li>
+            <li><strong>Link di conferma:</strong> Il cliente può confermare l'appuntamento cliccando sul link</li>
+            <li><strong>File .ics allegato:</strong> Permette di aggiungere l'appuntamento al proprio calendario con un click</li>
+            <li>Token di sicurezza univoco per ogni appuntamento</li>
+          </ul>
+          <p className="mt-2 text-sm italic">
+            Quando il cliente clicca sul link di conferma, lo stato dell'appuntamento cambia automaticamente in "Confermato".
+          </p>
+
+          <h3 className="font-semibold mb-2 mt-4">Reminder Automatici</h3>
+          <p className="mb-2">
+            Puoi configurare l'invio automatico dei reminder dalla sezione <strong>Impostazioni → Configurazione → Impostazioni Reminder</strong>:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li>Attiva/Disattiva reminder automatici</li>
+            <li>Imposta l'orario di invio (ora e minuti)</li>
+            <li>Configura quanti giorni prima dell'appuntamento inviare il reminder</li>
+            <li>Verifica lo stato del server email (health check automatico)</li>
+          </ul>
 
           <p className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
             <strong>💡 Suggerimento:</strong> È consigliabile inviare i reminder 24 ore prima dell'appuntamento
@@ -466,11 +525,11 @@ const UserManual: React.FC = () => {
 
           <h3 className="font-semibold mb-2 mt-4">Report Dettagliati</h3>
           <ul className="list-disc list-inside space-y-2 ml-4">
-            <li><strong>Top 5 Categorie:</strong> I tipi di servizio più richiesti con grafici a barre</li>
-            <li><strong>Top 5 Servizi:</strong> I trattamenti più popolari</li>
-            <li><strong>Performance Personale:</strong> Numero di appuntamenti completati per ogni operatore</li>
-            <li><strong>Distribuzione Stati:</strong> Appuntamenti programmati, confermati, completati, cancellati, no-show</li>
-            <li><strong>Fatturato Mensile:</strong> Trend degli incassi mese per mese</li>
+            <li><strong>Top 5 Categorie:</strong> I tipi di servizio più richiesti con grafici a barre, conteggio e fatturato per categoria</li>
+            <li><strong>Top 5 Servizi:</strong> I trattamenti più popolari con revenue generata per ciascuno</li>
+            <li><strong>Performance Personale:</strong> Numero di appuntamenti completati per ogni operatore con tasso di completamento e grafici colorati</li>
+            <li><strong>Distribuzione Stati:</strong> Cards colorate distinte per ogni stato (programmati, confermati, completati, cancellati, no-show) con conteggi e percentuali</li>
+            <li><strong>Riepilogo Mensile:</strong> Appuntamenti del mese corrente e fatturato mensile con valore medio per appuntamento</li>
           </ul>
 
           <h3 className="font-semibold mb-2 mt-4">Come Usare le Statistiche</h3>
@@ -485,11 +544,65 @@ const UserManual: React.FC = () => {
         </div>
       </Section>
 
+      <Section id="login" title="Login e Autenticazione" icon={UserCircle}>
+        <div>
+          <p className="mb-4">
+            Sphyra Wellness Lab include un sistema di autenticazione utenti per proteggere l'accesso ai dati sensibili
+            e differenziare i permessi.
+          </p>
+
+          <h3 className="font-semibold mb-2">Accesso all'Applicazione</h3>
+          <p className="mb-2">
+            All'apertura dell'applicazione viene richiesto di effettuare il login con:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>Username:</strong> Nome utente univoco</li>
+            <li><strong>Password:</strong> Password sicura (hash SHA-256)</li>
+          </ul>
+
+          <h3 className="font-semibold mb-2 mt-4">Ruoli Utente</h3>
+          <p className="mb-2">L'applicazione supporta due ruoli con permessi differenziati:</p>
+          <div className="space-y-3 ml-4">
+            <div>
+              <p className="font-medium">RESPONSABILE</p>
+              <p className="text-sm">Accesso completo a tutte le funzionalità, inclusa la gestione utenti, configurazioni avanzate, cancellazione dati e accesso completo ai logs</p>
+            </div>
+            <div>
+              <p className="font-medium">UTENTE</p>
+              <p className="text-sm">Accesso alle funzionalità operative quotidiane (appuntamenti, clienti, servizi, pagamenti) con restrizioni su impostazioni critiche e sola visualizzazione dei logs</p>
+            </div>
+          </div>
+
+          <h3 className="font-semibold mb-2 mt-4">Gestione Utenti</h3>
+          <p className="mb-2">
+            I Responsabili possono gestire gli utenti dalla sezione <strong>Impostazioni → Tab Utenti</strong>:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li>Creare nuovi utenti con username e password</li>
+            <li>Assegnare ruoli (RESPONSABILE / UTENTE)</li>
+            <li>Attivare/Disattivare utenti temporaneamente</li>
+            <li>Modificare password utenti</li>
+            <li>Eliminare utenti non più necessari</li>
+          </ul>
+
+          <h3 className="font-semibold mb-2 mt-4">Sicurezza</h3>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>Password Criptate:</strong> Le password vengono salvate con hash SHA-256, mai in chiaro</li>
+            <li><strong>Sessioni JWT:</strong> Utilizzo di JSON Web Token per gestire le sessioni in sicurezza</li>
+            <li><strong>Timeout Inattività:</strong> Protezione automatica dopo periodo di inattività (configurabile)</li>
+            <li><strong>Permessi Granulari:</strong> Ogni ruolo ha accesso solo alle funzioni autorizzate</li>
+          </ul>
+        </div>
+      </Section>
+
       <Section id="settings" title="Impostazioni" icon={Settings}>
         <div>
           <p className="mb-4">
-            Personalizza l'applicazione e configura funzionalità avanzate.
+            Personalizza l'applicazione e configura funzionalità avanzate. La sezione Impostazioni è organizzata in tab:
+            <strong> Generali, Configurazione, Utenti e Avanzate</strong>.
           </p>
+
+          <h3 className="font-semibold text-lg mb-3 text-pink-600">Tab: Generali</h3>
 
           <h3 className="font-semibold mb-2">Timeout Inattività</h3>
           <p className="mb-2">
@@ -500,7 +613,9 @@ const UserManual: React.FC = () => {
             <li>Impostare a 0 per disabilitare</li>
           </ul>
 
-          <h3 className="font-semibold mb-2 mt-4">Sincronizzazione Database</h3>
+          <h3 className="font-semibold text-lg mb-3 mt-6 text-pink-600">Tab: Configurazione</h3>
+
+          <h3 className="font-semibold mb-2">Sincronizzazione Database</h3>
           <p className="mb-2">
             Configura la sincronizzazione con un server CouchDB per utilizzare l'app su più dispositivi:
           </p>
@@ -543,6 +658,21 @@ const UserManual: React.FC = () => {
             <li>Le categorie sono collegate alle specializzazioni del personale</li>
           </ul>
 
+          <h3 className="font-semibold mb-2 mt-4">Impostazioni Reminder</h3>
+          <p className="mb-2">
+            Configura il sistema di reminder automatici per l'invio via email:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>Health Check Server:</strong> Verifica automatica dello stato del server email (indicatore verde/rosso)</li>
+            <li><strong>Attiva Reminder Automatici:</strong> Abilita/disabilita l'invio automatico giornaliero</li>
+            <li><strong>Orario Invio:</strong> Imposta ora e minuti per l'invio automatico (es. 10:00)</li>
+            <li><strong>Giorni Prima:</strong> Configura quanti giorni prima dell'appuntamento inviare il reminder (default 1 giorno)</li>
+            <li><strong>Configurazione Cron Job:</strong> Gestione automatica del job schedulato sul server</li>
+          </ul>
+          <p className="mt-2 text-sm italic">
+            I reminder automatici richiedono che il server backend sia in esecuzione e configurato correttamente.
+          </p>
+
           <h3 className="font-semibold mb-2 mt-4">Backup e Ripristino</h3>
           <div className="space-y-3 ml-4">
             <div>
@@ -571,7 +701,60 @@ const UserManual: React.FC = () => {
             <li>Monitora la quota disponibile</li>
           </ul>
 
-          <h3 className="font-semibold mb-2 mt-4">Zona Pericolosa</h3>
+          <h3 className="font-semibold text-lg mb-3 mt-6 text-pink-600">Tab: Utenti</h3>
+
+          <h3 className="font-semibold mb-2">Gestione Utenti (solo RESPONSABILE)</h3>
+          <p className="mb-2">
+            Gestisci gli utenti che possono accedere all'applicazione. Questa funzione è disponibile solo per gli utenti con ruolo RESPONSABILE.
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>Creazione Utenti:</strong> Aggiungi nuovi utenti con username univoco e password sicura</li>
+            <li><strong>Assegnazione Ruoli:</strong> Scegli tra RESPONSABILE (accesso completo) e UTENTE (accesso limitato)</li>
+            <li><strong>Modifica Utenti:</strong> Aggiorna username, password o ruolo di utenti esistenti</li>
+            <li><strong>Attivazione/Disattivazione:</strong> Disabilita temporaneamente un utente senza eliminarlo</li>
+            <li><strong>Eliminazione Utenti:</strong> Rimuovi definitivamente utenti non più necessari</li>
+          </ul>
+          <p className="mt-2 bg-blue-50 border border-blue-200 rounded p-3">
+            <strong>💡 Nota:</strong> Le password vengono sempre salvate con hash SHA-256 per garantire massima sicurezza.
+          </p>
+
+          <h3 className="font-semibold text-lg mb-3 mt-6 text-pink-600">Tab: Avanzate</h3>
+
+          <h3 className="font-semibold mb-2">Visualizzatore Logs</h3>
+          <p className="mb-2">
+            Il sistema di logging registra tutti gli eventi dell'applicazione per facilitare il debug e il monitoraggio.
+          </p>
+
+          <h4 className="font-medium mb-2 mt-3">Livelli di Log:</h4>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>ERROR:</strong> Errori critici che impediscono il funzionamento</li>
+            <li><strong>WARN:</strong> Avvisi su situazioni anomale ma gestibili</li>
+            <li><strong>INFO:</strong> Informazioni su operazioni importanti</li>
+            <li><strong>LOG:</strong> Eventi normali dell'applicazione</li>
+            <li><strong>DEBUG:</strong> Dettagli tecnici per sviluppatori</li>
+          </ul>
+
+          <h4 className="font-medium mb-2 mt-3">Funzionalità:</h4>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>Filtri per Livello:</strong> Visualizza solo i log del livello selezionato</li>
+            <li><strong>Timestamp Dettagliati:</strong> Ogni log include data e ora precisa</li>
+            <li><strong>Dettagli Espandibili:</strong> Clicca su un log per vedere informazioni complete</li>
+            <li><strong>Export JSON:</strong> Esporta tutti i logs in formato JSON per analisi esterne</li>
+            <li><strong>Cancellazione Logs:</strong> Elimina tutti i log per liberare spazio</li>
+            <li><strong>Limite FIFO:</strong> Mantiene automaticamente gli ultimi 1000 log (First In, First Out)</li>
+          </ul>
+
+          <h4 className="font-medium mb-2 mt-3">Permessi:</h4>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li><strong>RESPONSABILE:</strong> Accesso completo (visualizzazione, export, cancellazione)</li>
+            <li><strong>UTENTE:</strong> Solo visualizzazione logs (no export, no cancellazione)</li>
+          </ul>
+
+          <p className="mt-2 text-sm italic">
+            I logs sono utili per identificare problemi, monitorare le operazioni e comprendere il comportamento dell'applicazione.
+          </p>
+
+          <h3 className="font-semibold mb-2 mt-6">Zona Pericolosa</h3>
           <p className="bg-red-50 border border-red-200 rounded p-3">
             <strong>⚠️ Attenzione:</strong> La funzione "Cancella Tutti i Dati" elimina permanentemente
             TUTTI i dati dell'applicazione. Questa azione è irreversibile! Assicurati di avere un backup
@@ -664,6 +847,51 @@ const UserManual: React.FC = () => {
             <p className="text-sm">
               Attualmente l'app è disponibile solo in italiano. Il supporto multilingua potrebbe essere
               aggiunto nelle versioni future in base alle richieste degli utenti.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">Come funzionano i reminder automatici?</p>
+            <p className="text-sm">
+              I reminder automatici inviano email ai clienti all'orario configurato nelle Impostazioni Reminder.
+              Il sistema controlla gli appuntamenti e invia reminder X giorni prima (configurabile).
+              Richiede che il server backend sia in esecuzione.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">Che differenza c'è tra RESPONSABILE e UTENTE?</p>
+            <p className="text-sm">
+              Il RESPONSABILE ha accesso completo a tutte le funzioni, inclusa gestione utenti, configurazioni
+              avanzate e cancellazione dati. L'UTENTE può gestire le operazioni quotidiane (appuntamenti, clienti,
+              servizi, pagamenti) ma ha restrizioni su impostazioni critiche e può solo visualizzare i logs.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">Cosa contiene il file .ics allegato alle email?</p>
+            <p className="text-sm">
+              Il file .ics è un file calendario standard che il cliente può aprire con un doppio click per
+              aggiungere automaticamente l'appuntamento al proprio calendario (Google Calendar, Outlook, Apple
+              Calendar, ecc.). Contiene data, ora, durata e dettagli del servizio.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">Dove trovo i logs dell'applicazione?</p>
+            <p className="text-sm">
+              I logs si trovano in Impostazioni → Tab Avanzate → Visualizzatore Logs. Puoi filtrare per livello
+              (ERROR, WARN, INFO, LOG, DEBUG), visualizzare dettagli ed esportarli in JSON. I RESPONSABILI possono
+              anche cancellare i logs.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">A cosa serve il filtro "Solo Oggi"?</p>
+            <p className="text-sm">
+              Il filtro "Solo Oggi" è disponibile nelle sezioni Clienti, Servizi e Personale. Mostra rapidamente
+              solo le entità coinvolte negli appuntamenti della giornata corrente, facilitando la preparazione
+              e la gestione operativa quotidiana.
             </p>
           </div>
         </div>
@@ -764,6 +992,54 @@ const UserManual: React.FC = () => {
             <p className="text-sm">
               Se il dispositivo è in area pubblica, abilita il timeout di inattività nelle Impostazioni
               per proteggere la privacy dei dati dei clienti.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">📧 Configura i Reminder Automatici</p>
+            <p className="text-sm">
+              Configura l'invio automatico dei reminder nelle Impostazioni per risparmiare tempo. Il sistema
+              invierà automaticamente le email ai clienti all'orario da te scelto senza intervento manuale.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">🔍 Usa il Filtro "Solo Oggi"</p>
+            <p className="text-sm">
+              All'inizio della giornata lavorativa, usa il filtro "Solo Oggi" in Clienti, Servizi e Personale
+              per avere una panoramica rapida di chi/cosa sarà coinvolto oggi. Facilita la preparazione dei materiali.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">📊 Monitora i Logs</p>
+            <p className="text-sm">
+              Se riscontri problemi o comportamenti anomali, consulta i logs nella sezione Avanzate.
+              I logs contengono informazioni dettagliate utili per identificare e risolvere i problemi.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">👥 Gestisci i Permessi Utente</p>
+            <p className="text-sm">
+              Assegna il ruolo UTENTE al personale operativo e riserva il ruolo RESPONSABILE solo a chi deve
+              gestire configurazioni critiche. Questo riduce il rischio di modifiche accidentali alle impostazioni.
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">📅 File .ics per i Clienti</p>
+            <p className="text-sm">
+              Spiega ai clienti che possono aggiungere l'appuntamento al loro calendario aprendo il file .ics
+              allegato all'email reminder. Questo riduce ulteriormente i "no-show".
+            </p>
+          </div>
+
+          <div>
+            <p className="font-semibold mb-1">⏰ Auto-scroll nel Calendario</p>
+            <p className="text-sm">
+              Quando apri la vista giornaliera per il giorno corrente, il calendario scorre automaticamente
+              all'ora attuale. Sfrutta questa funzionalità per vedere immediatamente i prossimi appuntamenti.
             </p>
           </div>
         </div>
@@ -870,9 +1146,28 @@ const UserManual: React.FC = () => {
         <p className="text-sm text-gray-700 mb-2">
           Questo manuale viene aggiornato regolarmente con nuove funzionalità e miglioramenti.
         </p>
-        <p className="text-sm text-gray-600">
-          Ultima revisione: Novembre 2025
+        <p className="text-sm text-gray-600 mb-3">
+          Ultima revisione: Dicembre 2025
         </p>
+        <div className="text-sm text-gray-700 bg-white rounded p-3">
+          <p className="font-medium mb-2">Novità di questa versione:</p>
+          <ul className="list-disc list-inside space-y-1 text-xs">
+            <li>Sistema di autenticazione utenti con ruoli RESPONSABILE/UTENTE</li>
+            <li>Gestione utenti completa nel tab Impostazioni</li>
+            <li>Visualizzatore logs con 5 livelli e funzioni di export</li>
+            <li>Calendario esteso: orari 6:00-22:00 con auto-scroll all'ora corrente</li>
+            <li>Filtro "Solo Oggi" per Clienti, Servizi e Personale</li>
+            <li>Reminder automatici configurabili con cron job</li>
+            <li>File .ics calendario allegato alle email reminder</li>
+            <li>Invio massivo reminder con un click</li>
+            <li>Dashboard con auto-refresh ogni 30 secondi</li>
+            <li>Link diretto dalla Dashboard alla vista giornaliera</li>
+            <li>Controllo conflitti appuntamenti avanzato</li>
+            <li>Statistiche dettagliate con grafici colorati</li>
+            <li>Validazioni e formattazione automatica telefono</li>
+            <li>Health check server email automatico</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
