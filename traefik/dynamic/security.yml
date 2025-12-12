@@ -1,0 +1,145 @@
+# ========================================
+# Traefik Dynamic Configuration
+# Security Headers & Middlewares
+# ========================================
+
+http:
+  middlewares:
+    # ========================================
+    # HTTPS Redirect Middleware
+    # ========================================
+    redirect-to-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+    # ========================================
+    # Security Headers Middleware
+    # ========================================
+    security-headers:
+      headers:
+        # SSL/TLS Configuration
+        sslRedirect: true
+        sslForceHost: true
+        stsSeconds: 31536000  # 1 year
+        stsIncludeSubdomains: true
+        stsPreload: true
+        forceSTSHeader: true
+
+        # Security Headers
+        frameDeny: true
+        contentTypeNosniff: true
+        browserXssFilter: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+
+        # Permissions Policy (formerly Feature-Policy)
+        permissionsPolicy: "camera=(), microphone=(), geolocation=(self), payment=()"
+
+        # Content Security Policy (CSP)
+        # NOTA: Personalizzare in base alle esigenze dell'applicazione
+        contentSecurityPolicy: |
+          default-src 'self';
+          script-src 'self' 'unsafe-inline' 'unsafe-eval';
+          style-src 'self' 'unsafe-inline';
+          img-src 'self' data: https:;
+          font-src 'self' data:;
+          connect-src 'self' https:;
+          frame-ancestors 'none';
+          base-uri 'self';
+          form-action 'self';
+
+        # Custom Security Headers
+        customResponseHeaders:
+          X-Robots-Tag: "noindex, nofollow"  # Rimuovere in produzione
+          Server: ""  # Hide server version
+          X-Powered-By: ""  # Hide technology
+
+    # ========================================
+    # Rate Limiting Middleware (opzionale)
+    # ========================================
+    rate-limit:
+      rateLimit:
+        average: 100
+        period: 1s
+        burst: 50
+
+    # ========================================
+    # IP Whitelist Middleware (opzionale)
+    # ========================================
+    # ip-whitelist:
+    #   ipWhiteList:
+    #     sourceRange:
+    #       - "127.0.0.1/32"
+    #       - "192.168.1.0/24"
+
+    # ========================================
+    # Basic Auth Middleware (opzionale)
+    # Generare password con: htpasswd -nb admin password
+    # ========================================
+    # basic-auth:
+    #   basicAuth:
+    #     users:
+    #       - "admin:$apr1$xyz..."
+
+    # ========================================
+    # Compression Middleware
+    # ========================================
+    compression:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"
+
+    # ========================================
+    # CORS Middleware (opzionale)
+    # ========================================
+    cors-headers:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        accessControlAllowHeaders:
+          - "*"
+        accessControlAllowOriginList:
+          - "*"  # MODIFICARE con il tuo dominio in produzione!
+        accessControlMaxAge: 100
+        addVaryHeader: true
+
+# ========================================
+# TLS Configuration
+# ========================================
+tls:
+  options:
+    # TLS Configuration moderna (TLS 1.2+ only)
+    modern:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_AES_128_GCM_SHA256
+        - TLS_AES_256_GCM_SHA384
+        - TLS_CHACHA20_POLY1305_SHA256
+      curvePreferences:
+        - CurveP521
+        - CurveP384
+      sniStrict: true
+
+    # TLS Configuration intermedia (compatibilità maggiore)
+    intermediate:
+      minVersion: VersionTLS12
+      cipherSuites:
+        - TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+        - TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+        - TLS_AES_128_GCM_SHA256
+        - TLS_AES_256_GCM_SHA384
+        - TLS_CHACHA20_POLY1305_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
+        - TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA
+
+    # Default (per retrocompatibilità)
+    default:
+      minVersion: VersionTLS12
