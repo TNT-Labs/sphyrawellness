@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Appointment } from '../types';
-import { Calendar, Users, TrendingUp, Clock, Bell, BellOff } from 'lucide-react';
+import { Calendar, Users, TrendingUp, Clock, Bell, BellOff, UserCheck } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import AppointmentModal from '../components/calendar/AppointmentModal';
@@ -25,6 +25,11 @@ const Dashboard: React.FC = () => {
   // Servizi unici erogati oggi
   const todayServices = new Set(
     todayAppointments.map((apt) => apt.serviceId)
+  ).size;
+
+  // Personale impegnato oggi
+  const todayStaff = new Set(
+    todayAppointments.map((apt) => apt.staffId)
   ).size;
 
   const upcomingAppointments = appointments
@@ -106,6 +111,14 @@ const Dashboard: React.FC = () => {
       bg: 'bg-pink-100',
       link: '/servizi?filter=today',
     },
+    {
+      name: 'Personale Oggi',
+      value: todayStaff,
+      icon: UserCheck,
+      color: 'text-purple-600',
+      bg: 'bg-purple-100',
+      link: '/personale?filter=today',
+    },
   ];
 
   return (
@@ -119,7 +132,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (

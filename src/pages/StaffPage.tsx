@@ -1,21 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { Staff } from '../types';
-import { Plus, Search, Edit, Trash2, UserCheck, Mail, Phone } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, UserCheck, Mail, Phone, Calendar, X } from 'lucide-react';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { canDeleteStaff } from '../utils/db';
 import { logger } from '../utils/logger';
+import { isToday, parseISO } from 'date-fns';
 
 const StaffPage: React.FC = () => {
-  const { staff, addStaff, updateStaff, deleteStaff, staffRoles, serviceCategories } = useApp();
+  const { staff, addStaff, updateStaff, deleteStaff, staffRoles, serviceCategories, appointments } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+
+  // Check if filter=today is present
+  const filterToday = searchParams.get('filter') === 'today';
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -32,16 +38,31 @@ const StaffPage: React.FC = () => {
   const activeRoles = staffRoles.filter(r => r.isActive);
   const activeCategories = serviceCategories.filter(c => c.isActive);
 
-  const filteredStaff = staff.filter((member) => {
-    const searchLower = searchTerm.toLowerCase();
-    const roleName = staffRoles.find(r => r.id === member.role)?.name || '';
-    return (
-      member.firstName.toLowerCase().includes(searchLower) ||
-      member.lastName.toLowerCase().includes(searchLower) ||
-      member.email.toLowerCase().includes(searchLower) ||
-      roleName.toLowerCase().includes(searchLower)
-    );
-  });
+  // Get staff IDs with appointments today
+  const todayStaffIds = useMemo(() => {
+    if (!filterToday) return null;
+    const todayAppointments = appointments.filter((apt) => isToday(parseISO(apt.date)));
+    return new Set(todayAppointments.map((apt) => apt.staffId));
+  }, [appointments, filterToday]);
+
+  const filteredStaff = useMemo(() => {
+    return staff.filter((member) => {
+      // Filter by today's appointments if enabled
+      if (filterToday && todayStaffIds && !todayStaffIds.has(member.id)) {
+        return false;
+      }
+
+      // Filter by search term
+      const searchLower = searchTerm.toLowerCase();
+      const roleName = staffRoles.find(r => r.id === member.role)?.name || '';
+      return (
+        member.firstName.toLowerCase().includes(searchLower) ||
+        member.lastName.toLowerCase().includes(searchLower) ||
+        member.email.toLowerCase().includes(searchLower) ||
+        roleName.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [staff, searchTerm, staffRoles, filterToday, todayStaffIds]);
 
   const handleOpenModal = (member?: Staff) => {
     if (member) {
@@ -160,9 +181,19 @@ const StaffPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Personale</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900">Personale</h1>
+            {filterToday && (
+              <span className="inline-flex items-center px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+                Solo Oggi
+              </span>
+            )}
+          </div>
           <p className="text-gray-600 mt-1">
-            Gestisci i membri del team del centro
+            {filterToday
+              ? 'Personale impegnato negli appuntamenti di oggi'
+              : 'Gestisci i membri del team del centro'
+            }
           </p>
         </div>
         <button onClick={() => handleOpenModal()} className="btn-primary">
@@ -170,6 +201,27 @@ const StaffPage: React.FC = () => {
           Nuovo Membro
         </button>
       </div>
+
+      {/* Filter Badge and Search Bar */}
+      {filterToday && (
+        <div className="card bg-purple-50 border-purple-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar size={20} className="text-purple-600" />
+              <p className="text-sm text-purple-700 font-medium">
+                Visualizzazione filtrata: solo personale impegnato oggi
+              </p>
+            </div>
+            <button
+              onClick={() => setSearchParams({})}
+              className="text-purple-600 hover:text-purple-700 font-semibold text-sm flex items-center gap-1"
+            >
+              <X size={16} />
+              Mostra Tutti
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="card">
