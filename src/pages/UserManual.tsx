@@ -83,15 +83,70 @@ const UserManual: React.FC = () => {
 
           <h3 className="font-semibold text-lg mb-2">Caratteristiche Principali</h3>
           <ul className="list-disc list-inside space-y-2 ml-4">
-            <li><strong>Funzionamento Offline:</strong> Tutti i dati sono salvati localmente sul dispositivo</li>
-            <li><strong>Backup Automatici:</strong> Backup giornalieri degli ultimi 7 giorni</li>
-            <li><strong>Sincronizzazione Multi-Dispositivo:</strong> Opzionale tramite server CouchDB</li>
-            <li><strong>Nessun Login Richiesto:</strong> Accesso diretto all'applicazione</li>
-            <li><strong>Installabile:</strong> Può essere installata come app sul dispositivo</li>
-            <li><strong>Responsive:</strong> Si adatta perfettamente a smartphone, tablet e desktop</li>
+            <li><strong>Funzionamento Offline:</strong> Tutti i dati sono salvati localmente sul dispositivo, funziona anche senza connessione internet</li>
+            <li><strong>Sistema di Autenticazione:</strong> Login con username e password, due ruoli (RESPONSABILE/UTENTE) con permessi differenziati</li>
+            <li><strong>Gestione Completa:</strong> Appuntamenti, clienti, servizi, personale, pagamenti, statistiche tutto in un'unica applicazione</li>
+            <li><strong>Calendario Avanzato:</strong> 3 viste (Giorno, Settimana, Mese), orari 6:00-22:00, drag & drop, auto-scroll all'ora corrente</li>
+            <li><strong>Reminder Email Automatici:</strong> Invio automatico o manuale con file .ics calendario, link di conferma e cron job configurabile</li>
+            <li><strong>Filtri "Solo Oggi":</strong> Visualizzazione rapida di clienti, servizi e personale coinvolti negli appuntamenti del giorno</li>
+            <li><strong>Backup Automatici:</strong> Backup giornalieri degli ultimi 7 giorni con export/import manuale</li>
+            <li><strong>Sincronizzazione Multi-Dispositivo:</strong> Opzionale tramite server CouchDB per lavorare su più dispositivi</li>
+            <li><strong>Statistiche Avanzate:</strong> Dashboard con metriche, grafici colorati, top servizi/categorie, performance personale</li>
+            <li><strong>Sistema di Logging:</strong> Visualizzatore logs con 5 livelli, filtri, export JSON e permessi per ruolo</li>
+            <li><strong>Controlli Intelligenti:</strong> Validazioni automatiche, formattazione telefono, controllo conflitti appuntamenti</li>
+            <li><strong>Installabile come PWA:</strong> Può essere installata come app nativa su smartphone, tablet e desktop</li>
+            <li><strong>Responsive Design:</strong> Si adatta perfettamente a qualsiasi dispositivo e dimensione schermo</li>
+            <li><strong>Dashboard Auto-refresh:</strong> Aggiornamento automatico ogni 30 secondi per visualizzare sempre dati aggiornati</li>
           </ul>
 
-          <h3 className="font-semibold text-lg mb-2 mt-4">Installazione come App</h3>
+          <h3 className="font-semibold text-lg mb-2 mt-4">Aree Funzionali dell'Applicazione</h3>
+          <p className="mb-2">
+            Sphyra Wellness Lab è organizzata in sezioni specifiche per gestire ogni aspetto del tuo centro:
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 ml-4 mt-3">
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">📊 Dashboard</p>
+              <p className="text-sm">Panoramica giornaliera con statistiche in tempo reale e prossimi appuntamenti</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">📅 Calendario</p>
+              <p className="text-sm">Gestione appuntamenti con 3 viste, drag & drop e controllo conflitti</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">👥 Clienti</p>
+              <p className="text-sm">Anagrafica completa con allergie, storico appuntamenti e filtro "Solo Oggi"</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">✂️ Servizi</p>
+              <p className="text-sm">Catalogo trattamenti con categorie, prezzi, durate e colori personalizzati</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">👔 Personale</p>
+              <p className="text-sm">Gestione team con specializzazioni, ruoli e disponibilità</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">💳 Pagamenti</p>
+              <p className="text-sm">Tracciamento incassi, fatturato totale e storico completo</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">🔔 Reminder</p>
+              <p className="text-sm">Sistema email automatico con file .ics e link di conferma</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">📈 Statistiche</p>
+              <p className="text-sm">Report dettagliati, grafici, top servizi e performance personale</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">🔐 Login</p>
+              <p className="text-sm">Autenticazione sicura con ruoli RESPONSABILE/UTENTE</p>
+            </div>
+            <div className="bg-gray-50 p-3 rounded">
+              <p className="font-medium text-pink-600">⚙️ Impostazioni</p>
+              <p className="text-sm">Configurazione completa: sync, backup, utenti, logs, categorie e ruoli</p>
+            </div>
+          </div>
+
+          <h3 className="font-semibold text-lg mb-2 mt-6">Installazione come App</h3>
           <p className="mb-2">
             Per installare Sphyra Wellness Lab sul tuo dispositivo:
           </p>
@@ -99,6 +154,16 @@ const UserManual: React.FC = () => {
             <li><strong>Desktop (Chrome/Edge):</strong> Clicca sull'icona di installazione nella barra degli indirizzi</li>
             <li><strong>Android:</strong> Tocca "Aggiungi a schermata Home" dal menu del browser</li>
             <li><strong>iOS:</strong> Tocca il pulsante Condividi e seleziona "Aggiungi a Home"</li>
+          </ul>
+
+          <h3 className="font-semibold text-lg mb-2 mt-6">Primo Accesso</h3>
+          <p className="mb-2">
+            All'apertura dell'applicazione ti verrà richiesto di effettuare il login:
+          </p>
+          <ul className="list-disc list-inside space-y-1 ml-4">
+            <li>Se è la prima volta, un utente RESPONSABILE predefinito potrebbe essere già configurato</li>
+            <li>Dopo il login, i RESPONSABILI possono creare altri utenti dalla sezione Impostazioni → Tab Utenti</li>
+            <li>Gli utenti RESPONSABILE hanno accesso completo, gli UTENTE hanno permessi limitati</li>
           </ul>
         </div>
       </Section>
