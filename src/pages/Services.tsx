@@ -1,25 +1,31 @@
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Service } from '../types';
-import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X } from 'lucide-react';
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteService } from '../utils/db';
 import { logger } from '../utils/logger';
+import { isToday, parseISO } from 'date-fns';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 
 const Services: React.FC = () => {
-  const { services, addService, updateService, deleteService, serviceCategories } = useApp();
+  const { services, addService, updateService, deleteService, serviceCategories, appointments } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
+
+  // Check if filter=today is present
+  const filterToday = searchParams.get('filter') === 'today';
 
   // Debounce search
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -36,8 +42,21 @@ const Services: React.FC = () => {
   // Filter only active categories
   const activeCategories = serviceCategories.filter(c => c.isActive);
 
+  // Get service IDs used in appointments today
+  const todayServiceIds = useMemo(() => {
+    if (!filterToday) return null;
+    const todayAppointments = appointments.filter((apt) => isToday(parseISO(apt.date)));
+    return new Set(todayAppointments.map((apt) => apt.serviceId));
+  }, [appointments, filterToday]);
+
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
+      // Filter by today's appointments if enabled
+      if (filterToday && todayServiceIds && !todayServiceIds.has(service.id)) {
+        return false;
+      }
+
+      // Filter by search term
       const searchLower = debouncedSearchTerm.toLowerCase();
       const categoryName = serviceCategories.find(c => c.id === service.category)?.name || '';
       return (
@@ -46,7 +65,7 @@ const Services: React.FC = () => {
         service.description.toLowerCase().includes(searchLower)
       );
     });
-  }, [services, debouncedSearchTerm, serviceCategories]);
+  }, [services, debouncedSearchTerm, serviceCategories, filterToday, todayServiceIds]);
 
   const handleOpenModal = (service?: Service) => {
     if (service) {
@@ -148,9 +167,19 @@ const Services: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Servizi</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900">Servizi</h1>
+            {filterToday && (
+              <span className="inline-flex items-center px-3 py-1 bg-pink-100 text-pink-700 rounded-full text-sm font-semibold">
+                Solo Oggi
+              </span>
+            )}
+          </div>
           <p className="text-gray-600 mt-1">
-            Gestisci i trattamenti offerti dal tuo centro
+            {filterToday
+              ? 'Servizi erogati negli appuntamenti di oggi'
+              : 'Gestisci i trattamenti offerti dal tuo centro'
+            }
           </p>
         </div>
         <button onClick={() => handleOpenModal()} className="btn-primary">
@@ -158,6 +187,27 @@ const Services: React.FC = () => {
           Nuovo Servizio
         </button>
       </div>
+
+      {/* Filter Badge and Search Bar */}
+      {filterToday && (
+        <div className="card bg-pink-50 border-pink-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar size={20} className="text-pink-600" />
+              <p className="text-sm text-pink-700 font-medium">
+                Visualizzazione filtrata: solo servizi erogati oggi
+              </p>
+            </div>
+            <button
+              onClick={() => setSearchParams({})}
+              className="text-pink-600 hover:text-pink-700 font-semibold text-sm flex items-center gap-1"
+            >
+              <X size={16} />
+              Mostra Tutti
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Search Bar */}
       <div className="card">

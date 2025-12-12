@@ -96,7 +96,7 @@ const Dashboard: React.FC = () => {
       icon: Users,
       color: 'text-green-600',
       bg: 'bg-green-100',
-      link: '/clienti',
+      link: '/clienti?filter=today',
     },
     {
       name: 'Servizi Oggi',
@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
       icon: TrendingUp,
       color: 'text-pink-600',
       bg: 'bg-pink-100',
-      link: '/servizi',
+      link: '/servizi?filter=today',
     },
   ];
 
