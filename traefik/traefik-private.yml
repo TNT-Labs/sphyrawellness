@@ -62,7 +62,7 @@ providers:
 
 # Ping endpoint
 ping:
-  entryPoint: websecure
+  entryPoint: web 
 
 # NO certificatesResolvers (no Let's Encrypt)
 # I certificati sono forniti via file provider
