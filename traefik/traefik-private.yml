@@ -1,0 +1,68 @@
+# ========================================
+# Traefik Configuration - Rete Privata
+# Self-Signed Certificates (NO Let's Encrypt)
+# ========================================
+
+# Global configuration
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false
+
+# API and Dashboard
+api:
+  dashboard: true
+  insecure: true  # Dashboard senza auth (OK per rete privata)
+
+# Log configuration
+log:
+  level: INFO
+  filePath: /logs/traefik.log
+  format: json
+
+# Access logs
+accessLog:
+  filePath: /logs/access.log
+  format: json
+  bufferingSize: 100
+
+# EntryPoints
+entryPoints:
+  # HTTP (port 80) - redirect to HTTPS
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+
+  # HTTPS (port 443)
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        # Usa certificati da file (non Let's Encrypt)
+        options: default
+      middlewares:
+        - security-headers@file
+
+# Docker provider
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: traefik-public
+    watch: true
+
+  # File provider
+  file:
+    directory: /dynamic
+    watch: true
+
+# Ping endpoint
+ping:
+  entryPoint: websecure
+
+# NO certificatesResolvers (no Let's Encrypt)
+# I certificati sono forniti via file provider
