@@ -24,6 +24,8 @@ traefik/logs/
 *.pem
 *.crt
 *.key
+*.csr
+*.cnf
 acme*.json
 backups/
 
