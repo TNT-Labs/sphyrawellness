@@ -26,9 +26,9 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
   const isToday = isSameDay(currentDate, new Date());
   const scheduleContainerRef = useRef<HTMLDivElement>(null);
 
-  // Genera le fasce orarie dalle 8:00 alle 20:00
-  const timeSlots = Array.from({ length: 13 }, (_, i) => {
-    const hour = i + 8;
+  // Genera le fasce orarie dalle 6:00 alle 22:00
+  const timeSlots = Array.from({ length: 17 }, (_, i) => {
+    const hour = i + 6;
     return `${hour.toString().padStart(2, '0')}:00`;
   });
 
@@ -48,9 +48,9 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
 
       // Find the time slot element for the current hour or closest earlier hour
       let targetHour = currentHour;
-      // Ensure we're within the visible range (8-20)
-      if (targetHour < 8) targetHour = 8;
-      if (targetHour > 20) targetHour = 20;
+      // Ensure we're within the visible range (6-22)
+      if (targetHour < 6) targetHour = 6;
+      if (targetHour > 22) targetHour = 22;
 
       const timeSlotId = `time-slot-${targetHour}`;
       const targetElement = document.getElementById(timeSlotId);
