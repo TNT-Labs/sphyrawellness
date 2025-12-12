@@ -3,8 +3,6 @@
 # Traefik Reverse Proxy + Let's Encrypt SSL
 # ========================================
 
-version: '3.8'
-
 services:
   # ========================================
   # TRAEFIK - Reverse Proxy & SSL Manager
