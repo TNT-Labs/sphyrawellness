@@ -118,16 +118,17 @@ $opensslConfig | Out-File -FilePath "$CERT_DIR/openssl.cnf" -Encoding ASCII
 
 # Generate self-signed certificate (valid for 10 years)
 Write-Host "[4/4] Generazione certificato self-signed (valido 10 anni)..." -ForegroundColor Cyan
-openssl x509 -req `
+$output = openssl x509 -req `
     -in "$CERT_DIR/sphyra.csr" `
     -signkey "$CERT_DIR/sphyra.key" `
     -out "$CERT_DIR/sphyra.crt" `
     -days 3650 `
     -sha256 `
     -extensions v3_req `
-    -extfile "$CERT_DIR/openssl.cnf" 2>$null
+    -extfile "$CERT_DIR/openssl.cnf" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[!] Errore durante la generazione del certificato" -ForegroundColor Red
+    Write-Host $output
     exit 1
 }
 
