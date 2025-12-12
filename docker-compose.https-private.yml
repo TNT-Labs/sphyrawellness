@@ -86,6 +86,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # JWT Secret for authentication
+      - JWT_SECRET=${JWT_SECRET}
       - SENDGRID_API_KEY=${SENDGRID_API_KEY}
       - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
       - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness Lab}
