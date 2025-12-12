@@ -1,0 +1,42 @@
+# OpenSSL Configuration for Self-Signed Certificate
+# Sphyra Wellness Lab - Private Network
+
+[req]
+default_bits = 4096
+prompt = no
+default_md = sha256
+distinguished_name = dn
+req_extensions = v3_req
+
+[dn]
+C = IT
+ST = Italy
+L = Local
+O = Sphyra Wellness Lab
+OU = Development
+CN = sphyra.local
+emailAddress = admin@sphyra.local
+
+[v3_req]
+keyUsage = critical, digitalSignature, keyEncipherment, keyAgreement
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = @alt_names
+
+[v3_ca]
+keyUsage = critical, digitalSignature, keyEncipherment, keyAgreement
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = @alt_names
+basicConstraints = CA:FALSE
+
+[alt_names]
+# Domain names
+DNS.1 = sphyra.local
+DNS.2 = *.sphyra.local
+DNS.3 = localhost
+
+# IP addresses (adjust these to match your network)
+IP.1 = 127.0.0.1
+IP.2 = ::1
+IP.3 = 192.168.1.95
+# Add more IPs if needed:
+# IP.4 = 192.168.1.XXX

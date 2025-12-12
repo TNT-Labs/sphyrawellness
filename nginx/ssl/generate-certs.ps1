@@ -155,7 +155,7 @@ Write-ColorOutput "Next steps:" "Cyan"
 Write-ColorOutput "  1. Add domain to hosts file:" "White"
 Write-ColorOutput "     File: C:\Windows\System32\drivers\etc\hosts" "Gray"
 Write-ColorOutput "     Run as Administrator and add:" "Gray"
-Write-ColorOutput "     127.0.0.1 $Domain traefik.$Domain`n" "White"
+Write-ColorOutput "     127.0.0.1 $Domain`n" "White"
 
 Write-ColorOutput "  2. Restart Docker containers:" "White"
 Write-ColorOutput "     docker compose -f docker-compose.https-private.yml restart`n" "Gray"
@@ -165,7 +165,7 @@ Write-ColorOutput "     Run: certutil -addstore -f `"ROOT`" `"$CertFile`"`n" "Gr
 
 Write-ColorOutput "  4. Test your setup:" "White"
 Write-ColorOutput "     Open: https://$Domain" "Gray"
-Write-ColorOutput "     Open: https://traefik.$Domain`n" "Gray"
+Write-ColorOutput "     Open: https://$Domain/api/health`n" "Gray"
 
 Write-ColorOutput "⚠ Note: Self-signed certificates will show browser warnings" "Yellow"
 Write-ColorOutput "  This is normal for development environments.`n" "Gray"
