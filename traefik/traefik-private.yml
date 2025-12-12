@@ -15,7 +15,7 @@ api:
 
 # Log configuration
 log:
-  level: INFO
+  level: DEBUG
   filePath: /logs/traefik.log
   format: json
 
