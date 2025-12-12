@@ -54,6 +54,8 @@ providers:
     exposedByDefault: false
     network: traefik-public
     watch: true
+    httpClientTimeout: 60s
+    allowEmptyServices: true
 
   # File provider
   file:
