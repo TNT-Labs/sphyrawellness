@@ -54,6 +54,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'https://localhost',      // HTTPS localhost
   'http://sphyra.local',    // Local domain
   'https://sphyra.local',   // Local domain HTTPS
+  'http://192.168.1.95',    // Local IP address
+  'https://192.168.1.95',   // Local IP address HTTPS
 ];
 
 // In production, add your production domain(s) to ALLOWED_ORIGINS env var
