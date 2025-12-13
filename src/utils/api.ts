@@ -48,17 +48,36 @@ export const settingsApi = {
  */
 export const remindersApi = {
   async sendForAppointment(appointmentId: string): Promise<{ reminderId: string }> {
-    const response = await fetch(`${API_BASE_URL}/reminders/send/${appointmentId}`, {
-      method: 'POST',
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/reminders/send/${appointmentId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const result: ApiResponse = await response.json();
+      if (!response.ok) {
+        const result: ApiResponse = await response.json();
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to send reminder');
+      const result: ApiResponse = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send reminder');
+      }
+
+      return result.data;
+    } catch (error: any) {
+      // Handle CORS and network errors with clearer messages
+      if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+        throw new Error('Impossibile connettersi al server. Verifica che il backend sia attivo.');
+      }
+      if (error.message.includes('CORS')) {
+        throw new Error('Errore di configurazione CORS. Contatta l\'amministratore.');
+      }
+      throw error;
     }
-
-    return result.data;
   },
 
   async sendAll(): Promise<{
@@ -67,17 +86,36 @@ export const remindersApi = {
     failed: number;
     results: Array<{ appointmentId: string; success: boolean; error?: string }>;
   }> {
-    const response = await fetch(`${API_BASE_URL}/reminders/send-all`, {
-      method: 'POST',
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}/reminders/send-all`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-    const result: ApiResponse = await response.json();
+      if (!response.ok) {
+        const result: ApiResponse = await response.json();
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to send reminders');
+      const result: ApiResponse = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send reminders');
+      }
+
+      return result.data;
+    } catch (error: any) {
+      // Handle CORS and network errors with clearer messages
+      if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+        throw new Error('Impossibile connettersi al server. Verifica che il backend sia attivo.');
+      }
+      if (error.message.includes('CORS')) {
+        throw new Error('Errore di configurazione CORS. Contatta l\'amministratore.');
+      }
+      throw error;
     }
-
-    return result.data;
   },
 
   async getAppointmentsNeedingReminders(): Promise<Appointment[]> {
