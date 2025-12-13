@@ -19,9 +19,13 @@ RUN npm ci
 # Copia tutto il codice sorgente
 COPY . .
 
-# Set BASE_URL for Docker deployment (root path)
+# Build arguments (passed from docker-compose)
+ARG VITE_API_URL=https://sphyra.local/api
+
+# Set environment variables for build
 ENV BASE_URL=/
 ENV VITE_BASE_PATH=/
+ENV VITE_API_URL=${VITE_API_URL}
 
 # Build dell'applicazione per produzione
 RUN npm run build
