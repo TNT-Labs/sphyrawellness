@@ -62,8 +62,10 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateReturn {
     try {
       // Aggiungi un parametro timestamp per evitare il caching
       const timestamp = Date.now();
-      const basePath = import.meta.env.BASE_URL;
-      const response = await fetch(`${basePath}/version.json?t=${timestamp}`, {
+      const basePath = import.meta.env.BASE_URL || '/';
+      // Use absolute URL to avoid path resolution issues
+      const versionUrl = `${window.location.origin}${basePath}version.json?t=${timestamp}`;
+      const response = await fetch(versionUrl, {
         cache: 'no-cache',
         headers: {
           'Cache-Control': 'no-cache',
