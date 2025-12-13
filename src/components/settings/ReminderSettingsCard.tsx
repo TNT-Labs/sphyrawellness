@@ -127,11 +127,20 @@ export const ReminderSettingsCard: React.FC = () => {
                 : 'Assicurati che il server backend sia avviato per utilizzare i reminder email.'}
             </p>
             {!serverHealthy && (
-              <div className="mt-2 text-xs text-gray-600 bg-white bg-opacity-50 rounded p-2">
-                <p className="font-semibold mb-1">Per avviare il server:</p>
-                <code className="block bg-gray-900 text-gray-100 p-2 rounded">
-                  cd server && npm install && npm run dev
-                </code>
+              <div className="mt-2 text-xs text-gray-600 bg-white bg-opacity-50 rounded p-2 space-y-2">
+                <div>
+                  <p className="font-semibold mb-1">URL cercato:</p>
+                  <code className="block bg-gray-900 text-gray-100 p-1 px-2 rounded text-[10px]">
+                    {import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}
+                  </code>
+                </div>
+                <div>
+                  <p className="font-semibold mb-1">Possibili soluzioni:</p>
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li>Se usi Docker/HTTPS: copia <code className="bg-gray-200 px-1 rounded">.env.private.example</code> in <code className="bg-gray-200 px-1 rounded">.env</code></li>
+                    <li>Se usi sviluppo locale: avvia il server con <code className="bg-gray-200 px-1 rounded">cd server && npm install && npm run dev</code></li>
+                  </ol>
+                </div>
               </div>
             )}
           </div>
