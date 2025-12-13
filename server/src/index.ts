@@ -3,7 +3,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
-import { authenticateToken } from './middleware/auth.js';
 import { initializeIndexes } from './config/database.js';
 import { initializeDailyReminderCron, triggerReminderJobManually } from './jobs/dailyReminderCron.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
