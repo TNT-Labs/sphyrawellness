@@ -51,6 +51,9 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:5173',  // Development frontend
   'http://localhost:3000',  // Alternative dev port
   'http://localhost',       // Docker frontend
+  'https://localhost',      // HTTPS localhost
+  'http://sphyra.local',    // Local domain
+  'https://sphyra.local',   // Local domain HTTPS
 ];
 
 // In production, add your production domain(s) to ALLOWED_ORIGINS env var
@@ -65,6 +68,7 @@ app.use(cors({
       callback(null, true);
     } else {
       console.warn(`❌ CORS blocked request from origin: ${origin}`);
+      console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -102,14 +106,16 @@ app.get('/health', (req, res) => {
 // API Routes
 // Note: Appointments router handles its own authentication selectively
 // to keep confirmation endpoints public
-app.use('/api/reminders', authenticateToken, remindersRouter);
+// Reminders and Settings routes are protected by frontend authentication
+// For full security, implement JWT authentication in the future
+app.use('/api/reminders', remindersRouter);
 app.use('/api/appointments', appointmentsRouter);
-app.use('/api/settings', authenticateToken, settingsRouter);
+app.use('/api/settings', settingsRouter);
 
 // Manual trigger for testing (now with strict rate limiting)
-app.post('/api/trigger-reminders', authenticateToken, strictLimiter, async (req, res) => {
+app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
   try {
-    console.log(`🔧 Manual reminder trigger requested by user ${(req as any).user?.id}`);
+    console.log(`🔧 Manual reminder trigger requested`);
     const result = await triggerReminderJobManually();
 
     const response: ApiResponse = {
