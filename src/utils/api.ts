@@ -87,10 +87,19 @@ export const remindersApi = {
     } catch (error: any) {
       // Handle CORS and network errors with clearer messages
       if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
-        throw new Error('Impossibile connettersi al server. Verifica che il backend sia attivo.');
+        const apiUrl = API_BASE_URL.replace('/api', '');
+        throw new Error(
+          `Impossibile connettersi al server backend.\n\n` +
+          `Possibili cause:\n` +
+          `• Il server backend non è in esecuzione\n` +
+          `• Stai accedendo da un IP non autorizzato\n` +
+          `• Problema di configurazione CORS\n\n` +
+          `URL cercato: ${apiUrl}\n\n` +
+          `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+        );
       }
       if (error.message.includes('CORS')) {
-        throw new Error('Errore di configurazione CORS. Contatta l\'amministratore.');
+        throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
       }
       throw error;
     }
@@ -125,10 +134,19 @@ export const remindersApi = {
     } catch (error: any) {
       // Handle CORS and network errors with clearer messages
       if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
-        throw new Error('Impossibile connettersi al server. Verifica che il backend sia attivo.');
+        const apiUrl = API_BASE_URL.replace('/api', '');
+        throw new Error(
+          `Impossibile connettersi al server backend.\n\n` +
+          `Possibili cause:\n` +
+          `• Il server backend non è in esecuzione\n` +
+          `• Stai accedendo da un IP non autorizzato\n` +
+          `• Problema di configurazione CORS\n\n` +
+          `URL cercato: ${apiUrl}\n\n` +
+          `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+        );
       }
       if (error.message.includes('CORS')) {
-        throw new Error('Errore di configurazione CORS. Contatta l\'amministratore.');
+        throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
       }
       throw error;
     }
