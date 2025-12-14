@@ -800,7 +800,9 @@ export async function testCouchDBConnection(
 
       if (authUsername && authPassword) {
         // Crea header Authorization con Basic Auth
-        const credentials = `${decodeURIComponent(authUsername)}:${decodeURIComponent(authPassword)}`;
+        // NOTE: URL object automatically decodes username/password when accessed,
+        // so we should NOT decode them again with decodeURIComponent
+        const credentials = `${authUsername}:${authPassword}`;
         const base64Credentials = btoa(credentials);
         fetchHeaders['Authorization'] = `Basic ${base64Credentials}`;
         logger.debug('[STEP 3/7] Header Authorization aggiunto con Basic Auth');
@@ -822,12 +824,32 @@ export async function testCouchDBConnection(
         const errorText = await response.text();
         logger.error('[STEP 3/7] Risposta non OK:', errorText);
 
+        // Try to parse error details if it's JSON
+        let errorDetails: any = null;
+        try {
+          errorDetails = JSON.parse(errorText);
+        } catch {
+          // Not JSON, ignore
+        }
+
         if (response.status === 401) {
           return {
             success: false,
             error: 'Autenticazione fallita. Verifica username e password.'
           };
         } else if (response.status === 403) {
+          // Check if this is an account lockout
+          if (errorDetails?.reason?.includes('locked') || errorDetails?.reason?.includes('authentication failures')) {
+            return {
+              success: false,
+              error: '⚠️ Account temporaneamente bloccato per troppi tentativi di autenticazione falliti.\n\n' +
+                     'Possibili soluzioni:\n' +
+                     '  • Attendi alcuni minuti prima di riprovare\n' +
+                     '  • Verifica che username e password siano corretti\n' +
+                     '  • Sblocca l\'account tramite l\'amministratore CouchDB\n\n' +
+                     `Dettaglio errore: ${errorDetails.reason || 'Account locked'}`
+            };
+          }
           return {
             success: false,
             error: 'Accesso negato. Verifica i permessi dell\'utente su CouchDB.'
