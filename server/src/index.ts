@@ -62,21 +62,75 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'https://192.168.1.95',   // Local IP address HTTPS
 ];
 
-// NOTE: In production, this backend only accepts HTTPS connections from private network
-// To add more IPs, set ALLOWED_ORIGINS env var: ALLOWED_ORIGINS=https://sphyra.local,https://192.168.1.100
+// NOTE: In production, this backend accepts HTTPS connections from:
+// 1. Origins in ALLOWED_ORIGINS env var (if set)
+// 2. Private network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x) over HTTPS
+// To restrict to specific IPs only, set ALLOWED_ORIGINS env var
+
+/**
+ * Helper function to check if an origin is from a private network
+ * Returns true for origins with private IP addresses
+ */
+const isPrivateNetworkOrigin = (origin: string): boolean => {
+  try {
+    const url = new URL(origin);
+    const hostname = url.hostname;
+
+    // Allow sphyra.local domain
+    if (hostname === 'sphyra.local') return true;
+
+    // Check if hostname is an IP address
+    const ipMatch = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+    if (!ipMatch) return false;
+
+    const [, first, second] = ipMatch.map(Number);
+
+    // Private network ranges:
+    // 10.0.0.0/8 (10.0.0.0 - 10.255.255.255)
+    if (first === 10) return true;
+
+    // 172.16.0.0/12 (172.16.0.0 - 172.31.255.255) - Docker default
+    if (first === 172 && second >= 16 && second <= 31) return true;
+
+    // 192.168.0.0/16 (192.168.0.0 - 192.168.255.255) - Most common private network
+    if (first === 192 && second === 168) return true;
+
+    // Localhost
+    if (first === 127) return true;
+
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps, Postman, etc.)
     if (!origin) return callback(null, true);
 
+    // Check if origin is in the explicit whitelist
     if (allowedOrigins.indexOf(origin) !== -1) {
+      console.log(`✅ CORS allowed (whitelist): ${origin}`);
       callback(null, true);
-    } else {
-      console.warn(`❌ CORS blocked request from origin: ${origin}`);
-      console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
-      callback(new Error('Not allowed by CORS'));
+      return;
     }
+
+    // In production, check if origin is from private network with HTTPS
+    if (!isDevelopment) {
+      const url = new URL(origin);
+      if (url.protocol === 'https:' && isPrivateNetworkOrigin(origin)) {
+        console.log(`✅ CORS allowed (private network HTTPS): ${origin}`);
+        callback(null, true);
+        return;
+      }
+    }
+
+    // Reject all other origins
+    console.warn(`❌ CORS blocked request from origin: ${origin}`);
+    console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+    console.warn(`   Private network HTTPS origins are also allowed in production`);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
