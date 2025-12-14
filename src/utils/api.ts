@@ -41,6 +41,22 @@ export const settingsApi = {
 
     return result.data;
   },
+
+  async isServer(): Promise<boolean> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/settings/is-server`);
+      const result: ApiResponse<{ isServer: boolean }> = await response.json();
+
+      if (!result.success || result.data === undefined) {
+        return false;
+      }
+
+      return result.data.isServer;
+    } catch (error) {
+      console.error('Failed to check if running on server:', error);
+      return false;
+    }
+  },
 };
 
 /**
