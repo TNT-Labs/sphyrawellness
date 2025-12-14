@@ -19,7 +19,8 @@ const PORT = process.env.PORT || 3001;
 
 // Trust proxy - Required when behind reverse proxy (nginx)
 // This allows Express to trust X-Forwarded-* headers from nginx
-app.set('trust proxy', true);
+// We trust only the first proxy (nginx) in the chain
+app.set('trust proxy', 1);
 
 // Security Headers - Helmet
 app.use(helmet({
