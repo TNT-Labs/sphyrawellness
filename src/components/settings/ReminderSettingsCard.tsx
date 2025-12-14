@@ -208,7 +208,7 @@ export const ReminderSettingsCard: React.FC = () => {
                 <div>
                   <p className="font-semibold mb-1">URL cercato:</p>
                   <code className="block bg-gray-900 text-gray-100 p-1 px-2 rounded text-[10px]">
-                    {import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}
+                    {import.meta.env.VITE_API_URL || 'https://sphyra.local/api'}
                   </code>
                 </div>
                 <div>

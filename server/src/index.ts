@@ -50,19 +50,20 @@ app.use(helmet({
 
 // Middleware
 // CORS configuration with whitelist
+const isDevelopment = process.env.NODE_ENV !== 'production';
 const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-  'http://localhost:5173',  // Development frontend
-  'http://localhost:3000',  // Alternative dev port
-  'http://localhost',       // Docker frontend
-  'https://localhost',      // HTTPS localhost
-  'http://sphyra.local',    // Local domain
+  // Development origins (only in development mode)
+  ...(isDevelopment ? [
+    'http://localhost:5173',  // Development frontend
+    'http://localhost:3000',  // Alternative dev port
+  ] : []),
+  // Production HTTPS-only origins (private network)
   'https://sphyra.local',   // Local domain HTTPS
-  'http://192.168.1.95',    // Local IP address
   'https://192.168.1.95',   // Local IP address HTTPS
 ];
 
-// In production, add your production domain(s) to ALLOWED_ORIGINS env var
-// Example: ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com
+// NOTE: In production, this backend only accepts HTTPS connections from private network
+// To add more IPs, set ALLOWED_ORIGINS env var: ALLOWED_ORIGINS=https://sphyra.local,https://192.168.1.100
 
 app.use(cors({
   origin: function (origin, callback) {

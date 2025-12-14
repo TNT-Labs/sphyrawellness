@@ -98,7 +98,7 @@ router.get('/:appointmentId/confirm/:token', async (req, res) => {
 
     const result = await reminderService.confirmAppointment(appointmentId, token);
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sphyra.local';
 
     if (!result.success) {
       // Redirect to error page
@@ -109,7 +109,7 @@ router.get('/:appointmentId/confirm/:token', async (req, res) => {
     res.redirect(`${frontendUrl}/confirm-appointment/success?appointmentId=${appointmentId}`);
   } catch (error: any) {
     console.error('Error in GET /confirm:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://sphyra.local';
     res.redirect(`${frontendUrl}/confirm-appointment/error?message=${encodeURIComponent('An error occurred')}`);
   }
 });

@@ -17,15 +17,26 @@ Applicazione Progressive Web App (PWA) per la gestione completa di centri esteti
 
 ## 🚀 Deploy
 
-L'applicazione è configurata per il deploy automatico su GitHub Pages tramite GitHub Actions.
+L'applicazione è progettata per l'esecuzione in ambiente **Docker con HTTPS privato**.
 
-### Configurazione GitHub Pages
+### 🔒 Deployment HTTPS Privato (Consigliato)
 
-1. Vai su Settings > Pages nel repository
-2. Source: seleziona "GitHub Actions"
-3. Il deploy avverrà automaticamente ad ogni push sul branch `main`
+Per installare l'applicazione in ambiente privato con HTTPS e Nginx:
 
-URL di produzione: `https://[username].github.io/sphyrawellness/`
+1. **Quick Start**: Vedi [QUICK-START-PRIVATE.md](QUICK-START-PRIVATE.md)
+2. **Setup Completo**: Vedi [HTTPS-PRIVATE-NETWORK.md](HTTPS-PRIVATE-NETWORK.md)
+3. **Installazione Docker**: Vedi [DOCKER_INSTALL_GUIDE.md](DOCKER_INSTALL_GUIDE.md)
+
+**Domini supportati:**
+- `https://sphyra.local` (dominio locale)
+- `https://192.168.1.95` (IP privato configurabile)
+
+**Stack:**
+- ✅ Docker + Docker Compose
+- ✅ Nginx reverse proxy
+- ✅ HTTPS con certificati self-signed
+- ✅ CouchDB per storage dati
+- ✅ Backend Node.js per email reminders
 
 ## 🛠️ Sviluppo
 
@@ -95,7 +106,6 @@ Per configurare la sincronizzazione:
 1. **Installa CouchDB** (vedi [COUCHDB_SETUP.md](COUCHDB_SETUP.md) per istruzioni dettagliate)
    - Docker (consigliato)
    - Installazione locale
-   - Cloud (IBM Cloudant)
 
 2. **Crea i database automaticamente**:
    ```bash
