@@ -8,6 +8,41 @@ const router = express.Router();
 const DEFAULT_SETTINGS_ID = 'app-settings';
 
 /**
+ * GET /api/settings/is-server
+ * Check if the request is coming from the server itself (localhost)
+ */
+router.get('/is-server', (req, res) => {
+  try {
+    // Get the client IP address
+    const clientIp = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+
+    // Normalize IPv6 localhost to IPv4
+    const normalizedIp = clientIp === '::1' || clientIp === '::ffff:127.0.0.1'
+      ? '127.0.0.1'
+      : clientIp;
+
+    // Check if the request is from localhost
+    const isLocalhost = normalizedIp === '127.0.0.1' ||
+                        normalizedIp === 'localhost' ||
+                        normalizedIp === '::1';
+
+    const response: ApiResponse<{ isServer: boolean }> = {
+      success: true,
+      data: { isServer: isLocalhost }
+    };
+
+    res.json(response);
+  } catch (error: any) {
+    console.error('Error in GET /settings/is-server:', error);
+    const response: ApiResponse = {
+      success: false,
+      error: error.message || 'Internal server error'
+    };
+    res.status(500).json(response);
+  }
+});
+
+/**
  * GET /api/settings
  * Get application settings
  */
