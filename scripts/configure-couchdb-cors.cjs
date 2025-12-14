@@ -33,9 +33,9 @@ function log(message, color = 'reset') {
 }
 
 /**
- * Effettua una richiesta HTTP
+ * Effettua una richiesta HTTP (con supporto per redirect)
  */
-function makeRequest(url, method = 'GET', auth = null, data = null) {
+function makeRequest(url, method = 'GET', auth = null, data = null, maxRedirects = 5) {
   return new Promise((resolve, reject) => {
     const urlObj = new URL(url);
     const isHttps = urlObj.protocol === 'https:';
@@ -64,6 +64,19 @@ function makeRequest(url, method = 'GET', auth = null, data = null) {
     }
 
     const req = httpModule.request(options, (res) => {
+      // Handle redirects (301, 302, 307, 308)
+      if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location) {
+        if (maxRedirects > 0) {
+          // Follow redirect
+          const redirectUrl = new URL(res.headers.location, url);
+          return makeRequest(redirectUrl.href, method, auth, data, maxRedirects - 1)
+            .then(resolve)
+            .catch(reject);
+        } else {
+          return reject(new Error('Too many redirects'));
+        }
+      }
+
       let body = '';
 
       res.on('data', (chunk) => {
