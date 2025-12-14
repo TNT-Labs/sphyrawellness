@@ -49,6 +49,8 @@ function makeRequest(url, method = 'GET', auth = null, data = null) {
       headers: {
         'Content-Type': 'application/json',
       },
+      // Accept self-signed certificates in development
+      rejectUnauthorized: false,
     };
 
     if (auth) {
