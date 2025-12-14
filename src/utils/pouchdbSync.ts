@@ -1104,10 +1104,20 @@ export async function performOneTimeSync(): Promise<boolean> {
       const remoteName = DB_NAMES[key as keyof typeof DB_NAMES];
       const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${remoteName}`);
 
-      // Perform bidirectional replication
-      await PouchDB.sync(localDB, remoteDB);
-
-      logger.log(`One-time sync completed for ${remoteName}`);
+      try {
+        // Perform bidirectional replication
+        await PouchDB.sync(localDB, remoteDB);
+        logger.log(`One-time sync completed for ${remoteName}`);
+      } finally {
+        // IMPORTANT: Always close the remote database connection to prevent
+        // "database connection is closing" errors and resource leaks
+        try {
+          await remoteDB.close();
+          logger.debug(`Closed remote database connection for ${remoteName}`);
+        } catch (closeError) {
+          logger.warn(`Error closing remote database ${remoteName}:`, closeError);
+        }
+      }
     });
 
     await Promise.all(syncPromises);
