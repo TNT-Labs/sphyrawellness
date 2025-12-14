@@ -27,7 +27,7 @@ router.get('/is-server', (req, res) => {
     // Normalize IPv6 localhost to IPv4
     const normalizedIp = clientIp === '::1' || clientIp === '::ffff:127.0.0.1'
       ? '127.0.0.1'
-      : clientIp;
+      : (clientIp || null);
 
     /**
      * Helper function to check if an IP is localhost or private network
@@ -38,7 +38,7 @@ router.get('/is-server', (req, res) => {
      * - 192.168.0.0/16 (Private network)
      * - 10.0.0.0/8 (Private network)
      */
-    const isLocalOrPrivate = (ip: string | null): boolean => {
+    const isLocalOrPrivate = (ip: string | null | undefined): boolean => {
       if (!ip) return false;
 
       // Localhost check
