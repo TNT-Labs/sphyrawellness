@@ -43,6 +43,9 @@ services:
     image: apache/couchdb:latest
     container_name: sphyra-couchdb
     restart: unless-stopped
+    ports:
+      # Expose CouchDB port for local development/configuration
+      - "5984:5984"
     environment:
       - COUCHDB_USER=${COUCHDB_USER:-admin}
       - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
