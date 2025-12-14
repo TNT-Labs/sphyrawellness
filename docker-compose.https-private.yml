@@ -108,7 +108,7 @@ services:
       context: .
       dockerfile: Dockerfile.https
       args:
-        - VITE_API_URL=https://${PRIVATE_DOMAIN:-sphyra.local}/api
+        - VITE_API_URL=/api
     container_name: sphyra-frontend
     restart: unless-stopped
     depends_on:
