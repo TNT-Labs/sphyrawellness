@@ -10,6 +10,7 @@ import remindersRouter from './routes/reminders.js';
 import appointmentsRouter from './routes/appointments.js';
 import settingsRouter from './routes/settings.js';
 import publicRouter from './routes/public.js';
+import logger from './utils/logger.js';
 import type { ApiResponse } from './types/index.js';
 
 // Load environment variables
@@ -67,7 +68,11 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
 // NOTE: In production, this backend accepts HTTPS connections from:
 // 1. Origins in ALLOWED_ORIGINS env var (if set)
 // 2. Private network IPs (192.168.x.x, 10.x.x.x, 172.16-31.x.x) over HTTPS
-// To restrict to specific IPs only, set ALLOWED_ORIGINS env var
+// To restrict to specific IPs only, set ALLOWED_PRIVATE_IPS env var with comma-separated IP addresses
+// Example: ALLOWED_PRIVATE_IPS=192.168.1.95,192.168.1.100
+
+// Whitelist specific private IPs if configured
+const allowedPrivateIPs = process.env.ALLOWED_PRIVATE_IPS?.split(',').map(ip => ip.trim()) || [];
 
 /**
  * Helper function to check if an origin is from a private network
@@ -113,7 +118,7 @@ app.use(cors({
 
     // Check if origin is in the explicit whitelist
     if (allowedOrigins.indexOf(origin) !== -1) {
-      console.log(`✅ CORS allowed (whitelist): ${origin}`);
+      logger.info(`✅ CORS allowed (whitelist): ${origin}`);
       callback(null, true);
       return;
     }
@@ -122,16 +127,33 @@ app.use(cors({
     if (!isDevelopment) {
       const url = new URL(origin);
       if (url.protocol === 'https:' && isPrivateNetworkOrigin(origin)) {
-        console.log(`✅ CORS allowed (private network HTTPS): ${origin}`);
+        // If ALLOWED_PRIVATE_IPS is set, check if hostname is in the whitelist
+        if (allowedPrivateIPs.length > 0) {
+          const hostname = url.hostname;
+          if (allowedPrivateIPs.includes(hostname)) {
+            logger.info(`✅ CORS allowed (whitelisted private IP): ${origin}`);
+            callback(null, true);
+            return;
+          } else {
+            logger.warn(`❌ CORS blocked (private IP not in whitelist): ${origin}`);
+            logger.warn(`   Whitelisted IPs: ${allowedPrivateIPs.join(', ')}`);
+            callback(new Error('Private IP not in whitelist'));
+            return;
+          }
+        }
+
+        // If no whitelist is set, allow all private network IPs over HTTPS
+        logger.info(`✅ CORS allowed (private network HTTPS): ${origin}`);
+        logger.warn(`⚠️  No ALLOWED_PRIVATE_IPS whitelist configured - accepting all private IPs`);
         callback(null, true);
         return;
       }
     }
 
     // Reject all other origins
-    console.warn(`❌ CORS blocked request from origin: ${origin}`);
-    console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
-    console.warn(`   Private network HTTPS origins are also allowed in production`);
+    logger.warn(`❌ CORS blocked request from origin: ${origin}`);
+    logger.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+    logger.warn(`   Private network HTTPS origins are also allowed in production`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -148,7 +170,7 @@ app.use(globalLimiter);
 
 // Request logging
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  logger.debug(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
 
@@ -178,7 +200,7 @@ app.use('/api/public', publicRouter);
 // Manual trigger for testing (now with strict rate limiting)
 app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
   try {
-    console.log(`🔧 Manual reminder trigger requested`);
+    logger.info(`🔧 Manual reminder trigger requested`);
     const result = await triggerReminderJobManually();
 
     const response: ApiResponse = {
@@ -224,7 +246,7 @@ app.use(errorHandler);
 // Initialize database indexes and start server
 async function startServer() {
   try {
-    console.log('🚀 Starting Sphyra Wellness Lab Server...\n');
+    logger.info('🚀 Starting Sphyra Wellness Lab Server...\n');
 
     // Initialize database indexes
     await initializeIndexes();
@@ -234,24 +256,24 @@ async function startServer() {
 
     // Start Express server
     app.listen(PORT, () => {
-      console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('✅ Sphyra Wellness Lab Server is running!');
-      console.log(`📍 Server URL: http://localhost:${PORT}`);
-      console.log(`🏥 Health check: http://localhost:${PORT}/health`);
-      console.log(`📧 Reminders API: http://localhost:${PORT}/api/reminders`);
-      console.log(`📅 Appointments API: http://localhost:${PORT}/api/appointments`);
-      console.log(`⚙️  Settings API: http://localhost:${PORT}/api/settings`);
-      console.log(`🌐 Public Booking API: http://localhost:${PORT}/api/public`);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      logger.info('✅ Sphyra Wellness Lab Server is running!');
+      logger.info(`📍 Server URL: http://localhost:${PORT}`);
+      logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
+      logger.info(`📧 Reminders API: http://localhost:${PORT}/api/reminders`);
+      logger.info(`📅 Appointments API: http://localhost:${PORT}/api/appointments`);
+      logger.info(`⚙️  Settings API: http://localhost:${PORT}/api/settings`);
+      logger.info(`🌐 Public Booking API: http://localhost:${PORT}/api/public`);
+      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
-      console.log('📝 Configuration:');
-      console.log(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`   - Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-      console.log(`   - SendGrid configured: ${process.env.SENDGRID_API_KEY ? '✅ Yes' : '❌ No'}`);
-      console.log(`   - Reminder time: ${process.env.REMINDER_SEND_HOUR || '10'}:${String(process.env.REMINDER_SEND_MINUTE || '0').padStart(2, '0')}\n`);
+      logger.info('📝 Configuration:');
+      logger.info(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
+      logger.info(`   - Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+      logger.info(`   - SendGrid configured: ${process.env.SENDGRID_API_KEY ? '✅ Yes' : '❌ No'}`);
+      logger.info(`   - Reminder time: ${process.env.REMINDER_SEND_HOUR || '10'}:${String(process.env.REMINDER_SEND_MINUTE || '0').padStart(2, '0')}\n`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
@@ -261,11 +283,11 @@ startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('👋 SIGTERM received, shutting down gracefully...');
+  logger.info('👋 SIGTERM received, shutting down gracefully...');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  console.log('\n👋 SIGINT received, shutting down gracefully...');
+  logger.info('\n👋 SIGINT received, shutting down gracefully...');
   process.exit(0);
 });
