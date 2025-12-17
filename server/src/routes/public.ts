@@ -1,10 +1,48 @@
 import express from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 import db from '../config/database.js';
 import reminderService from '../services/reminderService.js';
+import logger from '../utils/logger.js';
+import { attachCsrfToken, generateCsrfToken } from '../middleware/csrf.js';
 import type { ApiResponse, Service, Staff, Appointment, Customer } from '../types/index.js';
 
 const router = express.Router();
+
+// Apply CSRF token generation to all public routes
+// Frontend should read X-CSRF-Token header and include it in POST requests
+router.use(attachCsrfToken);
+
+/**
+ * GET /api/public/csrf-token
+ * Get a CSRF token for secure form submissions
+ * The token is also available in the X-CSRF-Token response header
+ */
+router.get('/csrf-token', (req, res) => {
+  const token = generateCsrfToken();
+  const response: ApiResponse = {
+    success: true,
+    data: { csrfToken: token }
+  };
+  res.json(response);
+});
+
+// Validation schemas
+const availableSlotsQuerySchema = z.object({
+  serviceId: z.string().uuid('Invalid service ID format'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (expected YYYY-MM-DD)')
+});
+
+const bookingBodySchema = z.object({
+  serviceId: z.string().uuid('Invalid service ID format'),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (expected YYYY-MM-DD)'),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Invalid time format (expected HH:MM)'),
+  firstName: z.string().min(1, 'First name is required').max(100),
+  lastName: z.string().min(1, 'Last name is required').max(100),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().regex(/^[+\d\s()-]+$/, 'Invalid phone format').min(5).max(20),
+  notes: z.string().max(1000).optional()
+});
 
 /**
  * GET /api/public/services
@@ -44,7 +82,7 @@ router.get('/services', async (req, res) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error('Error fetching services:', error);
+    logger.error('Error fetching services:', error);
     const response: ApiResponse = {
       success: false,
       error: error.message || 'Failed to fetch services'
@@ -100,15 +138,18 @@ function addMinutesToTime(time: string, minutes: number): string {
  */
 router.get('/available-slots', async (req, res) => {
   try {
-    const { serviceId, date } = req.query;
+    // Validate input with Zod to prevent NoSQL injection
+    const validationResult = availableSlotsQuerySchema.safeParse(req.query);
 
-    if (!serviceId || !date) {
+    if (!validationResult.success) {
       const response: ApiResponse = {
         success: false,
-        error: 'serviceId and date are required'
+        error: validationResult.error.errors[0].message
       };
       return res.status(400).json(response);
     }
+
+    const { serviceId, date } = validationResult.data;
 
     // Fetch the service to get duration
     const serviceDoc = await db.services.get(serviceId as string);
@@ -194,7 +235,7 @@ router.get('/available-slots', async (req, res) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error('Error fetching available slots:', error);
+    logger.error('Error fetching available slots:', error);
     const response: ApiResponse = {
       success: false,
       error: error.message || 'Failed to fetch available slots'
@@ -210,6 +251,17 @@ router.get('/available-slots', async (req, res) => {
  */
 router.post('/bookings', async (req, res) => {
   try {
+    // Validate input with Zod to prevent NoSQL injection
+    const validationResult = bookingBodySchema.safeParse(req.body);
+
+    if (!validationResult.success) {
+      const response: ApiResponse = {
+        success: false,
+        error: validationResult.error.errors[0].message
+      };
+      return res.status(400).json(response);
+    }
+
     const {
       serviceId,
       date,
@@ -219,26 +271,7 @@ router.post('/bookings', async (req, res) => {
       email,
       phone,
       notes
-    } = req.body;
-
-    // Validation
-    if (!serviceId || !date || !startTime || !firstName || !lastName || !email || !phone) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'Missing required fields'
-      };
-      return res.status(400).json(response);
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'Invalid email format'
-      };
-      return res.status(400).json(response);
-    }
+    } = validationResult.data;
 
     // Fetch the service
     const serviceDoc = await db.services.get(serviceId);
@@ -321,7 +354,7 @@ router.post('/bookings', async (req, res) => {
         } as any;
       }
     } catch (error) {
-      console.log('No existing customer found');
+      logger.debug('No existing customer found');
     }
 
     // Create new customer if doesn't exist
@@ -388,7 +421,7 @@ router.post('/bookings', async (req, res) => {
     try {
       await reminderService.sendReminderForAppointment(appointmentId);
     } catch (emailError) {
-      console.error('Failed to send confirmation email:', emailError);
+      logger.error('Failed to send confirmation email:', emailError);
       // Don't fail the booking if email fails
     }
 
@@ -403,7 +436,7 @@ router.post('/bookings', async (req, res) => {
 
     res.json(response);
   } catch (error: any) {
-    console.error('Error creating booking:', error);
+    logger.error('Error creating booking:', error);
     const response: ApiResponse = {
       success: false,
       error: error.message || 'Failed to create booking'
