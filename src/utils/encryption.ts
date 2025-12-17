@@ -56,25 +56,55 @@ function getDeviceSalt(): Uint8Array {
 }
 
 /**
- * Get device-specific master key
- * This key is derived from device characteristics and user context
+ * Get cryptographically secure master key
+ * Generates a random key on first use and persists it in localStorage
+ *
+ * Security improvements:
+ * - Uses crypto.getRandomValues() for cryptographically secure random generation
+ * - 32 bytes (256 bits) of entropy
+ * - Persistent across sessions
+ * - No predictable device fingerprinting
+ *
+ * Note: If the key is lost (e.g., localStorage cleared), previously encrypted
+ * data cannot be recovered. This is by design for security.
  */
-function getMasterPassword(): string {
-  // Use a combination of:
-  // - User agent (device/browser identifier)
-  // - Screen resolution (device characteristic)
-  // - Timezone (user context)
+function getMasterKey(): string {
+  const MASTER_KEY_STORAGE = 'sphyra_master_encryption_key';
+
+  // Try to retrieve existing key
+  let key = localStorage.getItem(MASTER_KEY_STORAGE);
+
+  if (!key) {
+    logger.log('Generating new master encryption key...');
+
+    // Generate cryptographically secure random key (32 bytes = 256 bits)
+    const randomBytes = crypto.getRandomValues(new Uint8Array(32));
+    key = btoa(String.fromCharCode(...randomBytes));
+
+    // Persist the key
+    localStorage.setItem(MASTER_KEY_STORAGE, key);
+    logger.log('Master encryption key generated and stored');
+  }
+
+  return key;
+}
+
+/**
+ * DEPRECATED: Old insecure master password function
+ * Kept for backward compatibility during migration only
+ * This used predictable device characteristics and is vulnerable to brute force
+ */
+function getLegacyMasterPassword(): string {
   const deviceId = [
     navigator.userAgent,
     `${screen.width}x${screen.height}`,
     Intl.DateTimeFormat().resolvedOptions().timeZone,
   ].join('|');
-
   return deviceId;
 }
 
 /**
- * Encrypt sensitive data
+ * Encrypt sensitive data using cryptographically secure master key
  */
 export async function encrypt(plaintext: string): Promise<string | null> {
   try {
@@ -86,10 +116,10 @@ export async function encrypt(plaintext: string): Promise<string | null> {
     const encoder = new TextEncoder();
     const data = encoder.encode(plaintext);
 
-    // Get device salt and derive key
+    // Get device salt and derive key using secure master key
     const salt = getDeviceSalt();
-    const masterPassword = getMasterPassword();
-    const key = await deriveKey(masterPassword, salt);
+    const masterKey = getMasterKey();  // Now using cryptographically secure key
+    const key = await deriveKey(masterKey, salt);
 
     // Generate random IV
     const iv = window.crypto.getRandomValues(new Uint8Array(IV_LENGTH));
@@ -115,7 +145,8 @@ export async function encrypt(plaintext: string): Promise<string | null> {
 }
 
 /**
- * Decrypt sensitive data
+ * Decrypt sensitive data with automatic migration from legacy keys
+ * Tries new secure key first, falls back to legacy key if needed
  */
 export async function decrypt(ciphertext: string): Promise<string | null> {
   try {
@@ -131,21 +162,52 @@ export async function decrypt(ciphertext: string): Promise<string | null> {
     const iv = combined.slice(0, IV_LENGTH);
     const encrypted = combined.slice(IV_LENGTH);
 
-    // Get device salt and derive key
+    // Get device salt
     const salt = getDeviceSalt();
-    const masterPassword = getMasterPassword();
-    const key = await deriveKey(masterPassword, salt);
 
-    // Decrypt
-    const decrypted = await window.crypto.subtle.decrypt(
-      { name: ALGORITHM, iv },
-      key,
-      encrypted
-    );
+    // Try with new secure master key first
+    try {
+      const masterKey = getMasterKey();
+      const key = await deriveKey(masterKey, salt);
 
-    // Convert to string
-    const decoder = new TextDecoder();
-    return decoder.decode(decrypted);
+      const decrypted = await window.crypto.subtle.decrypt(
+        { name: ALGORITHM, iv },
+        key,
+        encrypted
+      );
+
+      const decoder = new TextDecoder();
+      return decoder.decode(decrypted);
+    } catch (newKeyError) {
+      // Decryption with new key failed, try legacy key for backward compatibility
+      logger.warn('Decryption with new key failed, attempting legacy key migration...');
+
+      try {
+        const legacyPassword = getLegacyMasterPassword();
+        const legacyKey = await deriveKey(legacyPassword, salt);
+
+        const decrypted = await window.crypto.subtle.decrypt(
+          { name: ALGORITHM, iv },
+          legacyKey,
+          encrypted
+        );
+
+        const decoder = new TextDecoder();
+        const plaintext = decoder.decode(decrypted);
+
+        // Successfully decrypted with legacy key
+        logger.warn(
+          '⚠️ Data was encrypted with insecure legacy key. ' +
+          'It will be automatically re-encrypted with secure key on next save.'
+        );
+
+        return plaintext;
+      } catch (legacyKeyError) {
+        // Both keys failed
+        logger.error('Decryption failed with both new and legacy keys');
+        throw newKeyError;  // Throw original error
+      }
+    }
   } catch (error) {
     logger.error('Decryption failed:', error);
     return null;
