@@ -9,6 +9,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import remindersRouter from './routes/reminders.js';
 import appointmentsRouter from './routes/appointments.js';
 import settingsRouter from './routes/settings.js';
+import publicRouter from './routes/public.js';
 import type { ApiResponse } from './types/index.js';
 
 // Load environment variables
@@ -172,6 +173,7 @@ app.get('/health', (req, res) => {
 app.use('/api/reminders', remindersRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/public', publicRouter);
 
 // Manual trigger for testing (now with strict rate limiting)
 app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
@@ -206,7 +208,8 @@ app.get('/', (req, res) => {
         health: '/health',
         reminders: '/api/reminders',
         appointments: '/api/appointments',
-        settings: '/api/settings'
+        settings: '/api/settings',
+        public: '/api/public'
       }
     },
     message: 'Welcome to Sphyra Wellness Lab API'
@@ -238,6 +241,7 @@ async function startServer() {
       console.log(`📧 Reminders API: http://localhost:${PORT}/api/reminders`);
       console.log(`📅 Appointments API: http://localhost:${PORT}/api/appointments`);
       console.log(`⚙️  Settings API: http://localhost:${PORT}/api/settings`);
+      console.log(`🌐 Public Booking API: http://localhost:${PORT}/api/public`);
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
       console.log('📝 Configuration:');
