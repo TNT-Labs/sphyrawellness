@@ -28,6 +28,7 @@ const DATABASES = [
   'sphyra-reminders',
   'sphyra-staff-roles',
   'sphyra-service-categories',
+  'sphyra-users',
 ];
 
 // Colori per output console

@@ -18,6 +18,10 @@ const DB_NAMES = {
   SERVICES: 'sphyra-services',
   STAFF: 'sphyra-staff',
   REMINDERS: 'sphyra-reminders',
+  PAYMENTS: 'sphyra-payments',
+  STAFF_ROLES: 'sphyra-staff-roles',
+  SERVICE_CATEGORIES: 'sphyra-service-categories',
+  USERS: 'sphyra-users',
   SETTINGS: 'sphyra-settings'
 };
 
@@ -39,6 +43,10 @@ export const db = {
   services: createDB(DB_NAMES.SERVICES),
   staff: createDB(DB_NAMES.STAFF),
   reminders: createDB(DB_NAMES.REMINDERS),
+  payments: createDB(DB_NAMES.PAYMENTS),
+  staffRoles: createDB(DB_NAMES.STAFF_ROLES),
+  serviceCategories: createDB(DB_NAMES.SERVICE_CATEGORIES),
+  users: createDB(DB_NAMES.USERS),
   settings: createDB(DB_NAMES.SETTINGS)
 };
 
