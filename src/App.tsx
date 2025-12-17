@@ -25,6 +25,7 @@ import Statistics from './pages/Statistics';
 import UserManual from './pages/UserManual';
 import Settings from './pages/Settings';
 import ConfirmAppointment from './pages/ConfirmAppointment';
+import PublicBooking from './pages/PublicBooking';
 
 // Global loading screen
 const GlobalLoader: React.FC = () => (
@@ -80,8 +81,10 @@ const AppContent: React.FC = () => {
           ) : (
             <Router basename={import.meta.env.BASE_URL}>
               <Routes>
-                {/* Public route for login */}
+                {/* Public routes */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/prenota" element={<PublicBooking />} />
+                <Route path="/booking" element={<PublicBooking />} />
 
                 {/* Protected routes */}
                 <Route
