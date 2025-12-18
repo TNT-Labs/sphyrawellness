@@ -56,6 +56,8 @@ export interface Staff {
   phone: string;
   role: string;
   specializations?: string[];
+  color: string; // Identifier color for calendar
+  isActive: boolean; // Active/inactive status
   profileImageUrl?: string; // URL or path to profile image
   createdAt: string;
   updatedAt?: string;

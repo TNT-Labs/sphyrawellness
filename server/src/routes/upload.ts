@@ -146,6 +146,8 @@ router.post('/staff/:staffId', (req, res) => {
         phone: staffDoc.phone,
         role: staffDoc.role,
         specializations: staffDoc.specializations,
+        color: staffDoc.color,
+        isActive: staffDoc.isActive,
         profileImageUrl: staffDoc.profileImageUrl,
         createdAt: staffDoc.createdAt,
         updatedAt: staffDoc.updatedAt
@@ -188,6 +190,8 @@ router.delete('/staff/:staffId', async (req, res) => {
       phone: staffDoc.phone,
       role: staffDoc.role,
       specializations: staffDoc.specializations,
+      color: staffDoc.color,
+      isActive: staffDoc.isActive,
       profileImageUrl: staffDoc.profileImageUrl,
       createdAt: staffDoc.createdAt,
       updatedAt: staffDoc.updatedAt
