@@ -55,15 +55,47 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
           if (user && user.isActive) {
             setCurrentUser(user);
             logger.info('Session restored for user:', session.username);
+
+            // Check if we have a backend JWT token, if not, fetch one
+            const existingToken = localStorage.getItem('authToken');
+            if (!existingToken) {
+              logger.info('No backend token found, fetching new one...');
+              try {
+                const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+                const response = await fetch(`${API_BASE_URL}/auth/token`, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    userId: user.id,
+                    username: user.username,
+                    role: user.role
+                  }),
+                });
+
+                if (response.ok) {
+                  const result = await response.json();
+                  if (result.success && result.data?.token) {
+                    localStorage.setItem('authToken', result.data.token);
+                    logger.info('Backend JWT token obtained on session restore');
+                  }
+                }
+              } catch (tokenError) {
+                logger.warn('Failed to fetch backend token on restore:', tokenError);
+              }
+            }
           } else {
             // User doesn't exist or is inactive, clear session
             clearSession();
+            localStorage.removeItem('authToken');
             logger.warn('Session invalid, user not found or inactive');
           }
         }
       } catch (error) {
         logger.error('Failed to restore session:', error);
         clearSession();
+        localStorage.removeItem('authToken');
       } finally {
         setIsLoading(false);
       }
@@ -96,6 +128,39 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       setCurrentUser(user);
       storeSession(user.id, user.username, user.role);
 
+      // Get JWT token from backend for API operations
+      try {
+        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${API_BASE_URL}/auth/token`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            username: user.username,
+            role: user.role
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data?.token) {
+            // Store JWT token for backend API calls
+            localStorage.setItem('authToken', result.data.token);
+            logger.info('Backend JWT token obtained successfully');
+          } else {
+            logger.warn('Failed to get JWT token from backend:', result.error);
+          }
+        } else {
+          logger.warn('Backend auth endpoint returned error:', response.status);
+        }
+      } catch (tokenError) {
+        // Don't fail login if backend token fetch fails
+        // User can still use the app with local data
+        logger.warn('Failed to fetch backend token, continuing with local-only mode:', tokenError);
+      }
+
       logger.info('User logged in successfully:', user.username);
       return { success: true };
     } catch (error) {
@@ -107,6 +172,8 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const logout = () => {
     setCurrentUser(null);
     clearSession();
+    // Clear backend JWT token
+    localStorage.removeItem('authToken');
     logger.info('User logged out');
   };
 

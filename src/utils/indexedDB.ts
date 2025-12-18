@@ -69,6 +69,24 @@ export async function initIndexedDB(): Promise<void> {
 
     request.onsuccess = () => {
       db = request.result;
+
+      // Handle database connection close events
+      db.onclose = () => {
+        logger.warn('IndexedDB connection closed unexpectedly');
+        db = null;
+      };
+
+      // Handle version change from another tab
+      db.onversionchange = () => {
+        logger.warn('IndexedDB version change detected, closing connection');
+        if (db) {
+          db.close();
+          db = null;
+        }
+        // Notify user or reload if needed
+        logger.info('Database schema is being upgraded by another tab');
+      };
+
       logger.info('IndexedDB initialized successfully');
       resolve();
     };
@@ -142,17 +160,38 @@ function getDB(): IDBDatabase {
 }
 
 /**
+ * Create a transaction with error handling for closing connections
+ */
+function createTransaction(storeName: string | string[], mode: IDBTransactionMode): IDBTransaction {
+  const database = getDB();
+  try {
+    return database.transaction(storeName, mode);
+  } catch (error: any) {
+    // If connection is closing, clear the db reference and throw a clearer error
+    if (error.name === 'InvalidStateError' && error.message.includes('closing')) {
+      logger.error('Database connection is closing, cannot create transaction');
+      db = null;
+      throw new Error('Database connection is closing. Please refresh the page.');
+    }
+    throw error;
+  }
+}
+
+/**
  * Generic get operation
  */
 async function get<T>(storeName: string, id: string): Promise<T | undefined> {
-  const database = getDB();
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const request = store.get(id);
+    try {
+      const transaction = createTransaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.get(id);
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -160,14 +199,17 @@ async function get<T>(storeName: string, id: string): Promise<T | undefined> {
  * Generic getAll operation
  */
 async function getAll<T>(storeName: string): Promise<T[]> {
-  const database = getDB();
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const request = store.getAll();
+    try {
+      const transaction = createTransaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.getAll();
 
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -176,8 +218,6 @@ async function getAll<T>(storeName: string): Promise<T[]> {
  * Automatically adds createdAt and updatedAt timestamps if not present
  */
 async function add<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
-  const database = getDB();
-
   // Add timestamps if not present
   const now = new Date().toISOString();
   const itemWithTimestamps = {
@@ -187,12 +227,16 @@ async function add<T extends Record<string, any>>(storeName: string, item: T): P
   };
 
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.add(itemWithTimestamps);
+    try {
+      const transaction = createTransaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.add(itemWithTimestamps);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -201,8 +245,6 @@ async function add<T extends Record<string, any>>(storeName: string, item: T): P
  * Automatically adds updatedAt timestamp
  */
 async function update<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
-  const database = getDB();
-
   // Add updatedAt timestamp
   const itemWithTimestamp = {
     ...item,
@@ -210,12 +252,16 @@ async function update<T extends Record<string, any>>(storeName: string, item: T)
   };
 
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.put(itemWithTimestamp);
+    try {
+      const transaction = createTransaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put(itemWithTimestamp);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -223,14 +269,17 @@ async function update<T extends Record<string, any>>(storeName: string, item: T)
  * Generic delete operation
  */
 async function remove(storeName: string, id: string): Promise<void> {
-  const database = getDB();
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readwrite');
-    const store = transaction.objectStore(storeName);
-    const request = store.delete(id);
+    try {
+      const transaction = createTransaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.delete(id);
 
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
@@ -242,15 +291,18 @@ async function getByIndex<T>(
   indexName: string,
   value: string
 ): Promise<T[]> {
-  const database = getDB();
   return new Promise((resolve, reject) => {
-    const transaction = database.transaction(storeName, 'readonly');
-    const store = transaction.objectStore(storeName);
-    const index = store.index(indexName);
-    const request = index.getAll(value);
+    try {
+      const transaction = createTransaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const index = store.index(indexName);
+      const request = index.getAll(value);
 
-    request.onsuccess = () => resolve(request.result || []);
-    request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
   });
 }
 
