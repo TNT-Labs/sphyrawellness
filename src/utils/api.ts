@@ -165,11 +165,27 @@ export const remindersApi = {
 };
 
 /**
+ * Get authentication token from localStorage
+ */
+function getAuthToken(): string | null {
+  return localStorage.getItem('authToken');
+}
+
+/**
  * Appointments API
  */
 export const appointmentsApi = {
   async getAll(): Promise<Appointment[]> {
-    const response = await fetch(`${API_BASE_URL}/appointments`);
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/appointments`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
     const result: ApiResponse<Appointment[]> = await response.json();
 
     if (!result.success || !result.data) {
