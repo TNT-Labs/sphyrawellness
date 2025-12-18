@@ -134,7 +134,7 @@ export type UserRole = 'RESPONSABILE' | 'UTENTE';
 export interface User {
   id: string;
   username: string;
-  passwordHash: string; // SHA-256 hash
+  passwordHash: string; // bcrypt hash (SALT_ROUNDS: 12)
   role: UserRole;
   firstName: string;
   lastName: string;
