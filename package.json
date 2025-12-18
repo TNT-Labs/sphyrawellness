@@ -15,7 +15,7 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "setup-couchdb": "node scripts/setup-couchdb.js"
+    "setup-couchdb": "node scripts/setup-couchdb.cjs"
   },
   "dependencies": {
     "date-fns": "^3.6.0",

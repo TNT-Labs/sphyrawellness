@@ -117,7 +117,7 @@ function testFileExistence() {
     { path: 'src/utils/indexedDB.ts', desc: 'IndexedDB' },
     { path: 'src/types/index.ts', desc: 'Type Definitions' },
     { path: 'server/src/config/database.ts', desc: 'Server Database Config' },
-    { path: 'scripts/setup-couchdb.js', desc: 'Setup Script' },
+    { path: 'scripts/setup-couchdb.cjs', desc: 'Setup Script' },
     { path: 'scripts/verify-db-sync.cjs', desc: 'Verifica Sync Script' },
   ];
 
@@ -210,11 +210,11 @@ function testBackendDatabaseNames() {
 function testScriptDatabaseNames() {
   log('\n=== Test 4: Database Names Script Setup ===', 'cyan');
 
-  const setupScriptContent = readAndAnalyze('scripts/setup-couchdb.js');
+  const setupScriptContent = readAndAnalyze('scripts/setup-couchdb.cjs');
   const verifyScriptContent = readAndAnalyze('scripts/verify-db-sync.cjs');
 
   if (!setupScriptContent) {
-    logTest('Lettura setup-couchdb.js', 'FAIL', 'File non trovato');
+    logTest('Lettura setup-couchdb.cjs', 'FAIL', 'File non trovato');
     return new Set();
   }
 
@@ -223,7 +223,7 @@ function testScriptDatabaseNames() {
     /['"]sphyra-([a-z-]+)['"]/g
   );
 
-  logTest('Database names in setup-couchdb.js', 'PASS',
+  logTest('Database names in setup-couchdb.cjs', 'PASS',
     `Trovati ${setupDbNames.length} database`);
 
   if (verifyScriptContent) {

@@ -7,12 +7,12 @@
  * l'applicazione Sphyra Wellness Lab su un server CouchDB.
  *
  * Utilizzo:
- *   node scripts/setup-couchdb.js <couchdb-url> [username] [password]
+ *   node scripts/setup-couchdb.cjs <couchdb-url> [username] [password]
  *
  * Esempi:
- *   node scripts/setup-couchdb.js http://localhost:5984
- *   node scripts/setup-couchdb.js http://localhost:5984 admin password
- *   node scripts/setup-couchdb.js https://user.cloudant.com admin password
+ *   node scripts/setup-couchdb.cjs http://localhost:5984
+ *   node scripts/setup-couchdb.cjs http://localhost:5984 admin password
+ *   node scripts/setup-couchdb.cjs https://user.cloudant.com admin password
  */
 
 const http = require('http');
@@ -227,11 +227,11 @@ async function main() {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     log('\n🗄️  CouchDB Setup Script - Sphyra Wellness Lab', 'cyan');
     log('\nUtilizzo:', 'blue');
-    log('  node scripts/setup-couchdb.js <couchdb-url> [username] [password]');
+    log('  node scripts/setup-couchdb.cjs <couchdb-url> [username] [password]');
     log('\nEsempi:', 'blue');
-    log('  node scripts/setup-couchdb.js http://localhost:5984');
-    log('  node scripts/setup-couchdb.js http://localhost:5984 admin password');
-    log('  node scripts/setup-couchdb.js https://user.cloudant.com admin password');
+    log('  node scripts/setup-couchdb.cjs http://localhost:5984');
+    log('  node scripts/setup-couchdb.cjs http://localhost:5984 admin password');
+    log('  node scripts/setup-couchdb.cjs https://user.cloudant.com admin password');
     log('\nDatabase che verranno creati:', 'blue');
     DATABASES.forEach(db => log(`  - ${db}`, 'cyan'));
     process.exit(0);
