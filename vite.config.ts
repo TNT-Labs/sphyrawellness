@@ -62,7 +62,10 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            'pouchdb': ['pouchdb-browser', 'pouchdb-find']
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            'pouchdb': ['pouchdb-browser', 'pouchdb-find'],
+            'ui-vendor': ['lucide-react'],
+            'utils': ['date-fns', 'zod', 'idb']
           }
         }
       }
