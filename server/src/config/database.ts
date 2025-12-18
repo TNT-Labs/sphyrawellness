@@ -53,6 +53,8 @@ export const db = {
 // Create indexes for efficient queries
 export async function initializeIndexes() {
   try {
+    // === EXISTING INDEXES ===
+
     // Index for appointments by date and status
     await db.appointments.createIndex({
       index: {
@@ -67,9 +69,54 @@ export async function initializeIndexes() {
       }
     });
 
-    console.log('✅ Database indexes created successfully');
+    // === NEW OPTIMIZED INDEXES ===
+
+    // Customer search optimization - email lookup
+    await db.customers.createIndex({
+      index: {
+        fields: ['email']
+      }
+    });
+
+    // Customer search optimization - phone lookup
+    await db.customers.createIndex({
+      index: {
+        fields: ['phone']
+      }
+    });
+
+    // Appointment queries optimization - by customer and date
+    await db.appointments.createIndex({
+      index: {
+        fields: ['customerId', 'date']
+      }
+    });
+
+    // Appointment queries optimization - by staff and date
+    await db.appointments.createIndex({
+      index: {
+        fields: ['staffId', 'date']
+      }
+    });
+
+    // Appointment queries optimization - by service and status
+    await db.appointments.createIndex({
+      index: {
+        fields: ['serviceId', 'status']
+      }
+    });
+
+    // Payment queries optimization - by date for revenue reports
+    await db.payments.createIndex({
+      index: {
+        fields: ['date']
+      }
+    });
+
+    console.log('✅ Database indexes created successfully (8 indexes total)');
   } catch (error) {
     console.error('❌ Error creating database indexes:', error);
+    // Don't throw - indexes might already exist
   }
 }
 

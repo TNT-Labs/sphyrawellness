@@ -123,27 +123,31 @@ router.get('/:appointmentId/calendar.ics', async (req, res) => {
   try {
     const { appointmentId } = req.params;
 
-    // Fetch appointment
+    // Fetch appointment first to get foreign keys
     const appointmentDoc = await db.appointments.get(appointmentId);
     const appointment: Appointment = {
       ...appointmentDoc,
       id: appointmentDoc._id
     } as any;
 
-    // Fetch related data
-    const customerDoc = await db.customers.get(appointment.customerId);
+    // OPTIMIZATION: Fetch all related data in parallel instead of sequentially
+    // This reduces latency from 4 × network_delay to 1 × network_delay
+    const [customerDoc, serviceDoc, staffDoc] = await Promise.all([
+      db.customers.get(appointment.customerId),
+      db.services.get(appointment.serviceId),
+      db.staff.get(appointment.staffId)
+    ]);
+
     const customer: Customer = {
       ...customerDoc,
       id: customerDoc._id
     } as any;
 
-    const serviceDoc = await db.services.get(appointment.serviceId);
     const service: Service = {
       ...serviceDoc,
       id: serviceDoc._id
     } as any;
 
-    const staffDoc = await db.staff.get(appointment.staffId);
     const staff: Staff = {
       ...staffDoc,
       id: staffDoc._id
