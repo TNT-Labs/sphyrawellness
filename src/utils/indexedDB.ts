@@ -266,6 +266,26 @@ async function update<T extends Record<string, any>>(storeName: string, item: T)
 }
 
 /**
+ * Update operation from sync - does NOT trigger sync back to PouchDB
+ * and preserves original timestamps
+ */
+async function updateFromSync<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
+  // Use item as-is, preserving all timestamps from sync
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put(item);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * Generic delete operation
  */
 async function remove(storeName: string, id: string): Promise<void> {
@@ -442,6 +462,14 @@ export async function updateAppointment(appointment: Appointment): Promise<void>
   );
 }
 
+/**
+ * Update appointment from sync - does NOT trigger sync loop
+ * Used when receiving data from PouchDB sync to prevent infinite loops
+ */
+export async function updateAppointmentFromSync(appointment: Appointment): Promise<void> {
+  await updateFromSync(STORES.APPOINTMENTS, appointment);
+}
+
 export async function deleteAppointment(id: string): Promise<void> {
   await remove(STORES.APPOINTMENTS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -512,6 +540,14 @@ export async function updateReminder(reminder: Reminder): Promise<void> {
   syncUpdate('reminders', reminder).catch(err =>
     logger.error('Background sync failed for reminder update:', err)
   );
+}
+
+/**
+ * Update reminder from sync - does NOT trigger sync loop
+ * Used when receiving data from PouchDB sync to prevent infinite loops
+ */
+export async function updateReminderFromSync(reminder: Reminder): Promise<void> {
+  await updateFromSync(STORES.REMINDERS, reminder);
 }
 
 export async function deleteReminder(id: string): Promise<void> {

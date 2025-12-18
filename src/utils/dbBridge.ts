@@ -212,12 +212,12 @@ export async function syncUpdate<T extends { id: string }>(
         // Recupera il documento esistente per ottenere il _rev
         const existingDoc = await pouchDB.get(item.id);
 
-        // Merge intelligente: confronta timestamp se disponibili
+        // NO merge - local data is source of truth when user makes changes
+        // Just get _rev to update the document
         const { id, ...itemWithoutId } = item;
-        const mergedData = smartMerge(itemWithoutId, existingDoc);
 
         const pouchDoc = {
-          ...mergedData,
+          ...itemWithoutId,
           _id: id,
           _rev: existingDoc._rev,
         };

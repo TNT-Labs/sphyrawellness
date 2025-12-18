@@ -79,11 +79,12 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
       };
 
       // Update IndexedDB based on database name
+      // Use *FromSync functions to prevent triggering sync loops
       if (dbName === 'sphyra-appointments') {
-        await IndexedDB.updateAppointment(appDoc as Appointment);
+        await IndexedDB.updateAppointmentFromSync(appDoc as Appointment);
         logger.debug(`Updated appointment ${doc._id} in IndexedDB from sync`);
       } else if (dbName === 'sphyra-reminders') {
-        await IndexedDB.updateReminder(appDoc as Reminder);
+        await IndexedDB.updateReminderFromSync(appDoc as Reminder);
         logger.debug(`Updated reminder ${doc._id} in IndexedDB from sync`);
       }
       // Add other collections as needed
