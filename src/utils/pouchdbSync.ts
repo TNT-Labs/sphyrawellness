@@ -10,6 +10,7 @@ import PouchDBFind from 'pouchdb-find';
 import { logger } from './logger';
 import { loadSettingsWithPassword } from './storage';
 import * as IndexedDB from './indexedDB';
+import { pauseQueueProcessing, resumeQueueProcessing, waitForPendingOperations } from './dbBridge';
 import type { SyncStatus, Appointment, Reminder } from '../types';
 
 // Enable PouchDB Find plugin for queries
@@ -644,6 +645,12 @@ export async function stopSync(): Promise<void> {
     await Promise.all(cancelPromises);
     syncHandlers = {};
 
+    // Pause dbBridge queue processing before closing databases
+    pauseQueueProcessing();
+
+    // Wait for any pending dbBridge operations to complete
+    await waitForPendingOperations();
+
     // Close all remote database connections
     const closePromises = Object.entries(remoteDatabases).map(async ([key, remoteDB]) => {
       try {
@@ -657,6 +664,9 @@ export async function stopSync(): Promise<void> {
     await Promise.all(closePromises);
     remoteDatabases = {};
 
+    // Resume queue processing after cleanup
+    resumeQueueProcessing();
+
     notifySyncStatusChange({
       status: 'idle',
       isActive: false,
@@ -666,6 +676,8 @@ export async function stopSync(): Promise<void> {
     logger.log('Synchronization stopped');
   } catch (error) {
     logger.error('Error stopping sync:', error);
+    // Make sure to resume even if there's an error
+    resumeQueueProcessing();
   }
 }
 
@@ -1116,28 +1128,50 @@ export async function performOneTimeSync(): Promise<boolean> {
       isActive: true,
     }, true); // Force notification
 
-    // Perform one-time sync for each database
-    const syncPromises = Object.entries(localDatabases).map(async ([key, localDB]) => {
-      const remoteName = DB_NAMES[key as keyof typeof DB_NAMES];
-      const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${remoteName}`);
+    // Track remote databases for cleanup
+    const remoteDatabases: PouchDB.Database[] = [];
 
-      try {
+    try {
+      // Perform one-time sync for each database
+      const syncPromises = Object.entries(localDatabases).map(async ([key, localDB]) => {
+        const remoteName = DB_NAMES[key as keyof typeof DB_NAMES];
+        const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${remoteName}`);
+        remoteDatabases.push(remoteDB);
+
         // Perform bidirectional replication
         await PouchDB.sync(localDB, remoteDB);
         logger.log(`One-time sync completed for ${remoteName}`);
-      } finally {
-        // IMPORTANT: Always close the remote database connection to prevent
-        // "database connection is closing" errors and resource leaks
-        try {
-          await remoteDB.close();
-          logger.debug(`Closed remote database connection for ${remoteName}`);
-        } catch (closeError) {
-          logger.warn(`Error closing remote database ${remoteName}:`, closeError);
-        }
-      }
-    });
+      });
 
-    await Promise.all(syncPromises);
+      await Promise.all(syncPromises);
+    } finally {
+      // IMPORTANT: Close all remote database connections to prevent
+      // "database connection is closing" errors and resource leaks
+      try {
+        // Pause dbBridge queue processing before closing databases
+        pauseQueueProcessing();
+
+        // Wait for any pending operations
+        await waitForPendingOperations();
+
+        // Close all remote databases
+        await Promise.all(remoteDatabases.map(async (remoteDB) => {
+          try {
+            await remoteDB.close();
+            logger.debug(`Closed remote database connection`);
+          } catch (closeError) {
+            logger.warn(`Error closing remote database:`, closeError);
+          }
+        }));
+
+        // Resume queue processing
+        resumeQueueProcessing();
+      } catch (closeError) {
+        logger.error(`Error during cleanup after one-time sync:`, closeError);
+        // Make sure to resume even if there's an error
+        resumeQueueProcessing();
+      }
+    }
 
     notifySyncStatusChange({
       status: 'idle',
@@ -1163,17 +1197,29 @@ export async function performOneTimeSync(): Promise<boolean> {
  */
 export async function closeDatabases(): Promise<void> {
   try {
-    // Stop sync first (this will also close remote databases)
+    // Stop sync first (this will also close remote databases and coordinate with dbBridge)
     await stopSync();
+
+    // Pause dbBridge queue processing before closing local databases
+    pauseQueueProcessing();
+
+    // Wait for any pending dbBridge operations to complete
+    await waitForPendingOperations();
 
     // Close all local databases
     const closePromises = Object.values(localDatabases).map(db => db.close());
     await Promise.all(closePromises);
 
     localDatabases = {};
+
+    // Resume queue processing after cleanup
+    resumeQueueProcessing();
+
     logger.log('All databases closed');
   } catch (error) {
     logger.error('Error closing databases:', error);
+    // Make sure to resume even if there's an error
+    resumeQueueProcessing();
   }
 }
 
@@ -1183,6 +1229,10 @@ export async function closeDatabases(): Promise<void> {
 function cleanupOnUnload(): void {
   try {
     logger.log('Page unload detected, cleaning up sync...');
+
+    // Pause dbBridge queue processing immediately (synchronous)
+    pauseQueueProcessing();
+
     // Synchronously close databases (we can't use async here)
     Object.values(syncHandlers).forEach(sync => {
       try {
