@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import db from '../config/database.js';
 import emailService from './emailService.js';
 import calendarService from './calendarService.js';
+import { getErrorMessage } from '../utils/response.js';
 import type {
   Appointment,
   AppointmentDoc,
@@ -142,7 +143,7 @@ export class ReminderService {
       try {
         customerDoc = await db.customers.get(appointment.customerId);
         customer = { ...customerDoc, id: customerDoc._id } as unknown as Customer;
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Failed to fetch customer ${appointment.customerId}:`, error);
         return { success: false, error: `Customer not found (ID: ${appointment.customerId})` };
       }
@@ -150,7 +151,7 @@ export class ReminderService {
       try {
         serviceDoc = await db.services.get(appointment.serviceId);
         service = { ...serviceDoc, id: serviceDoc._id } as unknown as Service;
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Failed to fetch service ${appointment.serviceId}:`, error);
         return { success: false, error: `Service not found (ID: ${appointment.serviceId})` };
       }
@@ -158,7 +159,7 @@ export class ReminderService {
       try {
         staffDoc = await db.staff.get(appointment.staffId);
         staff = { ...staffDoc, id: staffDoc._id } as unknown as Staff;
-      } catch (error: any) {
+      } catch (error) {
         console.error(`Failed to fetch staff ${appointment.staffId}:`, error);
         return { success: false, error: `Staff not found (ID: ${appointment.staffId})` };
       }
@@ -281,16 +282,17 @@ export class ReminderService {
         success: true,
         reminderId: reminder.id
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error sending reminder for appointment:', appointmentId, error);
 
       // Provide detailed error context
-      let errorMessage = error.message || 'Unknown error';
+      let errorMessage = getErrorMessage(error);
 
       // Check if it's a database error
-      if (error.name === 'not_found') {
+      const err = error as any;
+      if (err.name === 'not_found') {
         errorMessage = `Appointment or related data not found (appointmentId: ${appointmentId})`;
-      } else if (error.status === 404) {
+      } else if (err.status === 404) {
         errorMessage = `Database record not found (appointmentId: ${appointmentId})`;
       }
 
@@ -475,11 +477,11 @@ export class ReminderService {
         appointment: updatedAppointment,
         message: 'Appointment confirmed successfully'
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error confirming appointment:', error);
       return {
         success: false,
-        error: error.message || 'Unknown error'
+        error: getErrorMessage(error)
       };
     }
   }

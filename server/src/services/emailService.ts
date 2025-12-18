@@ -1,6 +1,7 @@
 import sgMail from '../config/sendgrid.js';
 import { sendGridConfig } from '../config/sendgrid.js';
 import { generateReminderEmailHTML, generateReminderEmailText } from '../templates/reminderEmail.js';
+import { getErrorMessage } from '../utils/response.js';
 import type { ReminderEmailData } from '../types/index.js';
 
 export class EmailService {
@@ -52,19 +53,20 @@ export class EmailService {
         success: true,
         messageId: response[0].headers['x-message-id'] as string
       };
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error sending email:', error);
 
       // SendGrid specific error handling
-      let errorMessage = error.message || 'Unknown error occurred';
+      let errorMessage = getErrorMessage(error);
 
-      if (error.response) {
-        console.error('SendGrid Error Response:', error.response.body);
+      const err = error as any;
+      if (err.response) {
+        console.error('SendGrid Error Response:', err.response.body);
 
         // Extract detailed error information from SendGrid response
-        const responseBody = error.response.body;
+        const responseBody = err.response.body;
         if (responseBody && responseBody.errors && Array.isArray(responseBody.errors)) {
-          const errorMessages = responseBody.errors.map((err: any) => err.message || err).join(', ');
+          const errorMessages = responseBody.errors.map((e: any) => e.message || e).join(', ');
           errorMessage = `SendGrid error: ${errorMessages}`;
 
           // Add helpful context for common errors
@@ -112,17 +114,18 @@ export class EmailService {
       console.log(`✅ Test email sent successfully to ${recipientEmail}`);
 
       return { success: true };
-    } catch (error: any) {
+    } catch (error) {
       console.error('❌ Error sending test email:', error);
 
-      let errorMessage = error.message || 'Unknown error occurred';
+      let errorMessage = getErrorMessage(error);
 
-      if (error.response) {
-        console.error('SendGrid Error Response:', error.response.body);
+      const err = error as any;
+      if (err.response) {
+        console.error('SendGrid Error Response:', err.response.body);
 
-        const responseBody = error.response.body;
+        const responseBody = err.response.body;
         if (responseBody && responseBody.errors && Array.isArray(responseBody.errors)) {
-          const errorMessages = responseBody.errors.map((err: any) => err.message || err).join(', ');
+          const errorMessages = responseBody.errors.map((e: any) => e.message || e).join(', ');
           errorMessage = `SendGrid error: ${errorMessages}`;
 
           if (errorMessages.toLowerCase().includes('from') || errorMessages.toLowerCase().includes('missing')) {

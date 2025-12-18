@@ -24,7 +24,8 @@
     "node-cron": "^3.0.3",
     "pouchdb-find": "^9.0.0",
     "pouchdb-node": "^9.0.0",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "zod": "^4.2.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
