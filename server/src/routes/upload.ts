@@ -52,6 +52,7 @@ router.post('/service/:serviceId', (req, res) => {
         duration: serviceDoc.duration,
         price: serviceDoc.price,
         category: serviceDoc.category,
+        color: serviceDoc.color,
         imageUrl: serviceDoc.imageUrl,
         createdAt: serviceDoc.createdAt,
         updatedAt: serviceDoc.updatedAt
@@ -93,6 +94,7 @@ router.delete('/service/:serviceId', async (req, res) => {
       duration: serviceDoc.duration,
       price: serviceDoc.price,
       category: serviceDoc.category,
+      color: serviceDoc.color,
       imageUrl: serviceDoc.imageUrl,
       createdAt: serviceDoc.createdAt,
       updatedAt: serviceDoc.updatedAt

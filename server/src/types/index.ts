@@ -43,6 +43,7 @@ export interface Service {
   duration: number; // minutes
   price: number;
   category?: string;
+  color?: string; // Service color for UI display
   imageUrl?: string; // URL or path to service image
   createdAt: string;
   updatedAt?: string;
