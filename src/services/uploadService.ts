@@ -1,6 +1,6 @@
 import { Service, Staff } from '../types';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * Get authentication token from localStorage
@@ -21,7 +21,7 @@ export async function uploadServiceImage(serviceId: string, file: File): Promise
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/api/upload/service/${serviceId}`, {
+  const response = await fetch(`${API_URL}/upload/service/${serviceId}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -47,7 +47,7 @@ export async function deleteServiceImage(serviceId: string): Promise<{ service: 
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/api/upload/service/${serviceId}`, {
+  const response = await fetch(`${API_URL}/upload/service/${serviceId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -76,7 +76,7 @@ export async function uploadStaffImage(staffId: string, file: File): Promise<{ i
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/api/upload/staff/${staffId}`, {
+  const response = await fetch(`${API_URL}/upload/staff/${staffId}`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -102,7 +102,7 @@ export async function deleteStaffImage(staffId: string): Promise<{ staff: Staff 
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/api/upload/staff/${staffId}`, {
+  const response = await fetch(`${API_URL}/upload/staff/${staffId}`, {
     method: 'DELETE',
     headers: {
       'Authorization': `Bearer ${token}`,

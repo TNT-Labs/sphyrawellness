@@ -33,6 +33,9 @@ type QueuedOperation = () => Promise<void>;
 const operationQueues: Map<string, QueuedOperation[]> = new Map();
 const processingQueues: Map<string, boolean> = new Map();
 
+// Flag to pause queue processing during cleanup operations
+let isCleanupInProgress = false;
+
 /**
  * Ottieni un database PouchDB (con cache)
  */
@@ -313,6 +316,12 @@ async function processQueue(queueKey: string): Promise<void> {
     return;
   }
 
+  // If cleanup is in progress, don't start new queue processing
+  if (isCleanupInProgress) {
+    logger.debug(`Queue processing paused for ${queueKey} due to cleanup`);
+    return;
+  }
+
   processingQueues.set(queueKey, true);
 
   const queue = operationQueues.get(queueKey);
@@ -323,6 +332,13 @@ async function processQueue(queueKey: string): Promise<void> {
 
   // Process operations one by one
   while (queue.length > 0) {
+    // Check again if cleanup started while processing
+    if (isCleanupInProgress) {
+      logger.debug(`Queue processing interrupted for ${queueKey} due to cleanup`);
+      processingQueues.set(queueKey, false);
+      return;
+    }
+
     const operation = queue.shift();
     if (operation) {
       try {
@@ -358,9 +374,60 @@ function queueOperation(queueKey: string, operation: QueuedOperation): void {
 }
 
 /**
+ * Pause queue processing (called before cleanup operations)
+ */
+export function pauseQueueProcessing(): void {
+  isCleanupInProgress = true;
+  logger.debug('Queue processing paused for cleanup');
+}
+
+/**
+ * Resume queue processing (called after cleanup operations)
+ */
+export function resumeQueueProcessing(): void {
+  isCleanupInProgress = false;
+  logger.debug('Queue processing resumed after cleanup');
+}
+
+/**
+ * Wait for all currently processing queues to complete
+ */
+export async function waitForPendingOperations(timeoutMs: number = 5000): Promise<void> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeoutMs) {
+    // Check if any queue is still processing
+    let anyProcessing = false;
+    for (const isProcessing of processingQueues.values()) {
+      if (isProcessing) {
+        anyProcessing = true;
+        break;
+      }
+    }
+
+    if (!anyProcessing) {
+      logger.debug('All pending operations completed');
+      return;
+    }
+
+    // Wait a bit before checking again
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  logger.warn('Timeout waiting for pending operations to complete');
+}
+
+/**
  * Pulisci la cache dei database PouchDB
  */
-export function clearPouchDBCache(): void {
+export async function clearPouchDBCache(): Promise<void> {
+  // Pause new queue processing
+  pauseQueueProcessing();
+
+  // Wait for pending operations to complete
+  await waitForPendingOperations();
+
+  // Now safe to close databases
   pouchDBCache.forEach((db) => {
     try {
       db.close();
@@ -373,4 +440,7 @@ export function clearPouchDBCache(): void {
   // Clear operation queues
   operationQueues.clear();
   processingQueues.clear();
+
+  // Resume queue processing
+  resumeQueueProcessing();
 }
