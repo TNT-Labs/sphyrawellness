@@ -51,10 +51,14 @@ let syncStatus: SyncStatus = {
   status: 'idle',
   documentsSynced: 0,
   syncErrors: [],
+  initialSyncComplete: false,
 };
 
 // Monitoring
 let syncStartTime: number | null = null;
+
+// Track which databases have completed initial sync
+const initialSyncCompletedDatabases: Set<string> = new Set();
 
 // Online/Offline detection
 let isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -134,6 +138,37 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
     }
   } catch (error) {
     logger.error(`Error syncing docs to IndexedDB for ${dbName}:`, error);
+  }
+}
+
+/**
+ * Copy all documents from a PouchDB database to IndexedDB
+ * Used for initial sync to ensure all remote data is loaded
+ */
+async function copyAllDocsToIndexedDB(dbName: string, pouchDB: PouchDB.Database): Promise<number> {
+  try {
+    logger.info(`[INITIAL-SYNC] Copying all documents from ${dbName} to IndexedDB...`);
+
+    // Get all documents from PouchDB
+    const result = await pouchDB.allDocs({
+      include_docs: true,
+    });
+
+    logger.debug(`[INITIAL-SYNC] Found ${result.rows.length} documents in ${dbName}`);
+
+    // Filter out design documents and deleted documents
+    const docs = result.rows
+      .filter((row: any) => !row.id.startsWith('_design/') && row.doc && !(row.doc as any)._deleted)
+      .map((row: any) => row.doc);
+
+    // Sync all documents to IndexedDB
+    await syncChangedDocsToIndexedDB(dbName, docs);
+
+    logger.info(`[INITIAL-SYNC] ✓ Copied ${docs.length} documents from ${dbName} to IndexedDB`);
+    return docs.length;
+  } catch (error) {
+    logger.error(`[INITIAL-SYNC] Error copying docs from ${dbName} to IndexedDB:`, error);
+    return 0;
   }
 }
 
@@ -509,6 +544,10 @@ export async function startSync(): Promise<boolean> {
     await stopSync();
     logger.debug('[SYNC-START] ✓ Sync handlers precedenti arrestati');
 
+    // Reset initial sync tracking
+    initialSyncCompletedDatabases.clear();
+    logger.debug('[SYNC-START] ✓ Initial sync tracking reset');
+
     // Reset monitoring counters
     syncStartTime = Date.now();
     logger.debug('[SYNC-START] STEP 7: Contatori monitoraggio resettati');
@@ -569,19 +608,53 @@ export async function startSync(): Promise<boolean> {
         }, false);
       });
 
-      sync.on('paused', () => {
+      sync.on('paused', async () => {
         logger.log(`Sync paused for ${remoteName}`);
+
+        // Check if this is the first time this database is being paused (initial sync complete)
+        if (!initialSyncCompletedDatabases.has(key)) {
+          logger.info(`[INITIAL-SYNC] First pause for ${remoteName}, copying all documents to IndexedDB...`);
+
+          try {
+            // Copy all documents from PouchDB to IndexedDB
+            const docCount = await copyAllDocsToIndexedDB(remoteName, remoteDB);
+            logger.info(`[INITIAL-SYNC] ✓ Initial sync complete for ${remoteName} (${docCount} documents)`);
+
+            // Mark this database as having completed initial sync
+            initialSyncCompletedDatabases.add(key);
+
+            // Check if ALL databases have completed initial sync
+            const allDatabasesInitiallySynced = Object.keys(localDatabases).every(
+              dbKey => initialSyncCompletedDatabases.has(dbKey)
+            );
+
+            if (allDatabasesInitiallySynced) {
+              logger.info('[INITIAL-SYNC] ✓✓✓ ALL DATABASES INITIAL SYNC COMPLETE ✓✓✓');
+
+              // Notify that initial sync is complete
+              notifySyncStatusChange({
+                status: 'idle',
+                lastSync: new Date().toISOString(),
+                initialSyncComplete: true,
+              }, true);
+            }
+          } catch (error) {
+            logger.error(`[INITIAL-SYNC] Error during initial sync for ${remoteName}:`, error);
+          }
+        }
 
         // Calculate sync duration
         const duration = syncStartTime ? Date.now() - syncStartTime : undefined;
         syncStartTime = null;
 
-        // Force notification for state change
-        notifySyncStatusChange({
-          status: 'idle',
-          lastSync: new Date().toISOString(),
-          lastSyncDuration: duration,
-        }, true);
+        // Force notification for state change (only if not already notified above)
+        if (initialSyncCompletedDatabases.has(key)) {
+          notifySyncStatusChange({
+            status: 'idle',
+            lastSync: new Date().toISOString(),
+            lastSyncDuration: duration,
+          }, true);
+        }
       });
 
       sync.on('active', () => {

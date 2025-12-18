@@ -129,6 +129,7 @@ export interface SyncStatus {
   documentsSynced?: number; // Total documents synced in current session
   lastSyncDuration?: number; // Last sync duration in ms
   syncErrors?: string[]; // Recent errors (max 10)
+  initialSyncComplete?: boolean; // True when initial replication is complete
 }
 
 export type UserRole = 'RESPONSABILE' | 'UTENTE';

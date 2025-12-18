@@ -49,7 +49,7 @@ import { initializeDemoData } from '../utils/storage';
 import { logger } from '../utils/logger';
 import { initAutoBackup } from '../utils/autoBackup';
 import { initStoragePersistence } from '../utils/storagePersistence';
-import { initializeSync } from '../utils/pouchdbSync';
+import { initializeSync, onSyncStatusChange } from '../utils/pouchdbSync';
 import { hashPassword } from '../utils/auth';
 import { useDB } from './DBContext';
 import { appointmentsApi } from '../utils/api';
@@ -127,6 +127,66 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
   const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const { isDBReady } = useDB();
+
+  // Subscribe to sync status changes to reload data after initial sync
+  useEffect(() => {
+    // Subscribe to sync status changes
+    const unsubscribe = onSyncStatusChange((status) => {
+      // When initial sync is complete, reload all data from IndexedDB
+      if (status.initialSyncComplete) {
+        logger.info('[APP-CONTEXT] Initial sync complete, reloading all data from IndexedDB...');
+
+        // Reload all data from IndexedDB
+        Promise.all([
+          getAllCustomers(),
+          getAllServices(),
+          getAllStaff(),
+          getAllAppointments(),
+          getAllPayments(),
+          getAllReminders(),
+          getAllStaffRoles(),
+          getAllServiceCategories(),
+          getAllUsers(),
+        ]).then(([
+          loadedCustomers,
+          loadedServices,
+          loadedStaff,
+          loadedAppointments,
+          loadedPayments,
+          loadedReminders,
+          loadedStaffRoles,
+          loadedServiceCategories,
+          loadedUsers,
+        ]) => {
+          setCustomers(loadedCustomers);
+          setServices(loadedServices);
+          setStaff(loadedStaff);
+          setAppointments(loadedAppointments);
+          setPayments(loadedPayments);
+          setReminders(loadedReminders);
+          setStaffRoles(loadedStaffRoles);
+          setServiceCategories(loadedServiceCategories);
+          setUsers(loadedUsers);
+
+          logger.info(`[APP-CONTEXT] ✓ Data reloaded after initial sync:`);
+          logger.info(`  - Customers: ${loadedCustomers.length}`);
+          logger.info(`  - Services: ${loadedServices.length}`);
+          logger.info(`  - Staff: ${loadedStaff.length}`);
+          logger.info(`  - Appointments: ${loadedAppointments.length}`);
+          logger.info(`  - Payments: ${loadedPayments.length}`);
+          logger.info(`  - Reminders: ${loadedReminders.length}`);
+          logger.info(`  - Staff Roles: ${loadedStaffRoles.length}`);
+          logger.info(`  - Service Categories: ${loadedServiceCategories.length}`);
+          logger.info(`  - Users: ${loadedUsers.length}`);
+        }).catch((error) => {
+          logger.error('[APP-CONTEXT] Failed to reload data after initial sync:', error);
+        });
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return unsubscribe;
+  }, []);
 
   // Load data after database is ready
   useEffect(() => {
