@@ -266,6 +266,26 @@ async function update<T extends Record<string, any>>(storeName: string, item: T)
 }
 
 /**
+ * Update operation from sync - does NOT trigger sync back to PouchDB
+ * and preserves original timestamps
+ */
+async function updateFromSync<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
+  // Use item as-is, preserving all timestamps from sync
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.put(item);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * Generic delete operation
  */
 async function remove(storeName: string, id: string): Promise<void> {
@@ -334,6 +354,13 @@ export async function updateCustomer(customer: Customer): Promise<void> {
   );
 }
 
+/**
+ * Update customer from sync - does NOT trigger sync loop
+ */
+export async function updateCustomerFromSync(customer: Customer): Promise<void> {
+  await updateFromSync(STORES.CUSTOMERS, customer);
+}
+
 export async function deleteCustomer(id: string): Promise<void> {
   await remove(STORES.CUSTOMERS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -368,6 +395,13 @@ export async function updateService(service: Service): Promise<void> {
   syncUpdate('services', service).catch(err =>
     logger.error('Background sync failed for service update:', err)
   );
+}
+
+/**
+ * Update service from sync - does NOT trigger sync loop
+ */
+export async function updateServiceFromSync(service: Service): Promise<void> {
+  await updateFromSync(STORES.SERVICES, service);
 }
 
 export async function deleteService(id: string): Promise<void> {
@@ -406,6 +440,13 @@ export async function updateStaff(staff: Staff): Promise<void> {
   );
 }
 
+/**
+ * Update staff from sync - does NOT trigger sync loop
+ */
+export async function updateStaffFromSync(staff: Staff): Promise<void> {
+  await updateFromSync(STORES.STAFF, staff);
+}
+
 export async function deleteStaff(id: string): Promise<void> {
   await remove(STORES.STAFF, id);
   // Sync to PouchDB in background (non-blocking)
@@ -440,6 +481,14 @@ export async function updateAppointment(appointment: Appointment): Promise<void>
   syncUpdate('appointments', appointment).catch(err =>
     logger.error('Background sync failed for appointment update:', err)
   );
+}
+
+/**
+ * Update appointment from sync - does NOT trigger sync loop
+ * Used when receiving data from PouchDB sync to prevent infinite loops
+ */
+export async function updateAppointmentFromSync(appointment: Appointment): Promise<void> {
+  await updateFromSync(STORES.APPOINTMENTS, appointment);
 }
 
 export async function deleteAppointment(id: string): Promise<void> {
@@ -478,6 +527,13 @@ export async function updatePayment(payment: Payment): Promise<void> {
   );
 }
 
+/**
+ * Update payment from sync - does NOT trigger sync loop
+ */
+export async function updatePaymentFromSync(payment: Payment): Promise<void> {
+  await updateFromSync(STORES.PAYMENTS, payment);
+}
+
 export async function deletePayment(id: string): Promise<void> {
   await remove(STORES.PAYMENTS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -512,6 +568,14 @@ export async function updateReminder(reminder: Reminder): Promise<void> {
   syncUpdate('reminders', reminder).catch(err =>
     logger.error('Background sync failed for reminder update:', err)
   );
+}
+
+/**
+ * Update reminder from sync - does NOT trigger sync loop
+ * Used when receiving data from PouchDB sync to prevent infinite loops
+ */
+export async function updateReminderFromSync(reminder: Reminder): Promise<void> {
+  await updateFromSync(STORES.REMINDERS, reminder);
 }
 
 export async function deleteReminder(id: string): Promise<void> {
@@ -550,6 +614,13 @@ export async function updateStaffRole(role: StaffRole): Promise<void> {
   );
 }
 
+/**
+ * Update staff role from sync - does NOT trigger sync loop
+ */
+export async function updateStaffRoleFromSync(role: StaffRole): Promise<void> {
+  await updateFromSync(STORES.STAFF_ROLES, role);
+}
+
 export async function deleteStaffRole(id: string): Promise<void> {
   await remove(STORES.STAFF_ROLES, id);
   // Sync to PouchDB in background (non-blocking)
@@ -584,6 +655,13 @@ export async function updateServiceCategory(category: ServiceCategory): Promise<
   syncUpdate('serviceCategories', category).catch(err =>
     logger.error('Background sync failed for service category update:', err)
   );
+}
+
+/**
+ * Update service category from sync - does NOT trigger sync loop
+ */
+export async function updateServiceCategoryFromSync(category: ServiceCategory): Promise<void> {
+  await updateFromSync(STORES.SERVICE_CATEGORIES, category);
 }
 
 export async function deleteServiceCategory(id: string): Promise<void> {
@@ -927,6 +1005,13 @@ export async function updateUser(user: User): Promise<void> {
   syncUpdate('users', user).catch(err =>
     logger.error('Background sync failed for user update:', err)
   );
+}
+
+/**
+ * Update user from sync - does NOT trigger sync loop
+ */
+export async function updateUserFromSync(user: User): Promise<void> {
+  await updateFromSync(STORES.USERS, user);
 }
 
 export async function deleteUser(id: string): Promise<void> {

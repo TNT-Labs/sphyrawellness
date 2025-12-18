@@ -11,7 +11,18 @@ import { logger } from './logger';
 import { loadSettingsWithPassword } from './storage';
 import * as IndexedDB from './indexedDB';
 import { pauseQueueProcessing, resumeQueueProcessing, waitForPendingOperations } from './dbBridge';
-import type { SyncStatus, Appointment, Reminder } from '../types';
+import type {
+  SyncStatus,
+  Appointment,
+  Reminder,
+  Customer,
+  Service,
+  Staff,
+  Payment,
+  StaffRole,
+  ServiceCategory,
+  User
+} from '../types';
 
 // Enable PouchDB Find plugin for queries
 PouchDB.plugin(PouchDBFind);
@@ -79,14 +90,47 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
       };
 
       // Update IndexedDB based on database name
-      if (dbName === 'sphyra-appointments') {
-        await IndexedDB.updateAppointment(appDoc as Appointment);
-        logger.debug(`Updated appointment ${doc._id} in IndexedDB from sync`);
-      } else if (dbName === 'sphyra-reminders') {
-        await IndexedDB.updateReminder(appDoc as Reminder);
-        logger.debug(`Updated reminder ${doc._id} in IndexedDB from sync`);
+      // Use *FromSync functions to prevent triggering sync loops
+      switch (dbName) {
+        case 'sphyra-appointments':
+          await IndexedDB.updateAppointmentFromSync(appDoc as Appointment);
+          logger.debug(`Updated appointment ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-reminders':
+          await IndexedDB.updateReminderFromSync(appDoc as Reminder);
+          logger.debug(`Updated reminder ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-customers':
+          await IndexedDB.updateCustomerFromSync(appDoc as Customer);
+          logger.debug(`Updated customer ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-services':
+          await IndexedDB.updateServiceFromSync(appDoc as Service);
+          logger.debug(`Updated service ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-staff':
+          await IndexedDB.updateStaffFromSync(appDoc as Staff);
+          logger.debug(`Updated staff ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-payments':
+          await IndexedDB.updatePaymentFromSync(appDoc as Payment);
+          logger.debug(`Updated payment ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-staff-roles':
+          await IndexedDB.updateStaffRoleFromSync(appDoc as StaffRole);
+          logger.debug(`Updated staff role ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-service-categories':
+          await IndexedDB.updateServiceCategoryFromSync(appDoc as ServiceCategory);
+          logger.debug(`Updated service category ${doc._id} in IndexedDB from sync`);
+          break;
+        case 'sphyra-users':
+          await IndexedDB.updateUserFromSync(appDoc as User);
+          logger.debug(`Updated user ${doc._id} in IndexedDB from sync`);
+          break;
+        default:
+          logger.warn(`Unknown database name for sync: ${dbName}`);
       }
-      // Add other collections as needed
     }
   } catch (error) {
     logger.error(`Error syncing docs to IndexedDB for ${dbName}:`, error);

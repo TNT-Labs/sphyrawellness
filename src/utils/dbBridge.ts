@@ -96,7 +96,7 @@ export async function syncAdd<T extends { id: string }>(
         logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
         return; // Success, exit
       } catch (error: any) {
-        // Se l'errore è un conflitto di versione, prova a recuperare e fare merge intelligente
+        // Se l'errore è un conflitto di versione, sovrascrive con dati locali
         if (error.status === 409 || error.name === 'conflict') {
           try {
             const pouchDB = getPouchDB(storeName);
@@ -105,19 +105,18 @@ export async function syncAdd<T extends { id: string }>(
             // Recupera il documento esistente per ottenere il _rev
             const existingDoc = await pouchDB.get(item.id);
 
-            // Merge intelligente: confronta timestamp se disponibili
+            // NO merge - local data is source of truth
             const { id, ...itemWithoutId } = item;
-            const mergedData = smartMerge(itemWithoutId, existingDoc);
 
             const pouchDoc = {
-              ...mergedData,
+              ...itemWithoutId,
               _id: id,
               _rev: existingDoc._rev,
             };
 
             await pouchDB.put(pouchDoc);
-            logger.info(`Resolved conflict with smart merge for ${storeName}:${id}`);
-            return; // Success after merge
+            logger.info(`Resolved conflict with local data for ${storeName}:${id}`);
+            return; // Success after overwriting with local data
           } catch (retryError) {
             logger.error(`Failed to resolve conflict for ${storeName}:`, retryError);
             retryCount++;
@@ -143,36 +142,6 @@ export async function syncAdd<T extends { id: string }>(
       }
     }
   });
-}
-
-/**
- * Smart merge: confronta timestamp e mantiene la versione più recente
- */
-function smartMerge(localData: any, remoteDoc: any): any {
-  // Rimuovi campi interni PouchDB
-  const { _id, _rev, ...remoteData } = remoteDoc;
-
-  // Se entrambi hanno updatedAt, usa il più recente
-  if (localData.updatedAt && remoteData.updatedAt) {
-    const localTime = new Date(localData.updatedAt).getTime();
-    const remoteTime = new Date(remoteData.updatedAt).getTime();
-
-    if (localTime > remoteTime) {
-      logger.debug('Local data is newer, using local version');
-      return localData;
-    } else {
-      logger.debug('Remote data is newer, using remote version');
-      return remoteData;
-    }
-  }
-
-  // Se solo locale ha updatedAt, probabilmente è più recente
-  if (localData.updatedAt && !remoteData.updatedAt) {
-    return localData;
-  }
-
-  // Default: usa dati remoti (comportamento precedente)
-  return remoteData;
 }
 
 /**
@@ -212,12 +181,12 @@ export async function syncUpdate<T extends { id: string }>(
         // Recupera il documento esistente per ottenere il _rev
         const existingDoc = await pouchDB.get(item.id);
 
-        // Merge intelligente: confronta timestamp se disponibili
+        // NO merge - local data is source of truth when user makes changes
+        // Just get _rev to update the document
         const { id, ...itemWithoutId } = item;
-        const mergedData = smartMerge(itemWithoutId, existingDoc);
 
         const pouchDoc = {
-          ...mergedData,
+          ...itemWithoutId,
           _id: id,
           _rev: existingDoc._rev,
         };
