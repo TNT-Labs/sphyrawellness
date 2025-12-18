@@ -6,6 +6,8 @@ import { format, addDays, startOfWeek, isBefore, startOfDay, parse } from 'date-
 import { it } from 'date-fns/locale';
 import { getImageUrl } from '../services/uploadService';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
 interface BookingData {
   serviceId: string;
   date: string;
@@ -59,12 +61,18 @@ const PublicBooking: React.FC = () => {
   const loadServices = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/public/services');
+      const response = await fetch(`${API_URL}/public/services`);
       const data = await response.json();
-      setServices(data.services || []);
-      setCategories(data.categories || []);
-    } catch (error) {
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nel caricamento dei servizi');
+      }
+
+      setServices(data.data?.services || []);
+      setCategories(data.data?.categories || []);
+    } catch (error: any) {
       console.error('Errore nel caricamento dei servizi:', error);
+      alert('Impossibile caricare i servizi. Riprova più tardi.');
     } finally {
       setIsLoading(false);
     }
@@ -73,10 +81,15 @@ const PublicBooking: React.FC = () => {
   const loadAvailableSlots = async (serviceId: string, date: string) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/public/available-slots?serviceId=${serviceId}&date=${date}`);
+      const response = await fetch(`${API_URL}/public/available-slots?serviceId=${serviceId}&date=${date}`);
       const data = await response.json();
-      setAvailableSlots(data.slots || []);
-    } catch (error) {
+
+      if (!data.success) {
+        throw new Error(data.error || 'Errore nel caricamento degli slot');
+      }
+
+      setAvailableSlots(data.data?.slots || []);
+    } catch (error: any) {
       console.error('Errore nel caricamento degli slot:', error);
       setAvailableSlots([]);
     } finally {
@@ -131,7 +144,7 @@ const PublicBooking: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const response = await fetch('/api/public/bookings', {
+      const response = await fetch(`${API_URL}/public/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -139,14 +152,28 @@ const PublicBooking: React.FC = () => {
         body: JSON.stringify(bookingData),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Errore nella prenotazione');
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || data.message || 'Errore nella prenotazione');
       }
 
       setStep(4);
     } catch (error: any) {
-      alert(error.message || 'Errore durante la prenotazione. Riprova.');
+      // Handle network errors with clearer messages
+      if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+        const apiUrl = API_URL.replace('/api', '');
+        alert(
+          `Impossibile connettersi al server.\n\n` +
+          `Possibili cause:\n` +
+          `• Il server non è in esecuzione\n` +
+          `• Problema di connessione\n` +
+          `• Configurazione CORS\n\n` +
+          `URL: ${apiUrl}`
+        );
+      } else {
+        alert(error.message || 'Errore durante la prenotazione. Riprova.');
+      }
     } finally {
       setIsLoading(false);
     }

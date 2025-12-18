@@ -64,14 +64,17 @@ router.get('/services', async (req, res) => {
         id: row.id
       })) as Service[];
 
-    // Fetch all categories
-    const categoriesResult = await db.services.allDocs({
+    // Fetch all service categories from the correct database
+    const categoriesResult = await db.serviceCategories.allDocs({
       include_docs: true
     });
 
-    // Note: Categories might be in a separate collection or embedded
-    // For now, we'll return an empty array or fetch from a dedicated collection
-    const categories: any[] = [];
+    const categories: any[] = categoriesResult.rows
+      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .map(row => ({
+        ...row.doc,
+        id: row.id
+      }));
 
     return sendSuccess(res, { services, categories });
   } catch (error) {
