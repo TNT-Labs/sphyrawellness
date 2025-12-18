@@ -28,6 +28,20 @@ interface TimeSlot {
   staffId?: string;
 }
 
+interface BookingErrors {
+  serviceId?: string;
+  date?: string;
+  startTime?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  privacyConsent?: string;
+  emailReminderConsent?: string;
+  healthDataConsent?: string;
+}
+
 const PublicBooking: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -53,7 +67,7 @@ const PublicBooking: React.FC = () => {
     healthDataConsent: false
   });
 
-  const [errors, setErrors] = useState<Partial<BookingData>>({});
+  const [errors, setErrors] = useState<BookingErrors>({});
 
   // Carica servizi e categorie all'avvio
   useEffect(() => {
@@ -136,7 +150,7 @@ const PublicBooking: React.FC = () => {
   }, [searchQuery]);
 
   const validateStep = (currentStep: number): boolean => {
-    const newErrors: Partial<BookingData> = {};
+    const newErrors: BookingErrors = {};
 
     if (currentStep === 1 && !bookingData.serviceId) {
       newErrors.serviceId = 'Seleziona un servizio';
