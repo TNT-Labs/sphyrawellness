@@ -53,10 +53,6 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# Scripts (keep generate-version.js for build, exclude only development scripts)
-scripts/setup-couchdb.js
-scripts/configure-couchdb-cors.cjs
-
 # Logs
 logs
 *.log
