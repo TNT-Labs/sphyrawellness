@@ -68,8 +68,8 @@ services:
   # ========================================
   backend:
     build:
-      context: ./server
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: server/Dockerfile
     container_name: sphyra-backend
     restart: unless-stopped
     environment:
