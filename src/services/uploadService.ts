@@ -21,21 +21,42 @@ export async function uploadServiceImage(serviceId: string, file: File): Promise
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/upload/service/${serviceId}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_URL}/upload/service/${serviceId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to upload image');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to upload image');
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error: any) {
+    // Handle network errors with clearer messages
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `Possibili cause:\n` +
+        `• Il server backend non è in esecuzione\n` +
+        `• Stai accedendo da un IP non autorizzato\n` +
+        `• Problema di configurazione CORS\n` +
+        `• Certificato HTTPS non valido o scaduto\n\n` +
+        `URL cercato: ${apiUrl}\n\n` +
+        `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+      );
+    }
+    if (error.message && error.message.includes('CORS')) {
+      throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  return result.data;
 }
 
 /**
@@ -47,21 +68,42 @@ export async function deleteServiceImage(serviceId: string): Promise<{ service: 
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/upload/service/${serviceId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  try {
+    const response = await fetch(`${API_URL}/upload/service/${serviceId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete image');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete image');
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error: any) {
+    // Handle network errors with clearer messages
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `Possibili cause:\n` +
+        `• Il server backend non è in esecuzione\n` +
+        `• Stai accedendo da un IP non autorizzato\n` +
+        `• Problema di configurazione CORS\n` +
+        `• Certificato HTTPS non valido o scaduto\n\n` +
+        `URL cercato: ${apiUrl}\n\n` +
+        `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+      );
+    }
+    if (error.message && error.message.includes('CORS')) {
+      throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  return result.data;
 }
 
 /**
@@ -76,21 +118,42 @@ export async function uploadStaffImage(staffId: string, file: File): Promise<{ i
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/upload/staff/${staffId}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-    },
-    body: formData,
-  });
+  try {
+    const response = await fetch(`${API_URL}/upload/staff/${staffId}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to upload image');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to upload image');
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error: any) {
+    // Handle network errors with clearer messages
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `Possibili cause:\n` +
+        `• Il server backend non è in esecuzione\n` +
+        `• Stai accedendo da un IP non autorizzato\n` +
+        `• Problema di configurazione CORS\n` +
+        `• Certificato HTTPS non valido o scaduto\n\n` +
+        `URL cercato: ${apiUrl}\n\n` +
+        `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+      );
+    }
+    if (error.message && error.message.includes('CORS')) {
+      throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  return result.data;
 }
 
 /**
@@ -102,21 +165,42 @@ export async function deleteStaffImage(staffId: string): Promise<{ staff: Staff 
     throw new Error('Authentication required');
   }
 
-  const response = await fetch(`${API_URL}/upload/staff/${staffId}`, {
-    method: 'DELETE',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
+  try {
+    const response = await fetch(`${API_URL}/upload/staff/${staffId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || 'Failed to delete image');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to delete image');
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error: any) {
+    // Handle network errors with clearer messages
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `Possibili cause:\n` +
+        `• Il server backend non è in esecuzione\n` +
+        `• Stai accedendo da un IP non autorizzato\n` +
+        `• Problema di configurazione CORS\n` +
+        `• Certificato HTTPS non valido o scaduto\n\n` +
+        `URL cercato: ${apiUrl}\n\n` +
+        `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+      );
+    }
+    if (error.message && error.message.includes('CORS')) {
+      throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
+    }
+    throw error;
   }
-
-  const result = await response.json();
-  return result.data;
 }
 
 /**
