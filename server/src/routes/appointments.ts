@@ -3,6 +3,7 @@ import reminderService from '../services/reminderService.js';
 import calendarService from '../services/calendarService.js';
 import db from '../config/database.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
 import type { ApiResponse, Appointment, Customer, Service, Staff } from '../types/index.js';
 
 const router = express.Router();
@@ -25,19 +26,10 @@ router.get('/', authenticateToken, async (req, res) => {
         id: row.id
       })) as Appointment[];
 
-    const response: ApiResponse = {
-      success: true,
-      data: appointments
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, appointments);
+  } catch (error) {
     console.error('Error fetching appointments:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Internal server error'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to fetch appointments');
   }
 });
 
@@ -52,37 +44,19 @@ router.post('/:appointmentId/confirm', async (req, res) => {
     const { token } = req.body;
 
     if (!token) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'Confirmation token is required'
-      };
-      return res.status(400).json(response);
+      return sendError(res, 'Confirmation token is required', 400);
     }
 
     const result = await reminderService.confirmAppointment(appointmentId, token);
 
     if (!result.success) {
-      const response: ApiResponse = {
-        success: false,
-        error: result.error || 'Failed to confirm appointment'
-      };
-      return res.status(400).json(response);
+      return sendError(res, result.error || 'Failed to confirm appointment', 400);
     }
 
-    const response: ApiResponse = {
-      success: true,
-      data: result.appointment,
-      message: 'Appointment confirmed successfully'
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, result.appointment, 'Appointment confirmed successfully');
+  } catch (error) {
     console.error('Error in /confirm:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Internal server error'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to confirm appointment');
   }
 });
 
@@ -107,7 +81,7 @@ router.get('/:appointmentId/confirm/:token', async (req, res) => {
 
     // Redirect to success page
     res.redirect(`${frontendUrl}/confirm-appointment/success?appointmentId=${appointmentId}`);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in GET /confirm:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'https://sphyra.local';
     res.redirect(`${frontendUrl}/confirm-appointment/error?message=${encodeURIComponent('An error occurred')}`);
@@ -165,13 +139,9 @@ router.get('/:appointmentId/calendar.ics', async (req, res) => {
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="appuntamento-${appointmentId}.ics"`);
     res.send(icsContent);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error generating calendar file:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Failed to generate calendar file'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to generate calendar file');
   }
 });
 

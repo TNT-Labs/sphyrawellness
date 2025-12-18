@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../config/database.js';
 import { strictLimiter } from '../middleware/rateLimiter.js';
+import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
 import type { Settings, ApiResponse } from '../types/index.js';
 
 const router = express.Router();
@@ -70,19 +71,10 @@ router.get('/is-server', (req, res) => {
 
     console.log(`✅ is-server result: ${isLocalhost ? 'YES (localhost/private network)' : 'NO (public/external network)'}`);
 
-    const response: ApiResponse<{ isServer: boolean }> = {
-      success: true,
-      data: { isServer: isLocalhost }
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, { isServer: isLocalhost });
+  } catch (error) {
     console.error('Error in GET /settings/is-server:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Internal server error'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to check server status');
   }
 });
 
@@ -96,8 +88,9 @@ router.get('/', async (req, res) => {
 
     try {
       settings = await db.settings.get(DEFAULT_SETTINGS_ID) as Settings;
-    } catch (error: any) {
+    } catch (settingsError) {
       // If settings don't exist, create defaults
+      const error = settingsError as any;
       if (error.status === 404) {
         settings = {
           _id: DEFAULT_SETTINGS_ID,
@@ -114,19 +107,10 @@ router.get('/', async (req, res) => {
       }
     }
 
-    const response: ApiResponse<Settings> = {
-      success: true,
-      data: settings
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, settings);
+  } catch (error) {
     console.error('Error in GET /settings:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Internal server error'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to fetch settings');
   }
 });
 
@@ -145,26 +129,19 @@ router.put('/', strictLimiter, async (req, res) => {
 
     // Validation
     if (reminderSendHour !== undefined && (reminderSendHour < 0 || reminderSendHour > 23)) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'reminderSendHour must be between 0 and 23'
-      };
-      return res.status(400).json(response);
+      return sendError(res, 'reminderSendHour must be between 0 and 23', 400);
     }
 
     if (reminderSendMinute !== undefined && (reminderSendMinute < 0 || reminderSendMinute > 59)) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'reminderSendMinute must be between 0 and 59'
-      };
-      return res.status(400).json(response);
+      return sendError(res, 'reminderSendMinute must be between 0 and 59', 400);
     }
 
     // Get existing settings or create defaults
     let settings: Settings;
     try {
       settings = await db.settings.get(DEFAULT_SETTINGS_ID) as Settings;
-    } catch (error: any) {
+    } catch (settingsError) {
+      const error = settingsError as any;
       if (error.status === 404) {
         settings = {
           _id: DEFAULT_SETTINGS_ID,
@@ -192,20 +169,10 @@ router.put('/', strictLimiter, async (req, res) => {
 
     console.log('✅ Settings updated:', updatedSettings);
 
-    const response: ApiResponse<Settings> = {
-      success: true,
-      data: updatedSettings,
-      message: 'Settings updated successfully'
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, updatedSettings, 'Settings updated successfully');
+  } catch (error) {
     console.error('Error in PUT /settings:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Internal server error'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to update settings');
   }
 });
 

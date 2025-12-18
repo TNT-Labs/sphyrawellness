@@ -5,6 +5,7 @@ import db from '../config/database.js';
 import reminderService from '../services/reminderService.js';
 import logger from '../utils/logger.js';
 import { attachCsrfToken, generateCsrfToken } from '../middleware/csrf.js';
+import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
 import type { ApiResponse, Service, Staff, Appointment, Customer } from '../types/index.js';
 
 const router = express.Router();
@@ -72,27 +73,25 @@ router.get('/services', async (req, res) => {
     // For now, we'll return an empty array or fetch from a dedicated collection
     const categories: any[] = [];
 
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        services,
-        categories
-      }
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, { services, categories });
+  } catch (error) {
     logger.error('Error fetching services:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Failed to fetch services'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to fetch services');
   }
 });
 
 /**
- * Helper function to check if a staff member is available at a given time slot
+ * Verifica la disponibilità di uno staff member in uno slot orario specifico
+ *
+ * @param staffId - ID del membro dello staff
+ * @param date - Data nel formato YYYY-MM-DD
+ * @param startTime - Ora inizio nel formato HH:MM
+ * @param endTime - Ora fine nel formato HH:MM
+ * @param appointments - Lista appuntamenti esistenti
+ * @returns true se lo staff è disponibile, false altrimenti
+ *
+ * @example
+ * isStaffAvailable('staff-1', '2025-01-15', '10:00', '11:00', existingApts)
  */
 function isStaffAvailable(
   staffId: string,
@@ -120,7 +119,15 @@ function isStaffAvailable(
 }
 
 /**
- * Helper function to add minutes to a time string
+ * Aggiunge minuti ad un orario in formato stringa
+ *
+ * @param time - Orario nel formato HH:MM
+ * @param minutes - Numero di minuti da aggiungere
+ * @returns Nuovo orario nel formato HH:MM
+ *
+ * @example
+ * addMinutesToTime('10:00', 30) // Returns '10:30'
+ * addMinutesToTime('23:45', 30) // Returns '00:15'
  */
 function addMinutesToTime(time: string, minutes: number): string {
   const [hours, mins] = time.split(':').map(Number);
@@ -142,11 +149,7 @@ router.get('/available-slots', async (req, res) => {
     const validationResult = availableSlotsQuerySchema.safeParse(req.query);
 
     if (!validationResult.success) {
-      const response: ApiResponse = {
-        success: false,
-        error: validationResult.error.errors[0].message
-      };
-      return res.status(400).json(response);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
 
     const { serviceId, date } = validationResult.data;
@@ -179,12 +182,7 @@ router.get('/available-slots', async (req, res) => {
     );
 
     if (qualifiedStaff.length === 0) {
-      const response: ApiResponse = {
-        success: true,
-        data: { slots: [] },
-        message: 'No staff available for this service'
-      };
-      return res.json(response);
+      return sendSuccess(res, { slots: [] }, 'No staff available for this service');
     }
 
     // Fetch all appointments for the given date
@@ -228,19 +226,10 @@ router.get('/available-slots', async (req, res) => {
       currentTime = addMinutesToTime(currentTime, slotInterval);
     }
 
-    const response: ApiResponse = {
-      success: true,
-      data: { slots }
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, { slots });
+  } catch (error) {
     logger.error('Error fetching available slots:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Failed to fetch available slots'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to fetch available slots');
   }
 });
 
@@ -255,11 +244,7 @@ router.post('/bookings', async (req, res) => {
     const validationResult = bookingBodySchema.safeParse(req.body);
 
     if (!validationResult.success) {
-      const response: ApiResponse = {
-        success: false,
-        error: validationResult.error.errors[0].message
-      };
-      return res.status(400).json(response);
+      return sendError(res, validationResult.error.issues[0].message, 400);
     }
 
     const {
@@ -303,11 +288,7 @@ router.post('/bookings', async (req, res) => {
     );
 
     if (qualifiedStaff.length === 0) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'No staff available for this service'
-      };
-      return res.status(400).json(response);
+      return sendError(res, 'No staff available for this service', 400);
     }
 
     // Fetch all appointments for the given date
@@ -329,11 +310,7 @@ router.post('/bookings', async (req, res) => {
     );
 
     if (!availableStaff) {
-      const response: ApiResponse = {
-        success: false,
-        error: 'The selected time slot is no longer available. Please choose another time.'
-      };
-      return res.status(400).json(response);
+      return sendError(res, 'The selected time slot is no longer available. Please choose another time.', 400);
     }
 
     // Check if customer already exists by email
@@ -425,23 +402,10 @@ router.post('/bookings', async (req, res) => {
       // Don't fail the booking if email fails
     }
 
-    const response: ApiResponse = {
-      success: true,
-      data: {
-        appointment,
-        customer
-      },
-      message: 'Booking created successfully'
-    };
-
-    res.json(response);
-  } catch (error: any) {
+    return sendSuccess(res, { appointment, customer }, 'Booking created successfully');
+  } catch (error) {
     logger.error('Error creating booking:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Failed to create booking'
-    };
-    res.status(500).json(response);
+    return handleRouteError(error, res, 'Failed to create booking');
   }
 });
 

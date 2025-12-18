@@ -11,6 +11,7 @@ import appointmentsRouter from './routes/appointments.js';
 import settingsRouter from './routes/settings.js';
 import publicRouter from './routes/public.js';
 import logger from './utils/logger.js';
+import { sendSuccess, handleRouteError } from './utils/response.js';
 import type { ApiResponse } from './types/index.js';
 
 // Load environment variables
@@ -203,19 +204,9 @@ app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
     logger.info(`🔧 Manual reminder trigger requested`);
     const result = await triggerReminderJobManually();
 
-    const response: ApiResponse = {
-      success: true,
-      data: result,
-      message: 'Manual reminder trigger completed'
-    };
-
-    res.json(response);
-  } catch (error: any) {
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Failed to trigger reminders'
-    };
-    res.status(500).json(response);
+    return sendSuccess(res, result, 'Manual reminder trigger completed');
+  } catch (error) {
+    return handleRouteError(error, res, 'Failed to trigger reminders');
   }
 });
 
