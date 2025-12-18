@@ -8,13 +8,13 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copia i file di configurazione delle dipendenze
-COPY package*.json ./
+COPY server/package*.json ./
 
 # Installa tutte le dipendenze (incluse devDependencies per il build)
 RUN npm ci
 
-# Copia tutto il codice sorgente
-COPY . .
+# Copia tutto il codice sorgente del server
+COPY server/ .
 
 # Build dell'applicazione TypeScript
 RUN npm run build
@@ -32,13 +32,16 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 WORKDIR /app
 
 # Copia i file di configurazione delle dipendenze
-COPY package*.json ./
+COPY server/package*.json ./
 
 # Installa solo le dipendenze di produzione
 RUN npm ci --only=production
 
 # Copia i file buildati dallo stage precedente
 COPY --from=builder /app/dist ./dist
+
+# Copia gli scripts dalla root del progetto
+COPY scripts ./scripts
 
 # Cambia ownership dei file all'utente nodejs
 RUN chown -R nodejs:nodejs /app
