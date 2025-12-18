@@ -12,6 +12,7 @@ import appointmentsRouter from './routes/appointments.js';
 import settingsRouter from './routes/settings.js';
 import publicRouter from './routes/public.js';
 import uploadRouter from './routes/upload.js';
+import authRouter from './routes/auth.js';
 import logger from './utils/logger.js';
 import type { ApiResponse } from './types/index.js';
 
@@ -195,10 +196,10 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+// Auth endpoint for JWT token generation (public, no authentication required)
+app.use('/api/auth', authRouter);
 // Note: Appointments router handles its own authentication selectively
 // to keep confirmation endpoints public
-// Reminders and Settings routes are protected by frontend authentication
-// For full security, implement JWT authentication in the future
 app.use('/api/reminders', remindersRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/settings', settingsRouter);
@@ -236,6 +237,7 @@ app.get('/', (req, res) => {
       version: '1.0.0',
       endpoints: {
         health: '/health',
+        auth: '/api/auth',
         reminders: '/api/reminders',
         appointments: '/api/appointments',
         settings: '/api/settings',
