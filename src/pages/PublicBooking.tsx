@@ -4,6 +4,7 @@ import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft,
 import type { Service, ServiceCategory, Staff } from '../types';
 import { format, addDays, startOfWeek, isBefore, startOfDay, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { getImageUrl } from '../services/uploadService';
 
 interface BookingData {
   serviceId: string;
@@ -178,29 +179,41 @@ const PublicBooking: React.FC = () => {
                 {category?.name || 'Altri Servizi'}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {categoryServices.map(service => (
-                  <button
-                    key={service.id}
-                    onClick={() => setBookingData({ ...bookingData, serviceId: service.id })}
-                    className={`p-4 rounded-lg border-2 text-left transition-all ${
-                      bookingData.serviceId === service.id
-                        ? 'border-primary-500 bg-primary-50'
-                        : 'border-gray-200 hover:border-primary-300 bg-white'
-                    }`}
-                  >
-                    <h4 className="font-semibold text-gray-900 mb-1">{service.name}</h4>
-                    <p className="text-sm text-gray-600 mb-2">{service.description}</p>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-700">
-                        <Clock className="inline w-4 h-4 mr-1" />
-                        {service.duration} min
-                      </span>
-                      <span className="font-semibold text-primary-600">
-                        €{service.price.toFixed(2)}
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                {categoryServices.map(service => {
+                  const imageUrl = getImageUrl(service.imageUrl);
+                  return (
+                    <button
+                      key={service.id}
+                      onClick={() => setBookingData({ ...bookingData, serviceId: service.id })}
+                      className={`p-4 rounded-lg border-2 text-left transition-all ${
+                        bookingData.serviceId === service.id
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-primary-300 bg-white'
+                      }`}
+                    >
+                      {imageUrl && (
+                        <div className="mb-3">
+                          <img
+                            src={imageUrl}
+                            alt={service.name}
+                            className="w-full h-32 object-cover rounded-lg"
+                          />
+                        </div>
+                      )}
+                      <h4 className="font-semibold text-gray-900 mb-1">{service.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">{service.description}</p>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">
+                          <Clock className="inline w-4 h-4 mr-1" />
+                          {service.duration} min
+                        </span>
+                        <span className="font-semibold text-primary-600">
+                          €{service.price.toFixed(2)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           );

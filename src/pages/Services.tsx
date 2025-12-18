@@ -1,17 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Service } from '../types';
-import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteService } from '../utils/db';
 import { logger } from '../utils/logger';
 import { isToday, parseISO } from 'date-fns';
 import AppointmentModal from '../components/calendar/AppointmentModal';
+import { uploadServiceImage, deleteServiceImage, getImageUrl } from '../services/uploadService';
 
 const Services: React.FC = () => {
   const { services, addService, updateService, deleteService, serviceCategories, appointments } = useApp();
@@ -23,6 +24,10 @@ const Services: React.FC = () => {
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [selectedServiceId, setSelectedServiceId] = useState<string | undefined>(undefined);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if filter=today is present
   const filterToday = searchParams.get('filter') === 'today';
@@ -78,6 +83,10 @@ const Services: React.FC = () => {
         category: service.category,
         color: service.color || '#ec4899',
       });
+      // Set image preview if service has an image
+      if (service.imageUrl) {
+        setImagePreview(getImageUrl(service.imageUrl) || null);
+      }
     } else {
       setEditingService(null);
       setFormData({
@@ -88,6 +97,8 @@ const Services: React.FC = () => {
         category: '',
         color: '#ec4899',
       });
+      setSelectedImage(null);
+      setImagePreview(null);
     }
     setIsModalOpen(true);
   };
@@ -95,10 +106,73 @@ const Services: React.FC = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingService(null);
+    setSelectedImage(null);
+    setImagePreview(null);
   };
 
   // ESC key to close modal
   useEscapeKey(handleCloseModal, isModalOpen);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        showError('Per favore seleziona un file immagine valido');
+        return;
+      }
+
+      // Validate file size (5MB max)
+      if (file.size > 5 * 1024 * 1024) {
+        showError('L\'immagine deve essere inferiore a 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (editingService && editingService.imageUrl) {
+      // If editing and service has an image, delete it from server
+      const confirmed = await confirm({
+        title: 'Rimuovi Immagine',
+        message: 'Sei sicuro di voler rimuovere l\'immagine del servizio?',
+        confirmText: 'Rimuovi',
+        variant: 'danger',
+      });
+
+      if (confirmed) {
+        try {
+          setIsUploadingImage(true);
+          const { service } = await deleteServiceImage(editingService.id);
+          await updateService(service);
+          showSuccess('Immagine rimossa con successo!');
+          setImagePreview(null);
+          setSelectedImage(null);
+        } catch (error) {
+          showError('Errore durante la rimozione dell\'immagine');
+          logger.error('Error deleting image:', error);
+        } finally {
+          setIsUploadingImage(false);
+        }
+      }
+    } else {
+      // Just clear the preview
+      setImagePreview(null);
+      setSelectedImage(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,13 +183,30 @@ const Services: React.FC = () => {
     };
 
     try {
+      // Save service first
       if (editingService) {
         await updateService(serviceData);
-        showSuccess('Servizio aggiornato con successo!');
       } else {
         await addService(serviceData);
-        showSuccess('Servizio aggiunto con successo!');
       }
+
+      // Then upload image if selected
+      if (selectedImage) {
+        setIsUploadingImage(true);
+        try {
+          const { service } = await uploadServiceImage(serviceData.id, selectedImage);
+          await updateService(service);
+          showSuccess(editingService ? 'Servizio e immagine aggiornati con successo!' : 'Servizio e immagine aggiunti con successo!');
+        } catch (error) {
+          showError('Servizio salvato ma errore durante il caricamento dell\'immagine');
+          logger.error('Error uploading image:', error);
+        } finally {
+          setIsUploadingImage(false);
+        }
+      } else {
+        showSuccess(editingService ? 'Servizio aggiornato con successo!' : 'Servizio aggiunto con successo!');
+      }
+
       handleCloseModal();
     } catch (error) {
       showError('Errore durante il salvataggio del servizio');
@@ -249,6 +340,8 @@ const Services: React.FC = () => {
           {filteredServices.map((service) => {
             const category = serviceCategories.find(c => c.id === service.category);
             const displayColor = category?.color || service.color || '#ec4899';
+            const imageUrl = getImageUrl(service.imageUrl);
+
             return (
               <div
                 key={service.id}
@@ -257,12 +350,20 @@ const Services: React.FC = () => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
-                    <div
-                      className="w-12 h-12 rounded-full flex items-center justify-center"
-                      style={{ backgroundColor: `${displayColor}20` }}
-                    >
-                      <Scissors size={24} style={{ color: displayColor }} />
-                    </div>
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={service.name}
+                        className="w-12 h-12 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-12 h-12 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: `${displayColor}20` }}
+                      >
+                        <Scissors size={24} style={{ color: displayColor }} />
+                      </div>
+                    )}
                     <div className="ml-3">
                       <h3 className="font-semibold text-gray-900">{service.name}</h3>
                       <span
@@ -389,6 +490,51 @@ const Services: React.FC = () => {
                   />
                 </div>
 
+                {/* Image Upload Section */}
+                <div>
+                  <label className="label">Immagine Servizio</label>
+                  <div className="space-y-3">
+                    {imagePreview ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-32 h-32 object-cover rounded-lg border-2 border-gray-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          disabled={isUploadingImage}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600 disabled:opacity-50"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageSelect}
+                          className="hidden"
+                          id="service-image-input"
+                        />
+                        <label
+                          htmlFor="service-image-input"
+                          className="cursor-pointer inline-flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors"
+                        >
+                          <Upload size={16} className="mr-2" />
+                          Carica Immagine
+                        </label>
+                        <span className="text-sm text-gray-500">
+                          JPG, PNG, GIF o WebP (max 5MB)
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="label">Durata (minuti) *</label>
@@ -487,13 +633,18 @@ const Services: React.FC = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <button type="submit" className="btn-primary flex-1 touch-manipulation">
-                    {editingService ? 'Salva Modifiche' : 'Crea Servizio'}
+                  <button
+                    type="submit"
+                    className="btn-primary flex-1 touch-manipulation"
+                    disabled={isUploadingImage}
+                  >
+                    {isUploadingImage ? 'Caricamento...' : (editingService ? 'Salva Modifiche' : 'Crea Servizio')}
                   </button>
                   <button
                     type="button"
                     onClick={handleCloseModal}
                     className="btn-secondary flex-1 touch-manipulation"
+                    disabled={isUploadingImage}
                   >
                     Annulla
                   </button>

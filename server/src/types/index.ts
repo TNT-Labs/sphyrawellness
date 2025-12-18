@@ -43,6 +43,7 @@ export interface Service {
   duration: number; // minutes
   price: number;
   category?: string;
+  imageUrl?: string; // URL or path to service image
   createdAt: string;
   updatedAt?: string;
 }
@@ -55,6 +56,7 @@ export interface Staff {
   phone: string;
   role: string;
   specializations?: string[];
+  profileImageUrl?: string; // URL or path to profile image
   createdAt: string;
   updatedAt?: string;
 }

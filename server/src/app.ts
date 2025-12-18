@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { triggerReminderJobManually } from './jobs/dailyReminderCron.js';
@@ -9,8 +11,12 @@ import remindersRouter from './routes/reminders.js';
 import appointmentsRouter from './routes/appointments.js';
 import settingsRouter from './routes/settings.js';
 import publicRouter from './routes/public.js';
+import uploadRouter from './routes/upload.js';
 import logger from './utils/logger.js';
 import type { ApiResponse } from './types/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -163,6 +169,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // Apply global rate limiting to all routes
 app.use(globalLimiter);
 
@@ -194,6 +203,7 @@ app.use('/api/reminders', remindersRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/public', publicRouter);
+app.use('/api/upload', uploadRouter);
 
 // Manual trigger for testing (now with strict rate limiting)
 app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
@@ -229,7 +239,8 @@ app.get('/', (req, res) => {
         reminders: '/api/reminders',
         appointments: '/api/appointments',
         settings: '/api/settings',
-        public: '/api/public'
+        public: '/api/public',
+        upload: '/api/upload'
       }
     },
     message: 'Welcome to Sphyra Wellness Lab API'

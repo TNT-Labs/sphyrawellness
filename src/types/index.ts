@@ -36,6 +36,7 @@ export interface Service {
   price: number;
   category: string;
   color?: string;
+  imageUrl?: string; // URL or path to service image
   createdAt?: string; // ISO timestamp of creation
   updatedAt?: string; // ISO timestamp of last modification
 }
@@ -50,6 +51,7 @@ export interface Staff {
   specializations: string[]; // Array of category IDs
   color: string;
   isActive: boolean;
+  profileImageUrl?: string; // URL or path to profile image
   createdAt?: string; // ISO timestamp of creation
   updatedAt?: string; // ISO timestamp of last modification
 }
