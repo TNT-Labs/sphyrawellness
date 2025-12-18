@@ -130,6 +130,9 @@ export function getImageUrl(imageUrl?: string): string | undefined {
     return imageUrl;
   }
 
-  // Otherwise, prepend API URL
-  return `${API_URL}${imageUrl}`;
+  // Images are served from server root (not /api path)
+  // API_URL is http://localhost:3001/api, but images are at http://localhost:3001/uploads
+  // So we need to extract base URL and append image path
+  const baseUrl = API_URL.replace(/\/api$/, '');
+  return `${baseUrl}${imageUrl}`;
 }
