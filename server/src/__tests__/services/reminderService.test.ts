@@ -11,6 +11,10 @@ const mockServicesGet = vi.hoisted(() => vi.fn());
 const mockStaffGet = vi.hoisted(() => vi.fn());
 const mockRemindersPut = vi.hoisted(() => vi.fn());
 
+// Bcrypt mocks with hoisted functions for better control
+const mockBcryptHash = vi.hoisted(() => vi.fn());
+const mockBcryptCompare = vi.hoisted(() => vi.fn());
+
 vi.mock('../../config/database.js', () => ({
   default: {
     appointments: {
@@ -48,8 +52,8 @@ vi.mock('../../services/calendarService.js', () => ({
 
 vi.mock('bcrypt', () => ({
   default: {
-    hash: vi.fn().mockResolvedValue('hashed-token'),
-    compare: vi.fn().mockResolvedValue(true)
+    hash: mockBcryptHash,
+    compare: mockBcryptCompare
   }
 }));
 
@@ -95,6 +99,10 @@ describe('ReminderService', () => {
   beforeEach(() => {
     reminderService = new ReminderService();
     vi.clearAllMocks();
+
+    // Reset bcrypt mocks to default behavior
+    mockBcryptHash.mockResolvedValue('hashed-token');
+    mockBcryptCompare.mockResolvedValue(true);
   });
 
   describe('getAppointmentsNeedingReminders', () => {
@@ -141,8 +149,9 @@ describe('ReminderService', () => {
 
   describe('confirmAppointment', () => {
     it('should confirm appointment with valid token', async () => {
-      const bcrypt = await import('bcrypt');
-      vi.mocked(bcrypt.default.compare).mockResolvedValue(true as never);
+      // Mock bcrypt.compare to return true for valid token
+      mockBcryptCompare.mockResolvedValue(true);
+      mockBcryptHash.mockResolvedValue('hashed-token-123');
 
       const appointmentWithToken = {
         ...mockAppointment,
@@ -153,10 +162,18 @@ describe('ReminderService', () => {
       mockGet.mockResolvedValue(appointmentWithToken);
       mockPut.mockResolvedValue({ ok: true, id: 'appointment-1', rev: '2-xyz' });
 
+      // Token must be at least 64 characters (2 UUIDs concatenated)
+      const validToken = 'a'.repeat(64);
+
       const result = await reminderService.confirmAppointment(
         'appointment-1',
-        'valid-token-with-64-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        validToken
       );
+
+      // Log error if test fails
+      if (!result.success) {
+        console.error('Confirmation failed:', result.error);
+      }
 
       expect(result.success).toBe(true);
       expect(result.appointment?.status).toBe('confirmed');
@@ -187,9 +204,12 @@ describe('ReminderService', () => {
 
       mockGet.mockResolvedValue(appointmentWithExpiredToken);
 
+      // Token must be at least 64 characters
+      const validToken = 'a'.repeat(64);
+
       const result = await reminderService.confirmAppointment(
         'appointment-1',
-        'valid-token-with-64-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        validToken
       );
 
       expect(result.success).toBe(false);
@@ -197,8 +217,8 @@ describe('ReminderService', () => {
     });
 
     it('should reject mismatched token', async () => {
-      const bcrypt = await import('bcrypt');
-      vi.mocked(bcrypt.default.compare).mockResolvedValue(false as never);
+      // Mock bcrypt.compare to return false for mismatched token
+      mockBcryptCompare.mockResolvedValue(false);
 
       const appointmentWithToken = {
         ...mockAppointment,
@@ -208,9 +228,12 @@ describe('ReminderService', () => {
 
       mockGet.mockResolvedValue(appointmentWithToken);
 
+      // Token must be at least 64 characters
+      const wrongToken = 'b'.repeat(64);
+
       const result = await reminderService.confirmAppointment(
         'appointment-1',
-        'wrong-token-with-64-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        wrongToken
       );
 
       expect(result.success).toBe(false);
@@ -218,8 +241,8 @@ describe('ReminderService', () => {
     });
 
     it('should handle already confirmed appointments', async () => {
-      const bcrypt = await import('bcrypt');
-      vi.mocked(bcrypt.default.compare).mockResolvedValue(true as never);
+      // Mock bcrypt.compare to return true
+      mockBcryptCompare.mockResolvedValue(true);
 
       const confirmedAppointment = {
         ...mockAppointment,
@@ -230,10 +253,18 @@ describe('ReminderService', () => {
 
       mockGet.mockResolvedValue(confirmedAppointment);
 
+      // Token must be at least 64 characters
+      const validToken = 'a'.repeat(64);
+
       const result = await reminderService.confirmAppointment(
         'appointment-1',
-        'valid-token-with-64-characters-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        validToken
       );
+
+      // Log error if test fails
+      if (!result.success) {
+        console.error('Expected success but got error:', result.error);
+      }
 
       expect(result.success).toBe(true);
       expect(result.message).toContain('already confirmed');
