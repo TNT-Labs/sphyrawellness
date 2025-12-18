@@ -30,6 +30,7 @@ const DB_NAMES = {
 
 // PouchDB instances
 let localDatabases: Record<string, PouchDB.Database> = {};
+let remoteDatabases: Record<string, PouchDB.Database> = {};
 let syncHandlers: Record<string, PouchDB.Replication.Sync<any>> = {};
 
 // Sync status
@@ -489,6 +490,9 @@ export async function startSync(): Promise<boolean> {
         const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${remoteName}`);
         logger.debug(`[SYNC-START] [${remoteName}] Istanza remota PouchDB creata`);
 
+        // Store remote database instance for proper cleanup
+        remoteDatabases[key] = remoteDB;
+
         // Setup bidirectional sync with live updates
         logger.debug(`[SYNC-START] [${remoteName}] Avvio sync bidirezionale (live + retry)`);
         const sync = PouchDB.sync(localDB, remoteDB, {
@@ -639,6 +643,19 @@ export async function stopSync(): Promise<void> {
 
     await Promise.all(cancelPromises);
     syncHandlers = {};
+
+    // Close all remote database connections
+    const closePromises = Object.entries(remoteDatabases).map(async ([key, remoteDB]) => {
+      try {
+        await remoteDB.close();
+        logger.debug(`Closed remote database: ${DB_NAMES[key as keyof typeof DB_NAMES]}`);
+      } catch (closeError) {
+        logger.warn(`Error closing remote database ${key}:`, closeError);
+      }
+    });
+
+    await Promise.all(closePromises);
+    remoteDatabases = {};
 
     notifySyncStatusChange({
       status: 'idle',
@@ -1146,7 +1163,7 @@ export async function performOneTimeSync(): Promise<boolean> {
  */
 export async function closeDatabases(): Promise<void> {
   try {
-    // Stop sync first
+    // Stop sync first (this will also close remote databases)
     await stopSync();
 
     // Close all local databases
@@ -1174,11 +1191,18 @@ function cleanupOnUnload(): void {
         logger.warn('Error canceling sync on unload:', e);
       }
     });
+    Object.values(remoteDatabases).forEach(db => {
+      try {
+        db.close();
+      } catch (e) {
+        logger.warn('Error closing remote database on unload:', e);
+      }
+    });
     Object.values(localDatabases).forEach(db => {
       try {
         db.close();
       } catch (e) {
-        logger.warn('Error closing database on unload:', e);
+        logger.warn('Error closing local database on unload:', e);
       }
     });
     logger.log('Cleanup completed');
