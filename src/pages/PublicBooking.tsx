@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader } from 'lucide-react';
+import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Service, ServiceCategory, Staff } from '../types';
 import { format, addDays, startOfWeek, isBefore, startOfDay, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -32,6 +32,9 @@ const PublicBooking: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const SERVICES_PER_PAGE = 10;
 
   const [bookingData, setBookingData] = useState<BookingData>({
     serviceId: '',
@@ -98,6 +101,33 @@ const PublicBooking: React.FC = () => {
   };
 
   const selectedService = services.find(s => s.id === bookingData.serviceId);
+
+  // Filtra e pagina i servizi
+  const filteredServices = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return services;
+    }
+
+    const query = searchQuery.toLowerCase();
+    return services.filter(service =>
+      service.name.toLowerCase().includes(query) ||
+      service.description?.toLowerCase().includes(query) ||
+      categories.find(c => c.id === service.category)?.name.toLowerCase().includes(query)
+    );
+  }, [services, searchQuery, categories]);
+
+  const paginatedServices = useMemo(() => {
+    const startIndex = (currentPage - 1) * SERVICES_PER_PAGE;
+    const endIndex = startIndex + SERVICES_PER_PAGE;
+    return filteredServices.slice(startIndex, endIndex);
+  }, [filteredServices, currentPage]);
+
+  const totalPages = Math.ceil(filteredServices.length / SERVICES_PER_PAGE);
+
+  // Reset alla prima pagina quando cambia la ricerca
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   const validateStep = (currentStep: number): boolean => {
     const newErrors: Partial<BookingData> = {};
@@ -183,7 +213,7 @@ const PublicBooking: React.FC = () => {
   const renderServiceSelection = () => {
     const groupedServices: Record<string, Service[]> = {};
 
-    services.forEach(service => {
+    paginatedServices.forEach(service => {
       const categoryId = service.category || 'other';
       if (!groupedServices[categoryId]) {
         groupedServices[categoryId] = [];
@@ -198,7 +228,37 @@ const PublicBooking: React.FC = () => {
           <p className="text-gray-600">Seleziona il trattamento che desideri prenotare</p>
         </div>
 
-        {Object.entries(groupedServices).map(([categoryId, categoryServices]) => {
+        {/* Barra di ricerca */}
+        <div className="mb-6">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cerca servizio, categoria o descrizione..."
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            />
+          </div>
+          {searchQuery && (
+            <p className="text-sm text-gray-600 mt-2">
+              {filteredServices.length === 0
+                ? 'Nessun servizio trovato'
+                : `${filteredServices.length} servizio${filteredServices.length !== 1 ? 'i' : ''} trovato${filteredServices.length !== 1 ? 'i' : ''}`
+              }
+            </p>
+          )}
+        </div>
+
+        {paginatedServices.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">
+              {searchQuery ? 'Nessun servizio corrisponde alla ricerca' : 'Nessun servizio disponibile'}
+            </p>
+          </div>
+        ) : (
+          <>
+            {Object.entries(groupedServices).map(([categoryId, categoryServices]) => {
           const category = categories.find(c => c.id === categoryId);
           return (
             <div key={categoryId}>
@@ -246,20 +306,62 @@ const PublicBooking: React.FC = () => {
           );
         })}
 
-        {errors.serviceId && (
-          <p className="text-red-600 text-sm text-center">{errors.serviceId}</p>
-        )}
+            {errors.serviceId && (
+              <p className="text-red-600 text-sm text-center">{errors.serviceId}</p>
+            )}
 
-        <div className="flex justify-end">
-          <button
-            onClick={handleNext}
-            disabled={!bookingData.serviceId}
-            className="btn-primary flex items-center gap-2"
-          >
-            Avanti
-            <ArrowRight size={20} />
-          </button>
-        </div>
+            {/* Paginazione */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-4 py-4">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-10 h-10 rounded-lg font-semibold ${
+                        currentPage === page
+                          ? 'bg-primary-500 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            )}
+
+            <div className="flex justify-between items-center pt-4">
+              {filteredServices.length > SERVICES_PER_PAGE && (
+                <p className="text-sm text-gray-600">
+                  Visualizzati {((currentPage - 1) * SERVICES_PER_PAGE) + 1}-{Math.min(currentPage * SERVICES_PER_PAGE, filteredServices.length)} di {filteredServices.length} servizi
+                </p>
+              )}
+              <button
+                onClick={handleNext}
+                disabled={!bookingData.serviceId}
+                className="btn-primary flex items-center gap-2 ml-auto"
+              >
+                Avanti
+                <ArrowRight size={20} />
+              </button>
+            </div>
+          </>
+        )}
       </div>
     );
   };
