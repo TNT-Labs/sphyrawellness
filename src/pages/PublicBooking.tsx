@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import type { Service, ServiceCategory, Staff } from '../types';
 import { format, addDays, startOfWeek, isBefore, startOfDay, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -17,6 +17,9 @@ interface BookingData {
   email: string;
   phone: string;
   notes?: string;
+  privacyConsent?: boolean;
+  emailReminderConsent?: boolean;
+  healthDataConsent?: boolean;
 }
 
 interface TimeSlot {
@@ -44,7 +47,10 @@ const PublicBooking: React.FC = () => {
     lastName: '',
     email: '',
     phone: '',
-    notes: ''
+    notes: '',
+    privacyConsent: false,
+    emailReminderConsent: false,
+    healthDataConsent: false
   });
 
   const [errors, setErrors] = useState<Partial<BookingData>>({});
@@ -151,6 +157,13 @@ const PublicBooking: React.FC = () => {
       }
       if (!bookingData.phone.trim()) {
         newErrors.phone = 'Il telefono è obbligatorio';
+      }
+      if (!bookingData.privacyConsent) {
+        newErrors.privacyConsent = 'Devi accettare l\'informativa sulla privacy per procedere';
+      }
+      // Validazione consenso dati sensibili solo se ci sono note
+      if (bookingData.notes && bookingData.notes.trim() && !bookingData.healthDataConsent) {
+        newErrors.healthDataConsent = 'Devi acconsentire al trattamento dei dati relativi ad allergie/condizioni di salute';
       }
     }
 
@@ -575,6 +588,94 @@ const PublicBooking: React.FC = () => {
             rows={3}
             placeholder="Allergie, note particolari..."
           />
+        </div>
+
+        {/* Sezione Consensi Privacy */}
+        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200 space-y-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Shield className="w-5 h-5 text-pink-600" />
+            <h3 className="font-semibold text-gray-900">Informativa Privacy e Consensi</h3>
+          </div>
+
+          {/* Consenso Privacy Obbligatorio */}
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="privacyConsent"
+              checked={bookingData.privacyConsent || false}
+              onChange={(e) => setBookingData({ ...bookingData, privacyConsent: e.target.checked })}
+              className={`mt-1 w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 ${
+                errors.privacyConsent ? 'border-red-500' : ''
+              }`}
+            />
+            <label htmlFor="privacyConsent" className="text-sm text-gray-700 flex-1">
+              <span className="font-semibold text-red-600">* </span>
+              Ho letto e accetto l'
+              <Link
+                to="/privacy"
+                target="_blank"
+                className="text-pink-600 hover:text-pink-700 underline font-semibold"
+              >
+                Informativa sulla Privacy
+              </Link>
+              {' '}e acconsento al trattamento dei miei dati personali per la gestione della prenotazione.
+            </label>
+          </div>
+          {errors.privacyConsent && (
+            <p className="text-red-600 text-sm ml-7">{errors.privacyConsent}</p>
+          )}
+
+          {/* Consenso Email Promemoria */}
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="emailReminderConsent"
+              checked={bookingData.emailReminderConsent || false}
+              onChange={(e) => setBookingData({ ...bookingData, emailReminderConsent: e.target.checked })}
+              className="mt-1 w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+            />
+            <label htmlFor="emailReminderConsent" className="text-sm text-gray-700 flex-1">
+              Acconsento a ricevere email di promemoria automatiche relative agli appuntamenti prenotati.
+            </label>
+          </div>
+
+          {/* Consenso Dati Sensibili - Solo se ci sono note */}
+          {bookingData.notes && bookingData.notes.trim() && (
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="healthDataConsent"
+                  checked={bookingData.healthDataConsent || false}
+                  onChange={(e) => setBookingData({ ...bookingData, healthDataConsent: e.target.checked })}
+                  className={`mt-1 w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500 ${
+                    errors.healthDataConsent ? 'border-red-500' : ''
+                  }`}
+                />
+                <label htmlFor="healthDataConsent" className="text-sm text-gray-700 flex-1">
+                  <span className="font-semibold text-red-600">* </span>
+                  Acconsento esplicitamente al trattamento dei dati particolari (allergie, condizioni di salute)
+                  inseriti nelle note, necessari per garantire la mia sicurezza durante i trattamenti
+                  (art. 9 GDPR - Dati particolari).
+                </label>
+              </div>
+              {errors.healthDataConsent && (
+                <p className="text-red-600 text-sm ml-7 mt-2">{errors.healthDataConsent}</p>
+              )}
+            </div>
+          )}
+
+          <p className="text-xs text-gray-500 mt-3">
+            <span className="font-semibold text-red-600">* </span>
+            Campi obbligatori. Per maggiori informazioni consulta la nostra{' '}
+            <Link
+              to="/privacy"
+              target="_blank"
+              className="text-pink-600 hover:text-pink-700 underline"
+            >
+              Informativa sulla Privacy
+            </Link>.
+          </p>
         </div>
 
         <div className="flex justify-between pt-4">

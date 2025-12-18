@@ -26,6 +26,7 @@ import UserManual from './pages/UserManual';
 import Settings from './pages/Settings';
 import ConfirmAppointment from './pages/ConfirmAppointment';
 import PublicBooking from './pages/PublicBooking';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 // Global loading screen
 const GlobalLoader: React.FC = () => (
@@ -85,6 +86,7 @@ const AppContent: React.FC = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/prenota" element={<PublicBooking />} />
                 <Route path="/booking" element={<PublicBooking />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
 
                 {/* Protected routes */}
                 <Route
@@ -103,6 +105,7 @@ const AppContent: React.FC = () => {
                           <Route path="/statistiche" element={<Statistics />} />
                           <Route path="/manuale" element={<UserManual />} />
                           <Route path="/impostazioni" element={<Settings />} />
+                          <Route path="/privacy" element={<PrivacyPolicy />} />
                           <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
                           <Route path="/confirm-appointment/success" element={<ConfirmAppointment />} />
                           <Route path="/confirm-appointment/error" element={<ConfirmAppointment />} />
