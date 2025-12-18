@@ -1,15 +1,21 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
-import app from './app.js';
-import { initializeIndexes } from './config/database.js';
-import { initializeDailyReminderCron } from './jobs/dailyReminderCron.js';
+import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { triggerReminderJobManually } from './jobs/dailyReminderCron.js';
+import remindersRouter from './routes/reminders.js';
+import appointmentsRouter from './routes/appointments.js';
+import settingsRouter from './routes/settings.js';
+import publicRouter from './routes/public.js';
 import logger from './utils/logger.js';
-import { sendSuccess, handleRouteError } from './utils/response.js';
 import type { ApiResponse } from './types/index.js';
 
 // Load environment variables
 dotenv.config();
 
-const PORT = process.env.PORT || 3001;
+const app = express();
 
 // Trust proxy - Required when behind reverse proxy (nginx)
 // This allows Express to trust X-Forwarded-* headers from nginx
@@ -195,9 +201,19 @@ app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
     logger.info(`🔧 Manual reminder trigger requested`);
     const result = await triggerReminderJobManually();
 
-    return sendSuccess(res, result, 'Manual reminder trigger completed');
-  } catch (error) {
-    return handleRouteError(error, res, 'Failed to trigger reminders');
+    const response: ApiResponse = {
+      success: true,
+      data: result,
+      message: 'Manual reminder trigger completed'
+    };
+
+    res.json(response);
+  } catch (error: any) {
+    const response: ApiResponse = {
+      success: false,
+      error: error.message || 'Failed to trigger reminders'
+    };
+    res.status(500).json(response);
   }
 });
 
@@ -225,51 +241,4 @@ app.get('/', (req, res) => {
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Initialize database indexes and start server
-async function startServer() {
-  try {
-    logger.info('🚀 Starting Sphyra Wellness Lab Server...\n');
-
-    // Initialize database indexes
-    await initializeIndexes();
-
-    // Initialize cron job
-    initializeDailyReminderCron();
-
-    // Start Express server
-    app.listen(PORT, () => {
-      logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      logger.info('✅ Sphyra Wellness Lab Server is running!');
-      logger.info(`📍 Server URL: http://localhost:${PORT}`);
-      logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
-      logger.info(`📧 Reminders API: http://localhost:${PORT}/api/reminders`);
-      logger.info(`📅 Appointments API: http://localhost:${PORT}/api/appointments`);
-      logger.info(`⚙️  Settings API: http://localhost:${PORT}/api/settings`);
-      logger.info(`🌐 Public Booking API: http://localhost:${PORT}/api/public`);
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-
-      logger.info('📝 Configuration:');
-      logger.info(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`   - Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-      logger.info(`   - SendGrid configured: ${process.env.SENDGRID_API_KEY ? '✅ Yes' : '❌ No'}`);
-      logger.info(`   - Reminder time: ${process.env.REMINDER_SEND_HOUR || '10'}:${String(process.env.REMINDER_SEND_MINUTE || '0').padStart(2, '0')}\n`);
-    });
-  } catch (error) {
-    logger.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-}
-
-// Start the server
-startServer();
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  logger.info('👋 SIGTERM received, shutting down gracefully...');
-  process.exit(0);
-});
-
-process.on('SIGINT', () => {
-  logger.info('\n👋 SIGINT received, shutting down gracefully...');
-  process.exit(0);
-});
+export default app;
