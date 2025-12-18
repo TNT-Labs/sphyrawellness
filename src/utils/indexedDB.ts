@@ -354,6 +354,13 @@ export async function updateCustomer(customer: Customer): Promise<void> {
   );
 }
 
+/**
+ * Update customer from sync - does NOT trigger sync loop
+ */
+export async function updateCustomerFromSync(customer: Customer): Promise<void> {
+  await updateFromSync(STORES.CUSTOMERS, customer);
+}
+
 export async function deleteCustomer(id: string): Promise<void> {
   await remove(STORES.CUSTOMERS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -390,6 +397,13 @@ export async function updateService(service: Service): Promise<void> {
   );
 }
 
+/**
+ * Update service from sync - does NOT trigger sync loop
+ */
+export async function updateServiceFromSync(service: Service): Promise<void> {
+  await updateFromSync(STORES.SERVICES, service);
+}
+
 export async function deleteService(id: string): Promise<void> {
   await remove(STORES.SERVICES, id);
   // Sync to PouchDB in background (non-blocking)
@@ -424,6 +438,13 @@ export async function updateStaff(staff: Staff): Promise<void> {
   syncUpdate('staff', staff).catch(err =>
     logger.error('Background sync failed for staff update:', err)
   );
+}
+
+/**
+ * Update staff from sync - does NOT trigger sync loop
+ */
+export async function updateStaffFromSync(staff: Staff): Promise<void> {
+  await updateFromSync(STORES.STAFF, staff);
 }
 
 export async function deleteStaff(id: string): Promise<void> {
@@ -506,6 +527,13 @@ export async function updatePayment(payment: Payment): Promise<void> {
   );
 }
 
+/**
+ * Update payment from sync - does NOT trigger sync loop
+ */
+export async function updatePaymentFromSync(payment: Payment): Promise<void> {
+  await updateFromSync(STORES.PAYMENTS, payment);
+}
+
 export async function deletePayment(id: string): Promise<void> {
   await remove(STORES.PAYMENTS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -586,6 +614,13 @@ export async function updateStaffRole(role: StaffRole): Promise<void> {
   );
 }
 
+/**
+ * Update staff role from sync - does NOT trigger sync loop
+ */
+export async function updateStaffRoleFromSync(role: StaffRole): Promise<void> {
+  await updateFromSync(STORES.STAFF_ROLES, role);
+}
+
 export async function deleteStaffRole(id: string): Promise<void> {
   await remove(STORES.STAFF_ROLES, id);
   // Sync to PouchDB in background (non-blocking)
@@ -620,6 +655,13 @@ export async function updateServiceCategory(category: ServiceCategory): Promise<
   syncUpdate('serviceCategories', category).catch(err =>
     logger.error('Background sync failed for service category update:', err)
   );
+}
+
+/**
+ * Update service category from sync - does NOT trigger sync loop
+ */
+export async function updateServiceCategoryFromSync(category: ServiceCategory): Promise<void> {
+  await updateFromSync(STORES.SERVICE_CATEGORIES, category);
 }
 
 export async function deleteServiceCategory(id: string): Promise<void> {
@@ -963,6 +1005,13 @@ export async function updateUser(user: User): Promise<void> {
   syncUpdate('users', user).catch(err =>
     logger.error('Background sync failed for user update:', err)
   );
+}
+
+/**
+ * Update user from sync - does NOT trigger sync loop
+ */
+export async function updateUserFromSync(user: User): Promise<void> {
+  await updateFromSync(STORES.USERS, user);
 }
 
 export async function deleteUser(id: string): Promise<void> {
