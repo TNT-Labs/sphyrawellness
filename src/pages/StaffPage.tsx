@@ -194,6 +194,8 @@ const StaffPage: React.FC = () => {
       id: editingStaff?.id || generateId(),
       ...formData,
       phone: formatPhoneNumber(formData.phone),
+      // Preserve existing profile image URL if not uploading a new image
+      profileImageUrl: editingStaff?.profileImageUrl,
     };
 
     try {

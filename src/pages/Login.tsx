@@ -119,18 +119,6 @@ export default function Login(): JSX.Element {
             )}
           </button>
         </form>
-
-        {/* Help Text */}
-        <div className="mt-6 text-center text-sm text-gray-600">
-          <p>Prima installazione?</p>
-          <p className="mt-1">
-            Username: <span className="font-mono font-semibold">admin</span> • Password:{' '}
-            <span className="font-mono font-semibold">admin123</span>
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
-            Ricorda di cambiare la password di default dopo il primo accesso
-          </p>
-        </div>
       </div>
     </div>
   );
