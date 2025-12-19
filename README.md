@@ -38,7 +38,53 @@ Per installare l'applicazione in ambiente privato con HTTPS e Nginx:
 - ✅ CouchDB per storage dati
 - ✅ Backend Node.js per email reminders
 
-### 🌐 Deployment HTTPS Pubblico (Let's Encrypt)
+### 🌐 Deployment HTTPS Pubblico - Cloudflare Tunnel (CONSIGLIATO)
+
+**🎯 Soluzione ideale per connessioni Fastweb, WindTre e altri ISP con CGNAT**
+
+Esponi il sito pubblicamente **SENZA aprire alcuna porta sul router**!
+
+**📖 Guida Completa**: Vedi [docs/CLOUDFLARE_TUNNEL_SETUP_IT.md](docs/CLOUDFLARE_TUNNEL_SETUP_IT.md)
+
+**Vantaggi:**
+- ✅ **NESSUNA porta da aprire** (né 80, né 443)
+- ✅ Funziona con **CGNAT** (Fastweb, WindTre, ecc.)
+- ✅ **IP nascosto** al pubblico (maggiore sicurezza)
+- ✅ **CDN globale** incluso
+- ✅ **Protezione DDoS** automatica
+- ✅ **SSL/TLS** gestito da Cloudflare
+- ✅ Completamente **GRATUITO**
+
+**Requisiti:**
+- ✅ Account Cloudflare (gratuito)
+- ✅ Dominio gestito da Cloudflare DNS
+- ✅ Docker + Docker Compose
+- ✅ Connessione Internet (solo outbound)
+
+**Quick Start:**
+```bash
+# 1. Configura ambiente
+cp .env.cloudflare.example .env
+# Modifica .env con dominio e token Cloudflare
+
+# 2. Deploy automatico
+chmod +x deploy-cloudflare.sh
+./deploy-cloudflare.sh
+```
+
+**Stack:**
+- ✅ Docker + Docker Compose
+- ✅ Cloudflare Tunnel (cloudflared)
+- ✅ Nginx reverse proxy
+- ✅ HTTPS gestito da Cloudflare
+- ✅ CouchDB per storage dati
+- ✅ Backend Node.js per email reminders
+
+---
+
+### 🌐 Deployment HTTPS Pubblico - Let's Encrypt (alternativa)
+
+**⚠️ Richiede porte aperte sul router - NON funziona con CGNAT**
 
 Per installare l'applicazione con certificati SSL/TLS validi tramite Let's Encrypt:
 
@@ -47,7 +93,8 @@ Per installare l'applicazione con certificati SSL/TLS validi tramite Let's Encry
 **Requisiti:**
 - ✅ Dominio pubblico registrato
 - ✅ DNS configurato correttamente
-- ✅ Porte 80 e 443 aperte e raggiungibili
+- ✅ **Porte 80 e 443 aperte** sul router
+- ✅ **IP pubblico statico o dinamico** (NO CGNAT)
 - ✅ Docker + Docker Compose
 
 **Quick Start:**
