@@ -416,7 +416,7 @@ const PublicBooking: React.FC = () => {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
             {nextDays.map(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
-              const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+              const isWeekend = day.getDay() === 0; // Solo domenica disabilitata
 
               return (
                 <button
