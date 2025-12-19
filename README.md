@@ -19,7 +19,7 @@ Applicazione Progressive Web App (PWA) per la gestione completa di centri esteti
 
 L'applicazione è progettata per l'esecuzione in ambiente **Docker con HTTPS privato**.
 
-### 🔒 Deployment HTTPS Privato (Consigliato)
+### 🔒 Deployment HTTPS Privato (Rete Locale)
 
 Per installare l'applicazione in ambiente privato con HTTPS e Nginx:
 
@@ -35,6 +35,40 @@ Per installare l'applicazione in ambiente privato con HTTPS e Nginx:
 - ✅ Docker + Docker Compose
 - ✅ Nginx reverse proxy
 - ✅ HTTPS con certificati self-signed
+- ✅ CouchDB per storage dati
+- ✅ Backend Node.js per email reminders
+
+### 🌐 Deployment HTTPS Pubblico (Let's Encrypt)
+
+Per installare l'applicazione con certificati SSL/TLS validi tramite Let's Encrypt:
+
+**📖 Guida Completa**: Vedi [docs/LETSENCRYPT_SETUP_IT.md](docs/LETSENCRYPT_SETUP_IT.md)
+
+**Requisiti:**
+- ✅ Dominio pubblico registrato
+- ✅ DNS configurato correttamente
+- ✅ Porte 80 e 443 aperte e raggiungibili
+- ✅ Docker + Docker Compose
+
+**Quick Start:**
+```bash
+# 1. Configura ambiente
+cp .env.letsencrypt.example .env
+# Modifica .env con il tuo dominio e email
+
+# 2. Genera certificati
+chmod +x scripts/init-letsencrypt.sh
+./scripts/init-letsencrypt.sh
+
+# 3. Avvia servizi
+docker-compose -f docker-compose.letsencrypt.yml up -d
+```
+
+**Stack:**
+- ✅ Docker + Docker Compose
+- ✅ Nginx reverse proxy
+- ✅ HTTPS con certificati Let's Encrypt (validi e fidati)
+- ✅ Rinnovo automatico certificati ogni 12 ore
 - ✅ CouchDB per storage dati
 - ✅ Backend Node.js per email reminders
 
