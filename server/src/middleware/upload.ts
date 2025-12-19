@@ -7,7 +7,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Ensure upload directories exist
-const uploadsDir = path.join(__dirname, '../../uploads');
+// Use absolute path for Docker volume mount at /app/server/uploads
+const uploadsDir = path.join(__dirname, '../../../server/uploads');
 const servicesDir = path.join(uploadsDir, 'services');
 const staffDir = path.join(uploadsDir, 'staff');
 
