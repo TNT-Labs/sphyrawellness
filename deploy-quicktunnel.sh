@@ -88,6 +88,20 @@ fi
 
 echo -e "${GREEN}✅ Configurazione OK${NC}"
 
+# Check email notifications
+echo ""
+if [ -n "$QUICKTUNNEL_NOTIFY_EMAIL" ] && [ -n "$SENDGRID_API_KEY" ]; then
+    echo -e "${GREEN}📧 Notifiche email ATTIVE${NC}"
+    echo "   Email destinatario: $QUICKTUNNEL_NOTIFY_EMAIL"
+    echo "   Riceverai una email quando l'URL cambia"
+elif [ -n "$QUICKTUNNEL_NOTIFY_EMAIL" ] && [ -z "$SENDGRID_API_KEY" ]; then
+    echo -e "${YELLOW}⚠️  Notifiche email configurate ma SENDGRID_API_KEY mancante${NC}"
+    echo "   Aggiungi SENDGRID_API_KEY in .env per attivare le notifiche"
+else
+    echo -e "${BLUE}ℹ️  Notifiche email DISATTIVATE${NC}"
+    echo "   Per attivare: imposta QUICKTUNNEL_NOTIFY_EMAIL e SENDGRID_API_KEY in .env"
+fi
+
 # ========================================
 # 3. Info Quick Tunnel
 # ========================================
