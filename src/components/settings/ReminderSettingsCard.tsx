@@ -12,7 +12,6 @@ export const ReminderSettingsCard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [serverHealthy, setServerHealthy] = useState(false);
   const [isCheckingServer, setIsCheckingServer] = useState(false);
-  const [isOnServer, setIsOnServer] = useState<boolean | null>(null);
 
   // Form state
   const [reminderHour, setReminderHour] = useState(10);
@@ -47,27 +46,7 @@ export const ReminderSettingsCard: React.FC = () => {
     }
   }, []);
 
-  const checkIfOnServer = useCallback(async () => {
-    try {
-      const onServer = await settingsApi.isServer();
-      setIsOnServer(onServer);
-      return onServer;
-    } catch (error) {
-      logger.error('Failed to check if on server:', error);
-      setIsOnServer(false);
-      return false;
-    }
-  }, []);
-
   const initializeSettings = useCallback(async () => {
-    // First check if we're on the server
-    const onServer = await checkIfOnServer();
-
-    // Only proceed if on server
-    if (!onServer) {
-      return;
-    }
-
     // Check if server is available
     await checkServer();
     // Only load settings if server is healthy
@@ -80,7 +59,7 @@ export const ReminderSettingsCard: React.FC = () => {
     } catch {
       // Server check already failed, skip loading settings
     }
-  }, [checkServer, loadSettings, checkIfOnServer]);
+  }, [checkServer, loadSettings]);
 
   useEffect(() => {
     initializeSettings();
@@ -108,62 +87,6 @@ export const ReminderSettingsCard: React.FC = () => {
   const formatTime = (hour: number, minute: number) => {
     return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   };
-
-  // Show loading state while checking
-  if (isOnServer === null) {
-    return (
-      <div className="card">
-        <div className="flex items-center mb-4">
-          <Bell className="text-primary-600 mr-2" size={24} />
-          <h2 className="text-xl font-bold text-gray-900">Impostazioni Reminder Email</h2>
-        </div>
-        <div className="flex items-center justify-center p-8">
-          <RefreshCw className="animate-spin text-primary-600 mr-2" size={24} />
-          <span className="text-gray-600">Verifica in corso...</span>
-        </div>
-      </div>
-    );
-  }
-
-  // Show restricted message if not on server
-  if (isOnServer === false) {
-    return (
-      <div className="card">
-        <div className="flex items-center mb-4">
-          <Bell className="text-primary-600 mr-2" size={24} />
-          <h2 className="text-xl font-bold text-gray-900">Impostazioni Reminder Email</h2>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <AlertCircle className="text-yellow-600 flex-shrink-0 mt-1" size={24} />
-            <div>
-              <p className="font-semibold text-yellow-900 mb-2">Accesso Limitato</p>
-              <p className="text-sm text-yellow-800 mb-3">
-                Le impostazioni del server dei reminders sono accessibili solo dal PC server dove sono eseguite le istanze Docker di Sphyra.
-              </p>
-              <p className="text-sm text-yellow-800">
-                Per configurare i reminder automatici, accedi all'applicazione dal browser del PC server (localhost).
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <Server className="text-blue-600 flex-shrink-0 mt-1" size={20} />
-            <div>
-              <p className="font-semibold text-blue-900">Informazioni</p>
-              <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
-                <li>I reminder vengono gestiti centralmente dal PC server</li>
-                <li>La configurazione può essere modificata solo localmente sul server</li>
-                <li>Una volta configurati, i reminder funzioneranno per tutti i client</li>
-                <li>Puoi comunque inviare reminder manualmente dalla pagina Reminder</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="card">

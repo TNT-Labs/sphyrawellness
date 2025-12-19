@@ -11,92 +11,13 @@ const DEFAULT_SETTINGS_ID = 'app-settings';
 
 /**
  * GET /api/settings/is-server
- * Check if the request is coming from the server itself (localhost)
- * In Docker environments, this includes requests from the host machine
- * through the Docker network (172.x.x.x, 192.168.x.x, etc.)
- *
- * ADMIN OVERRIDE: Users with RESPONSABILE role can access settings from anywhere
+ * Access restrictions have been removed - all users can access reminder settings
+ * This endpoint now always returns true to allow universal access
  */
 router.get('/is-server', async (req: AuthRequest, res) => {
   try {
-    // Check if user is authenticated and is an admin (RESPONSABILE)
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-    // If token is present, try to verify and check admin role
-    if (token) {
-      try {
-        const jwt = await import('jsonwebtoken');
-        const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
-        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
-
-        // If user is RESPONSABILE, grant access from anywhere
-        if (decoded.role === 'RESPONSABILE') {
-          console.log(`✅ is-server result: YES (Admin user: ${decoded.id} has RESPONSABILE role)`);
-          return sendSuccess(res, { isServer: true });
-        }
-      } catch (jwtError) {
-        // Invalid token, continue with IP check
-        console.log('⚠️  Invalid JWT token, falling back to IP check');
-      }
-    }
-
-    // Get the client IP address
-    const clientIp = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
-
-    // Get X-Forwarded-For header which may contain the original client IP
-    const forwardedFor = req.headers['x-forwarded-for'] as string | undefined;
-    const forwardedIp = forwardedFor ? forwardedFor.split(',')[0].trim() : null;
-
-    console.log(`🔍 is-server check - Client IP: ${clientIp}, X-Forwarded-For: ${forwardedFor || 'none'}`);
-
-    // Normalize IPv6 localhost to IPv4
-    const normalizedIp = clientIp === '::1' || clientIp === '::ffff:127.0.0.1'
-      ? '127.0.0.1'
-      : (clientIp || null);
-
-    /**
-     * Helper function to check if an IP is localhost or private network
-     * This includes:
-     * - 127.0.0.1 (localhost IPv4)
-     * - ::1 (localhost IPv6)
-     * - 172.16.0.0/12 (Docker default bridge network)
-     * - 192.168.0.0/16 (Private network)
-     * - 10.0.0.0/8 (Private network)
-     */
-    const isLocalOrPrivate = (ip: string | null | undefined): boolean => {
-      if (!ip) return false;
-
-      // Localhost check
-      if (ip === '127.0.0.1' || ip === 'localhost' || ip === '::1' || ip === '::ffff:127.0.0.1') {
-        return true;
-      }
-
-      // Private network ranges (common for Docker and local networks)
-      const ipParts = ip.split('.');
-      if (ipParts.length === 4) {
-        const first = parseInt(ipParts[0], 10);
-        const second = parseInt(ipParts[1], 10);
-
-        // 10.0.0.0/8 (10.0.0.0 - 10.255.255.255)
-        if (first === 10) return true;
-
-        // 172.16.0.0/12 (172.16.0.0 - 172.31.255.255) - Docker default
-        if (first === 172 && second >= 16 && second <= 31) return true;
-
-        // 192.168.0.0/16 (192.168.0.0 - 192.168.255.255)
-        if (first === 192 && second === 168) return true;
-      }
-
-      return false;
-    };
-
-    // Check both the direct IP and the forwarded IP
-    const isLocalhost = isLocalOrPrivate(normalizedIp) || isLocalOrPrivate(forwardedIp);
-
-    console.log(`✅ is-server result: ${isLocalhost ? 'YES (localhost/private network)' : 'NO (public/external network)'}`);
-
-    return sendSuccess(res, { isServer: isLocalhost });
+    console.log('✅ is-server check: Always returning true (restrictions removed)');
+    return sendSuccess(res, { isServer: true });
   } catch (error) {
     console.error('Error in GET /settings/is-server:', error);
     return handleRouteError(error, res, 'Failed to check server status');
