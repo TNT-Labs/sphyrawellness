@@ -9,11 +9,29 @@ After starting the HTTPS private network configuration, uploaded images return 4
 ## Root Cause
 The uploaded files were stored in the previous container's filesystem, which was lost when the containers were recreated with the new shared volume configuration.
 
+Alternatively, if the migration script ran but images still don't load, the containers may not be using the updated docker-compose configuration with proper volume mounts.
+
 ## Solution
 
-### Option 1: Run the Migration Script (Recommended)
+### Step 1: Fix Volume Mounts (If Migration Script Didn't Help)
 
-Run the automated migration script to attempt to recover files from old volumes:
+If you ran the migration script but images still return 404 errors, the containers need to be recreated with proper volume mounts:
+
+```bash
+./fix-uploads-volume.sh
+```
+
+This script will:
+1. Stop all containers
+2. Recreate them with the correct volume configuration
+3. Verify that both backend and frontend can access the shared volume
+4. Test volume synchronization
+
+**IMPORTANT**: After running this script, you'll need to re-upload all service images because previous uploads were not persisted to the shared volume.
+
+### Step 2: Run the Migration Script (For Recovering Old Files)
+
+If you have old files from a previous installation, run the migration script:
 
 ```bash
 ./migrate-uploads-https-private.sh
@@ -26,7 +44,7 @@ This script will:
 4. Verify the shared volume is working correctly
 5. Provide a detailed report
 
-### Option 2: Manual Migration
+### Step 3: Manual Migration (Advanced)
 
 If you know where the old uploaded files are located:
 
@@ -52,7 +70,7 @@ docker run --rm \
   alpine sh -c "cp -r /source/* /dest/"
 ```
 
-### Option 3: Re-upload Files
+### Step 4: Re-upload Files
 
 If files cannot be recovered:
 1. Log into the admin panel
