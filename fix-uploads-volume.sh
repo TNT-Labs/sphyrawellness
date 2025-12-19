@@ -10,16 +10,16 @@ set -e  # Exit on error
 echo "=== Sphyra Wellness - Fix Uploads Volume ==="
 echo ""
 
-# Check if .env.private exists
-if [ ! -f .env.private ]; then
-    echo "❌ ERROR: .env.private file not found!"
-    echo "Please ensure you're in the correct directory and .env.private exists."
+# Check if .env exists
+if [ ! -f .env ]; then
+    echo "❌ ERROR: .env file not found!"
+    echo "Please ensure you're in the correct directory and .env exists."
     exit 1
 fi
 
 echo "Step 1: Loading environment configuration..."
 set -a
-source .env.private
+source .env
 set +a
 echo "✓ Configuration loaded"
 echo ""
