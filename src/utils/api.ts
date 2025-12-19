@@ -44,7 +44,16 @@ export const settingsApi = {
 
   async isServer(): Promise<boolean> {
     try {
-      const response = await fetch(`${API_BASE_URL}/settings/is-server`);
+      // Include auth token if available (for admin override)
+      const token = getAuthToken();
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/settings/is-server`, {
+        headers,
+      });
       const result: ApiResponse<{ isServer: boolean }> = await response.json();
 
       if (!result.success || result.data === undefined) {

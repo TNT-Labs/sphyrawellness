@@ -1,6 +1,7 @@
 import express from 'express';
 import db from '../config/database.js';
 import { strictLimiter } from '../middleware/rateLimiter.js';
+import { authenticateToken, type AuthRequest } from '../middleware/auth.js';
 import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
 import type { Settings, ApiResponse } from '../types/index.js';
 
@@ -13,9 +14,33 @@ const DEFAULT_SETTINGS_ID = 'app-settings';
  * Check if the request is coming from the server itself (localhost)
  * In Docker environments, this includes requests from the host machine
  * through the Docker network (172.x.x.x, 192.168.x.x, etc.)
+ *
+ * ADMIN OVERRIDE: Users with RESPONSABILE role can access settings from anywhere
  */
-router.get('/is-server', (req, res) => {
+router.get('/is-server', async (req: AuthRequest, res) => {
   try {
+    // Check if user is authenticated and is an admin (RESPONSABILE)
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    // If token is present, try to verify and check admin role
+    if (token) {
+      try {
+        const jwt = await import('jsonwebtoken');
+        const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+        const decoded = jwt.verify(token, JWT_SECRET) as { id: string; role: string };
+
+        // If user is RESPONSABILE, grant access from anywhere
+        if (decoded.role === 'RESPONSABILE') {
+          console.log(`✅ is-server result: YES (Admin user: ${decoded.id} has RESPONSABILE role)`);
+          return sendSuccess(res, { isServer: true });
+        }
+      } catch (jwtError) {
+        // Invalid token, continue with IP check
+        console.log('⚠️  Invalid JWT token, falling back to IP check');
+      }
+    }
+
     // Get the client IP address
     const clientIp = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
 
