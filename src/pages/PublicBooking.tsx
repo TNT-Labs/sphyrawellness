@@ -249,10 +249,10 @@ const PublicBooking: React.FC = () => {
     });
 
     return (
-      <div className="space-y-6">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Scegli il tuo servizio</h2>
-          <p className="text-gray-600">Seleziona il trattamento che desideri prenotare</p>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Scegli il tuo servizio</h2>
+          <p className="text-sm sm:text-base text-gray-600">Seleziona il trattamento che desideri prenotare</p>
         </div>
 
         {/* Barra di ricerca */}
@@ -399,10 +399,10 @@ const PublicBooking: React.FC = () => {
     const nextDays = Array.from({ length: 14 }, (_, i) => addDays(today, i));
 
     return (
-      <div className="space-y-6">
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Scegli data e ora</h2>
-          <p className="text-gray-600">
+      <div className="space-y-4 sm:space-y-6">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Scegli data e ora</h2>
+          <p className="text-sm sm:text-base text-gray-600">
             {selectedService?.name} - {selectedService?.duration} minuti
           </p>
         </div>
@@ -413,7 +413,7 @@ const PublicBooking: React.FC = () => {
             <Calendar className="inline w-4 h-4 mr-2" />
             Seleziona una data
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
             {nextDays.map(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const isWeekend = day.getDay() === 0 || day.getDay() === 6;
@@ -422,7 +422,7 @@ const PublicBooking: React.FC = () => {
                 <button
                   key={dateStr}
                   onClick={() => setBookingData({ ...bookingData, date: dateStr, startTime: '' })}
-                  className={`p-3 rounded-lg border-2 text-center transition-all ${
+                  className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all touch-manipulation min-h-[70px] sm:min-h-[80px] ${
                     bookingData.date === dateStr
                       ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 hover:border-primary-300 bg-white'
@@ -432,7 +432,7 @@ const PublicBooking: React.FC = () => {
                   <div className="text-xs text-gray-600 uppercase">
                     {format(day, 'EEE', { locale: it })}
                   </div>
-                  <div className="text-lg font-bold text-gray-900">
+                  <div className="text-base sm:text-lg font-bold text-gray-900 my-1">
                     {format(day, 'dd')}
                   </div>
                   <div className="text-xs text-gray-600">
@@ -461,13 +461,13 @@ const PublicBooking: React.FC = () => {
                 Nessuno slot disponibile per questa data. Prova un'altra data.
               </p>
             ) : (
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3">
                 {availableSlots.map(slot => (
                   <button
                     key={slot.time}
                     onClick={() => setBookingData({ ...bookingData, startTime: slot.time })}
                     disabled={!slot.available}
-                    className={`p-3 rounded-lg border-2 text-center font-semibold transition-all ${
+                    className={`p-2 sm:p-3 rounded-lg border-2 text-center font-semibold transition-all touch-manipulation min-h-[44px] ${
                       bookingData.startTime === slot.time
                         ? 'border-primary-500 bg-primary-50 text-primary-700'
                         : slot.available
@@ -475,7 +475,7 @@ const PublicBooking: React.FC = () => {
                         : 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
                     }`}
                   >
-                    {slot.time}
+                    <span className="text-sm sm:text-base">{slot.time}</span>
                   </button>
                 ))}
               </div>
@@ -764,22 +764,22 @@ const PublicBooking: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-purple-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 to-purple-50 py-4 sm:py-6 md:py-8 px-3 sm:px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header con logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary-600 mb-2">Sphyra Wellness Lab</h1>
-          <p className="text-gray-600">Prenota il tuo appuntamento online</p>
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-600 mb-2">Sphyra Wellness Lab</h1>
+          <p className="text-sm sm:text-base text-gray-600">Prenota il tuo appuntamento online</p>
         </div>
 
         {/* Progress Steps */}
         {step < 4 && (
-          <div className="mb-8">
+          <div className="mb-6 sm:mb-8">
             <div className="flex items-center justify-center">
               {[1, 2, 3].map((s) => (
                 <React.Fragment key={s}>
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                    className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-sm sm:text-base ${
                       step >= s
                         ? 'bg-primary-500 text-white'
                         : 'bg-gray-300 text-gray-600'
@@ -789,7 +789,7 @@ const PublicBooking: React.FC = () => {
                   </div>
                   {s < 3 && (
                     <div
-                      className={`w-16 h-1 mx-2 ${
+                      className={`w-8 sm:w-12 md:w-16 h-1 mx-1 sm:mx-2 ${
                         step > s ? 'bg-primary-500' : 'bg-gray-300'
                       }`}
                     />
@@ -797,16 +797,16 @@ const PublicBooking: React.FC = () => {
                 </React.Fragment>
               ))}
             </div>
-            <div className="flex justify-center mt-2 text-sm text-gray-600">
-              <div className="w-32 text-center">Servizio</div>
-              <div className="w-32 text-center">Data e Ora</div>
-              <div className="w-32 text-center">Dati</div>
+            <div className="flex justify-center mt-2 text-xs sm:text-sm text-gray-600">
+              <div className="w-20 sm:w-28 md:w-32 text-center">Servizio</div>
+              <div className="w-20 sm:w-28 md:w-32 text-center">Data e Ora</div>
+              <div className="w-20 sm:w-28 md:w-32 text-center">Dati</div>
             </div>
           </div>
         )}
 
         {/* Content Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl p-4 sm:p-6 md:p-8">
           {step === 1 && renderServiceSelection()}
           {step === 2 && renderDateTimeSelection()}
           {step === 3 && renderCustomerForm()}

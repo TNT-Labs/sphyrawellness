@@ -79,8 +79,8 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
             <ChevronLeft size={24} />
           </button>
 
-          <div className="text-center">
-            <h2 className="text-xl font-bold text-gray-900">
+          <div className="text-center flex-1 min-w-0 px-2">
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 truncate">
               {format(currentDate, 'EEEE d MMMM yyyy', { locale: it })}
             </h2>
             {isToday && (
@@ -119,9 +119,9 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
                 id={`time-slot-${slotHour}`}
                 className="flex border-b border-gray-200 last:border-b-0"
               >
-                {/* Time Column */}
-                <div className="w-20 flex-shrink-0 py-3 pr-4 text-right">
-                  <span className="text-sm font-semibold text-gray-600">
+                {/* Time Column - Responsive width */}
+                <div className="w-12 sm:w-16 md:w-20 flex-shrink-0 py-3 pr-2 sm:pr-3 md:pr-4 text-right">
+                  <span className="text-xs sm:text-sm font-semibold text-gray-600">
                     {time}
                   </span>
                 </div>
@@ -131,7 +131,7 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
                   {slotAppointments.length === 0 ? (
                     <button
                       onClick={() => onOpenModal(undefined, currentDate)}
-                      className="w-full h-full flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors"
+                      className="w-full h-full flex items-center justify-center text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-md transition-colors touch-manipulation"
                     >
                       <Plus size={16} />
                     </button>
@@ -140,33 +140,33 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
                       {slotAppointments.map((apt) => (
                         <div
                           key={apt.id}
-                          className="p-3 rounded-md border-l-4 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                          className="p-2 sm:p-3 rounded-md border-l-4 bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer touch-manipulation"
                           style={{ borderLeftColor: getStaffColor(apt.staffId) }}
                           onClick={() => onOpenModal(apt)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-sm font-bold text-gray-900">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="text-xs sm:text-sm font-bold text-gray-900">
                                   {apt.startTime} - {apt.endTime}
                                 </span>
                                 <span
-                                  className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(apt.status)}`}
+                                  className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${getStatusColor(apt.status)}`}
                                 >
                                   {getStatusLabel(apt.status)}
                                 </span>
                               </div>
-                              <p className="text-base font-semibold text-gray-900">
+                              <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">
                                 {getCustomerName(apt.customerId)}
                               </p>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-xs sm:text-sm text-gray-600 truncate">
                                 {getServiceName(apt.serviceId)}
                               </p>
-                              <p className="text-sm text-gray-500">
+                              <p className="text-xs sm:text-sm text-gray-500 truncate">
                                 {getStaffName(apt.staffId)}
                               </p>
                               {apt.notes && (
-                                <p className="text-xs text-gray-500 mt-1 italic">
+                                <p className="text-xs text-gray-500 mt-1 italic line-clamp-2">
                                   {apt.notes}
                                 </p>
                               )}
@@ -189,7 +189,7 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
           <p className="text-sm text-gray-600">
             Totale appuntamenti oggi
           </p>
-          <p className="text-3xl font-bold text-primary-600">
+          <p className="text-2xl sm:text-3xl font-bold text-primary-600">
             {dayAppointments.length}
           </p>
         </div>
