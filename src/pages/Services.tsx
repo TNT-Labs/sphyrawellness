@@ -199,6 +199,8 @@ const Services: React.FC = () => {
           const { service } = await uploadServiceImage(serviceData.id, selectedImage);
           await updateService(service);
           showSuccess(editingService ? 'Servizio e immagine aggiornati con successo!' : 'Servizio e immagine aggiunti con successo!');
+          // Wait a bit to ensure React updates the UI before closing modal
+          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
           showError('Servizio salvato ma errore durante il caricamento dell\'immagine');
           logger.error('Error uploading image:', error);

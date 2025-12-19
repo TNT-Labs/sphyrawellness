@@ -28,8 +28,28 @@ router.post('/service/:serviceId', (req, res) => {
 
       const { serviceId } = req.params;
 
-      // Get the service from database
-      const serviceDoc: any = await db.services.get(serviceId);
+      // Get the service from database or create if doesn't exist
+      let serviceDoc: any;
+      try {
+        serviceDoc = await db.services.get(serviceId);
+      } catch (error: any) {
+        if (error.status === 404) {
+          // Service doesn't exist in backend DB, create a minimal record
+          serviceDoc = {
+            _id: serviceId,
+            name: 'Service',
+            description: '',
+            duration: 60,
+            price: 0,
+            category: '',
+            createdAt: new Date().toISOString()
+          };
+          await db.services.put(serviceDoc);
+          serviceDoc = await db.services.get(serviceId);
+        } else {
+          throw error;
+        }
+      }
 
       // Delete old image if exists
       if (serviceDoc.imageUrl) {
@@ -123,8 +143,31 @@ router.post('/staff/:staffId', (req, res) => {
 
       const { staffId } = req.params;
 
-      // Get the staff from database
-      const staffDoc: any = await db.staff.get(staffId);
+      // Get the staff from database or create if doesn't exist
+      let staffDoc: any;
+      try {
+        staffDoc = await db.staff.get(staffId);
+      } catch (error: any) {
+        if (error.status === 404) {
+          // Staff doesn't exist in backend DB, create a minimal record
+          staffDoc = {
+            _id: staffId,
+            firstName: 'Staff',
+            lastName: 'Member',
+            email: 'staff@example.com',
+            phone: '+39 000 0000000',
+            role: '',
+            specializations: [],
+            color: '#ec4899',
+            isActive: true,
+            createdAt: new Date().toISOString()
+          };
+          await db.staff.put(staffDoc);
+          staffDoc = await db.staff.get(staffId);
+        } else {
+          throw error;
+        }
+      }
 
       // Delete old image if exists
       if (staffDoc.profileImageUrl) {

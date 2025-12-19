@@ -213,6 +213,8 @@ const StaffPage: React.FC = () => {
           const { staff: updatedStaff } = await uploadStaffImage(staffData.id, selectedImage);
           await updateStaff(updatedStaff);
           showSuccess(editingStaff ? 'Membro e immagine aggiornati con successo!' : 'Membro e immagine aggiunti con successo!');
+          // Wait a bit to ensure React updates the UI before closing modal
+          await new Promise(resolve => setTimeout(resolve, 100));
         } catch (error) {
           showError('Membro salvato ma errore durante il caricamento dell\'immagine');
           logger.error('Error uploading image:', error);
