@@ -200,6 +200,80 @@ export const serviceCategorySchema = z.object({
 export type ServiceCategoryFormData = z.infer<typeof serviceCategorySchema>;
 
 // ============================================
+// Password Validation
+// ============================================
+
+/**
+ * Password schema with modern security requirements (OWASP 2025)
+ * Requirements:
+ * - Minimum 10 characters
+ * - At least one uppercase letter (A-Z)
+ * - At least one lowercase letter (a-z)
+ * - At least one number (0-9)
+ * - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
+ */
+export const passwordSchema = z.string()
+  .min(10, 'La password deve contenere almeno 10 caratteri')
+  .max(128, 'La password non può superare 128 caratteri')
+  .refine(
+    (password) => /[A-Z]/.test(password),
+    'La password deve contenere almeno una lettera maiuscola'
+  )
+  .refine(
+    (password) => /[a-z]/.test(password),
+    'La password deve contenere almeno una lettera minuscola'
+  )
+  .refine(
+    (password) => /[0-9]/.test(password),
+    'La password deve contenere almeno un numero'
+  )
+  .refine(
+    (password) => /[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password),
+    'La password deve contenere almeno un carattere speciale (!@#$%^&*()_+-=[]{}|;:,.<>?)'
+  );
+
+export type PasswordFormData = z.infer<typeof passwordSchema>;
+
+/**
+ * Validate password and return detailed error messages
+ */
+export function validatePassword(password: string): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  if (password.length < 10) {
+    errors.push('La password deve contenere almeno 10 caratteri');
+  }
+
+  if (password.length > 128) {
+    errors.push('La password non può superare 128 caratteri');
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push('La password deve contenere almeno una lettera maiuscola');
+  }
+
+  if (!/[a-z]/.test(password)) {
+    errors.push('La password deve contenere almeno una lettera minuscola');
+  }
+
+  if (!/[0-9]/.test(password)) {
+    errors.push('La password deve contenere almeno un numero');
+  }
+
+  if (!/[!@#$%^&*()_+\-=[\]{}|;:,.<>?]/.test(password)) {
+    errors.push('La password deve contenere almeno un carattere speciale (!@#$%^&*()_+-=[]{}|;:,.<>?)');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
+// ============================================
 // Validation Helper Functions
 // ============================================
 
