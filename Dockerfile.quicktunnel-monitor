@@ -1,0 +1,24 @@
+# ========================================
+# Quick Tunnel URL Monitor
+# Monitora e notifica cambiamenti URL
+# ========================================
+
+FROM node:18-alpine
+
+# Installa Docker CLI per comunicare con il container cloudflared
+RUN apk add --no-cache docker-cli
+
+WORKDIR /app
+
+# Copia lo script di monitoraggio
+COPY quicktunnel-monitor.js /app/monitor.js
+
+# Rendi lo script eseguibile
+RUN chmod +x /app/monitor.js
+
+# Health check
+HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
+  CMD ps aux | grep -q "[n]ode.*monitor.js" || exit 1
+
+# Avvia il monitor
+CMD ["node", "/app/monitor.js"]

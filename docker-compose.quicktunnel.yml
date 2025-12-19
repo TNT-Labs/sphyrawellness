@@ -21,6 +21,36 @@ services:
     # Usa: docker logs sphyra-quicktunnel per vederlo
 
   # ========================================
+  # URL MONITOR - Notifiche Email Cambio URL
+  # ========================================
+  url-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile.quicktunnel-monitor
+    container_name: sphyra-url-monitor
+    restart: unless-stopped
+    environment:
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
+      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness Lab}
+      - QUICKTUNNEL_NOTIFY_EMAIL=${QUICKTUNNEL_NOTIFY_EMAIL}
+    volumes:
+      # Accesso al Docker socket per leggere i log del container cloudflared
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Condividi il file URL con l'host
+      - ./.quicktunnel-url:/app/.quicktunnel-url
+    depends_on:
+      - cloudflared
+    networks:
+      - sphyra-network
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "-q", "[n]ode.*monitor.js"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ========================================
   # NGINX - Reverse Proxy
   # ========================================
   nginx:

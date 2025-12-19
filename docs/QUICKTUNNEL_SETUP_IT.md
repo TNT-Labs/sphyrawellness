@@ -107,6 +107,29 @@ COUCHDB_PASSWORD=la-tua-password-sicura-qui
 JWT_SECRET=genera-una-stringa-casuale-molto-lunga
 ```
 
+**Configurazione Opzionale - Notifiche Email Cambio URL:**
+
+Se vuoi ricevere una **email automatica** quando l'URL del Quick Tunnel cambia:
+
+```bash
+# 1. Ottieni API Key gratuita da SendGrid (https://sendgrid.com)
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxx
+
+# 2. Configura email mittente
+SENDGRID_FROM_EMAIL=noreply@tuodominio.com
+
+# 3. Configura email destinatario per notifiche
+QUICKTUNNEL_NOTIFY_EMAIL=admin@tuodominio.com
+```
+
+Con questa configurazione:
+- ✅ Riceverai email quando l'URL cambia
+- ✅ Riceverai email al primo avvio con il nuovo URL
+- ✅ Email formattate in HTML con link diretto
+- ✅ Possibilità di aprire il sito direttamente dall'email
+
+**Nota**: SendGrid offre 100 email/giorno gratuite, più che sufficienti per le notifiche.
+
 Salva e chiudi (CTRL+O, ENTER, CTRL+X)
 
 #### Passo 3: Deploy!
@@ -192,6 +215,88 @@ L'URL corrente è sempre salvato in `.quicktunnel-url`:
 ```bash
 cat .quicktunnel-url
 ```
+
+### Notifiche Email Cambio URL 📧
+
+Il sistema include un **monitor automatico** che invia email quando l'URL cambia.
+
+#### Configurazione
+
+Aggiungi in `.env`:
+
+```bash
+# SendGrid API Key (gratuita su https://sendgrid.com)
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxx
+SENDGRID_FROM_EMAIL=noreply@tuodominio.com
+
+# Email a cui ricevere notifiche
+QUICKTUNNEL_NOTIFY_EMAIL=admin@tuodominio.com
+```
+
+#### Cosa ricevi via Email
+
+**Al primo avvio:**
+- 🎉 Email di benvenuto con il nuovo URL
+- Link diretto per aprire il sito
+- Credenziali di accesso
+
+**Quando l'URL cambia:**
+- 🚨 Email di notifica cambio URL
+- Vecchio URL (non più valido)
+- Nuovo URL (attivo)
+- Link diretto per aprire il sito
+
+#### Email di Esempio
+
+Le email sono formattate in HTML professionale con:
+- 📱 Design responsive (leggibile su mobile)
+- 🎨 Colori e layout accattivanti
+- 🔗 Pulsante "Apri Applicazione" cliccabile
+- ⚠️ Avvisi e suggerimenti utili
+
+#### Verifica Funzionamento
+
+Controlla i log del monitor:
+
+```bash
+# Logs del monitor URL
+docker logs sphyra-url-monitor -f
+```
+
+Dovresti vedere:
+```
+🔍 Quick Tunnel URL Monitor - Avviato
+========================================
+📧 Notifiche email: ATTIVE
+⏱️  Intervallo controllo: 30s
+========================================
+
+✅ URL confermato: https://sphyrawellness-abc123.trycloudflare.com
+✅ Email inviata con successo
+```
+
+#### Disabilitare le Notifiche
+
+Per disabilitare le notifiche email, rimuovi o lascia vuoto in `.env`:
+
+```bash
+QUICKTUNNEL_NOTIFY_EMAIL=
+```
+
+Il monitor continuerà a tracciare l'URL ma non invierà email.
+
+#### SendGrid Gratuito
+
+SendGrid offre un piano gratuito con:
+- ✅ 100 email/giorno (gratuito per sempre)
+- ✅ Più che sufficienti per le notifiche
+- ✅ Registrazione in 2 minuti
+- ✅ Nessuna carta di credito richiesta
+
+1. Vai su https://sendgrid.com
+2. Crea un account gratuito
+3. Crea una API Key (Settings → API Keys)
+4. Copia la chiave in `.env`
 
 ### Monitoraggio
 
