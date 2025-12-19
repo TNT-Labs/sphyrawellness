@@ -206,14 +206,14 @@ export type ServiceCategoryFormData = z.infer<typeof serviceCategorySchema>;
 /**
  * Password schema with modern security requirements (OWASP 2025)
  * Requirements:
- * - Minimum 12 characters
+ * - Minimum 10 characters
  * - At least one uppercase letter (A-Z)
  * - At least one lowercase letter (a-z)
  * - At least one number (0-9)
  * - At least one special character (!@#$%^&*()_+-=[]{}|;:,.<>?)
  */
 export const passwordSchema = z.string()
-  .min(12, 'La password deve contenere almeno 12 caratteri')
+  .min(10, 'La password deve contenere almeno 10 caratteri')
   .max(128, 'La password non può superare 128 caratteri')
   .refine(
     (password) => /[A-Z]/.test(password),
@@ -243,8 +243,8 @@ export function validatePassword(password: string): {
 } {
   const errors: string[] = [];
 
-  if (password.length < 12) {
-    errors.push('La password deve contenere almeno 12 caratteri');
+  if (password.length < 10) {
+    errors.push('La password deve contenere almeno 10 caratteri');
   }
 
   if (password.length > 128) {

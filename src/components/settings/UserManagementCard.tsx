@@ -288,7 +288,7 @@ export default function UserManagementCard(): JSX.Element {
               <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-xs font-medium text-blue-900 mb-1">Requisiti di sicurezza:</p>
                 <ul className="text-xs text-blue-800 space-y-0.5">
-                  <li>• Minimo 12 caratteri</li>
+                  <li>• Minimo 10 caratteri</li>
                   <li>• Almeno una lettera maiuscola (A-Z)</li>
                   <li>• Almeno una lettera minuscola (a-z)</li>
                   <li>• Almeno un numero (0-9)</li>
