@@ -20,6 +20,7 @@ dist-ssr
 
 # HTTPS/SSL
 certificates/
+certbot/
 traefik/logs/
 *.pem
 *.crt
