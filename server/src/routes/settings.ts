@@ -82,6 +82,10 @@ router.put('/', strictLimiter, async (req, res) => {
       return sendError(res, 'reminderSendMinute must be between 0 and 59', 400);
     }
 
+    if (reminderDaysBefore !== undefined && (reminderDaysBefore < 1 || reminderDaysBefore > 30)) {
+      return sendError(res, 'reminderDaysBefore must be between 1 and 30', 400);
+    }
+
     // Get existing settings or create defaults
     let settings: Settings;
     try {

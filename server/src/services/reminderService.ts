@@ -85,15 +85,25 @@ export class ReminderService {
   }
 
   /**
-   * Get appointments that need reminders (scheduled for tomorrow)
+   * Get appointments that need reminders (scheduled for N days from now)
    */
   async getAppointmentsNeedingReminders(): Promise<Appointment[]> {
     try {
-      const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
+      // Get settings to determine how many days before to send reminders
+      let daysBefore = 1; // Default
+      try {
+        const settings = await db.settings.get('app-settings') as any;
+        daysBefore = settings.reminderDaysBefore || 1;
+      } catch (error) {
+        console.log('⚠️ Could not load reminder settings, using default (1 day before)');
+      }
+
+      const targetDate = format(addDays(new Date(), daysBefore), 'yyyy-MM-dd');
+      console.log(`📅 Looking for appointments on ${targetDate} (${daysBefore} days from now)`);
 
       const result = await db.appointments.find({
         selector: {
-          date: tomorrow,
+          date: targetDate,
           status: { $in: ['scheduled', 'confirmed'] },
           $or: [
             { reminderSent: { $exists: false } },

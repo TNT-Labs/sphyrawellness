@@ -16,6 +16,7 @@ export const ReminderSettingsCard: React.FC = () => {
   // Form state
   const [reminderHour, setReminderHour] = useState(10);
   const [reminderMinute, setReminderMinute] = useState(0);
+  const [reminderDaysBefore, setReminderDaysBefore] = useState(1);
   const [enableAutoReminders, setEnableAutoReminders] = useState(true);
 
   const loadSettings = useCallback(async () => {
@@ -25,6 +26,7 @@ export const ReminderSettingsCard: React.FC = () => {
       setSettings(data);
       setReminderHour(data.reminderSendHour);
       setReminderMinute(data.reminderSendMinute);
+      setReminderDaysBefore(data.reminderDaysBefore ?? 1);
       setEnableAutoReminders(data.enableAutoReminders);
     } catch (error: any) {
       logger.error('Failed to load reminder settings:', error);
@@ -71,6 +73,7 @@ export const ReminderSettingsCard: React.FC = () => {
       const updatedSettings = await settingsApi.update({
         reminderSendHour: reminderHour,
         reminderSendMinute: reminderMinute,
+        reminderDaysBefore,
         enableAutoReminders,
       });
 
@@ -151,7 +154,7 @@ export const ReminderSettingsCard: React.FC = () => {
           <div>
             <p className="font-semibold text-gray-900">Reminder Automatici</p>
             <p className="text-sm text-gray-600">
-              Invia automaticamente reminder via email il giorno prima dell'appuntamento
+              Invia automaticamente reminder via email prima dell'appuntamento
             </p>
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
@@ -220,10 +223,54 @@ export const ReminderSettingsCard: React.FC = () => {
               {enableAutoReminders ? (
                 <>
                   I reminder saranno inviati automaticamente alle <strong>{formatTime(reminderHour, reminderMinute)}</strong> di ogni giorno
-                  per gli appuntamenti programmati per il giorno successivo.
+                  per gli appuntamenti programmati per {reminderDaysBefore === 1 ? 'il giorno successivo' : `tra ${reminderDaysBefore} giorni`}.
                 </>
               ) : (
                 'I reminder automatici sono disabilitati. Potrai comunque inviarli manualmente dalla pagina Reminder.'
+              )}
+            </p>
+          </div>
+        </div>
+
+        {/* Days Before Configuration */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-gray-900">Giorni Prima dell'Appuntamento</h3>
+          <p className="text-sm text-gray-600">
+            Imposta quanti giorni prima dell'appuntamento inviare il reminder
+          </p>
+
+          <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex-1">
+              <label htmlFor="reminder-days-before" className="block text-sm font-semibold text-gray-700 mb-2">
+                Giorni prima
+              </label>
+              <input
+                id="reminder-days-before"
+                type="number"
+                min="1"
+                max="30"
+                value={reminderDaysBefore}
+                onChange={(e) => setReminderDaysBefore(Math.max(1, Number(e.target.value)))}
+                disabled={!serverHealthy}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+
+            <div className="pt-7">
+              <div className="bg-primary-100 px-6 py-3 rounded-lg">
+                <p className="text-3xl font-bold text-primary-700 font-mono">
+                  {reminderDaysBefore}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-800">
+              {reminderDaysBefore === 1 ? (
+                'Il reminder sarà inviato il giorno prima dell\'appuntamento.'
+              ) : (
+                <>Il reminder sarà inviato <strong>{reminderDaysBefore} giorni</strong> prima dell'appuntamento.</>
               )}
             </p>
           </div>
