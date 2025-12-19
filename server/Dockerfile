@@ -43,6 +43,9 @@ COPY --from=builder /app/dist ./dist
 # Copia gli scripts dalla root del progetto
 COPY scripts ./scripts
 
+# Crea la directory uploads con la struttura necessaria
+RUN mkdir -p /app/server/uploads/services /app/server/uploads/staff
+
 # Cambia ownership dei file all'utente nodejs
 RUN chown -R nodejs:nodejs /app
 

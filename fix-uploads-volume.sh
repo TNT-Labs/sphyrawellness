@@ -29,12 +29,20 @@ docker compose -f docker-compose.https-private.yml down
 echo "✓ Containers stopped"
 echo ""
 
-echo "Step 3: Recreating containers with proper volume mounts..."
+echo "Step 3: Fixing volume permissions..."
+echo "The uploads directory needs to be owned by the nodejs user (UID 1001)"
+docker run --rm \
+  -v sphyrawellness_uploads_data:/uploads \
+  alpine sh -c "chown -R 1001:1001 /uploads && chmod -R 755 /uploads && mkdir -p /uploads/services /uploads/staff && chown -R 1001:1001 /uploads"
+echo "✓ Permissions fixed"
+echo ""
+
+echo "Step 4: Recreating containers with proper volume mounts..."
 docker compose -f docker-compose.https-private.yml up -d
 echo "✓ Containers recreated"
 echo ""
 
-echo "Step 4: Waiting for containers to be healthy..."
+echo "Step 5: Waiting for containers to be healthy..."
 sleep 10
 
 # Check container health
@@ -42,7 +50,7 @@ echo "Checking container status..."
 docker ps --filter "name=sphyra-" --format "table {{.Names}}\t{{.Status}}"
 echo ""
 
-echo "Step 5: Verifying volume mounts..."
+echo "Step 6: Verifying volume mounts..."
 echo ""
 echo "--- Backend uploads directory (should be writable) ---"
 docker exec sphyra-backend ls -la /app/server/uploads/ || echo "⚠ Backend not ready yet"
@@ -51,18 +59,42 @@ echo "--- Frontend uploads directory (should be read-only) ---"
 docker exec sphyra-frontend ls -la /usr/share/nginx/html/uploads/ || echo "⚠ Frontend not ready yet"
 echo ""
 
-echo "Step 6: Checking if both containers see the same volume..."
+echo "Step 7: Testing write permissions and volume sync..."
 echo ""
-echo "Creating test file from backend..."
-docker exec sphyra-backend touch /app/server/uploads/test-volume-sync.txt
-echo ""
-echo "Checking if frontend can see the test file..."
-if docker exec sphyra-frontend ls /usr/share/nginx/html/uploads/test-volume-sync.txt 2>/dev/null; then
-    echo "✓ Volume sync working! Both containers share the same volume."
-    docker exec sphyra-backend rm /app/server/uploads/test-volume-sync.txt
+echo "Test 1: Creating test file in uploads root..."
+if docker exec sphyra-backend touch /app/server/uploads/test-volume-sync.txt 2>/dev/null; then
+    echo "✓ Backend can write to uploads directory"
+
+    echo ""
+    echo "Test 2: Checking if frontend can see the test file..."
+    if docker exec sphyra-frontend ls /usr/share/nginx/html/uploads/test-volume-sync.txt 2>/dev/null; then
+        echo "✓ Volume sync working! Both containers share the same volume."
+        docker exec sphyra-backend rm /app/server/uploads/test-volume-sync.txt
+    else
+        echo "❌ Volume sync NOT working! Containers cannot see shared files."
+    fi
+
+    echo ""
+    echo "Test 3: Testing write to services subdirectory (where uploads actually go)..."
+    if docker exec sphyra-backend touch /app/server/uploads/services/test-upload.txt 2>/dev/null; then
+        echo "✓ Backend can write to services subdirectory"
+
+        echo ""
+        echo "Test 4: Checking if frontend can see service test file..."
+        if docker exec sphyra-frontend ls /usr/share/nginx/html/uploads/services/test-upload.txt 2>/dev/null; then
+            echo "✓ Service uploads will work correctly!"
+            docker exec sphyra-backend rm /app/server/uploads/services/test-upload.txt
+        else
+            echo "❌ Frontend cannot see service uploads"
+        fi
+    else
+        echo "❌ Backend cannot write to services subdirectory"
+        echo "There may still be a permissions issue."
+    fi
 else
-    echo "❌ Volume sync NOT working! Containers cannot see shared files."
-    echo "This needs further investigation."
+    echo "❌ Backend cannot write to uploads directory"
+    echo "Permissions fix may have failed. Please check manually:"
+    echo "  docker run --rm -v sphyrawellness_uploads_data:/uploads alpine ls -la /uploads"
 fi
 echo ""
 
