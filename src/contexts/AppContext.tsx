@@ -285,7 +285,8 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
         // Step 5.5: Initialize default admin user if no users exist
         if (loadedUsers.length === 0) {
           logger.log('No users found, creating default admin user...');
-          const defaultAdminPassword = await hashPassword('admin123');
+          const initialPassword = import.meta.env.VITE_ADMIN_INITIAL_PASSWORD || 'admin123';
+          const defaultAdminPassword = await hashPassword(initialPassword);
           const defaultAdmin: User = {
             id: 'admin-default-' + Date.now(),
             username: 'admin',
@@ -298,7 +299,7 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
           };
           await dbAddUser(defaultAdmin);
           setUsers([defaultAdmin]);
-          logger.log('✓ Default admin user created (username: admin, password: admin123)');
+          logger.log(`✓ Default admin user created (username: admin, password: ${initialPassword})`);
         }
 
         logger.log('✓ App data loaded successfully');
