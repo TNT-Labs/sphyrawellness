@@ -18,6 +18,9 @@ dist-ssr
 .env.*.local
 .env.production
 
+# Quick Tunnel URL (generated)
+.quicktunnel-url
+
 # HTTPS/SSL
 certificates/
 certbot/

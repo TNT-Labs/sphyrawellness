@@ -151,7 +151,30 @@ Dopo circa 30 secondi, lo script mostrerà l'URL pubblico:
 
 ### Vedere l'URL del Tunnel
 
-Se hai perso l'URL, recuperalo così:
+#### Metodo 1: Script URL Manager (Consigliato) 🎯
+
+Usa lo script di gestione URL incluso:
+
+```bash
+# Mostra l'URL corrente
+./quicktunnel-url.sh
+
+# Monitora l'URL in tempo reale
+./quicktunnel-url.sh watch
+
+# Genera QR code per accesso rapido da smartphone
+./quicktunnel-url.sh qr
+
+# Apri l'URL nel browser
+./quicktunnel-url.sh open
+```
+
+Lo script:
+- ✅ Salva automaticamente l'ultimo URL in `.quicktunnel-url`
+- ✅ Ti avvisa se l'URL cambia dopo un riavvio
+- ✅ Mostra l'ultimo URL noto anche se il container è fermo
+
+#### Metodo 2: Manualmente dai log
 
 ```bash
 docker logs sphyra-quicktunnel 2>&1 | grep trycloudflare
@@ -160,6 +183,14 @@ docker logs sphyra-quicktunnel 2>&1 | grep trycloudflare
 Vedrai qualcosa tipo:
 ```
 https://sphyrawellness-abc123.trycloudflare.com
+```
+
+#### File URL salvato
+
+L'URL corrente è sempre salvato in `.quicktunnel-url`:
+
+```bash
+cat .quicktunnel-url
 ```
 
 ### Monitoraggio
@@ -186,7 +217,7 @@ docker compose -f docker-compose.quicktunnel.yml restart
 
 Dopo il riavvio, recupera il nuovo URL con:
 ```bash
-docker logs sphyra-quicktunnel 2>&1 | grep trycloudflare
+./quicktunnel-url.sh
 ```
 
 ### Fermare i Servizi
@@ -290,8 +321,10 @@ docker logs sphyra-quicktunnel 2>&1 | tail -50
 
 ```bash
 # Recupera il nuovo URL
-docker logs sphyra-quicktunnel 2>&1 | grep trycloudflare
+./quicktunnel-url.sh
 ```
+
+Lo script ti avviserà automaticamente che l'URL è cambiato e ti mostrerà quello nuovo.
 
 ### Prestazioni Lente
 
@@ -325,6 +358,24 @@ L'URL è valido finché il container `sphyra-quicktunnel` è in esecuzione. Se:
 ### Posso scegliere l'URL generato?
 
 No, Cloudflare genera un URL casuale. Se vuoi un URL personalizzato, devi usare un **Named Tunnel** con dominio tuo.
+
+### Posso mantenere lo stesso URL dopo un riavvio?
+
+**No, non è possibile** con il Quick Tunnel. È una limitazione del servizio Cloudflare:
+- Il Quick Tunnel genera sempre un URL casuale ad ogni avvio
+- Non esiste configurazione per renderlo permanente
+- È progettato per test rapidi, non per uso continuativo
+
+**Soluzioni**:
+1. **Named Tunnel** (consigliato): URL permanente con dominio personalizzato
+   - Vedi: [CLOUDFLARE_TUNNEL_SETUP_IT.md](CLOUDFLARE_TUNNEL_SETUP_IT.md)
+   - Costo: Solo il dominio (~€10/anno), resto gratuito
+
+2. **URL Manager Script**: Rende più facile gestire gli URL che cambiano
+   ```bash
+   ./quicktunnel-url.sh        # Mostra URL corrente e ultimo noto
+   ./quicktunnel-url.sh watch  # Monitora cambiamenti
+   ```
 
 ### È sicuro?
 
