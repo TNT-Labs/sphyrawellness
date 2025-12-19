@@ -47,18 +47,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 px-4 py-3">
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 px-3 sm:px-4 py-2 sm:py-3 safe-area-inset-top">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-primary-600">
             <img
                 src={`${import.meta.env.BASE_URL}Sphyra_logo.png`}
                 alt="Sphyra Wellness Lab Logo"
-                className="h-12 w-auto" // Dimensione adatta per l'intestazione mobile
+                className="h-8 sm:h-10 w-auto"
             />
         </h1>
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 touch-manipulation"
+            className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 touch-manipulation min-w-[44px] min-h-[44px] flex items-center justify-center"
             aria-label="Toggle menu"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -77,20 +77,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-gray-200 hidden lg:block flex flex-col items-center">
+          <div className="p-6 border-b border-gray-200 hidden lg:flex flex-col items-center">
           <h1 className="text-2xl font-bold text-primary-600 flex justify-center">
-              {/* Sostituzione del testo con il tag <img> per il logo */}
               <img
                   src={`${import.meta.env.BASE_URL}Sphyra_logo.png`}
                   alt="Sphyra Wellness Lab Logo"
-                  className="h-24 w-auto" // Aggiustare la classe per la dimensione (es. altezza 8, larghezza automatica)
+                  className="h-16 w-auto"
               />
           </h1>
-          <p className="text-sm text-gray-500 mt-1 text-center">Gestione Centro Estetico</p>
+          <p className="text-sm text-gray-500 mt-2 text-center">Gestione Centro Estetico</p>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto mt-16 lg:mt-0">
+          <nav className="flex-1 p-3 sm:p-4 space-y-1 overflow-y-auto mt-14 sm:mt-16 lg:mt-0">
             {navigation.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.href);
@@ -100,7 +99,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   to={item.href}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`
-                    flex items-center px-4 py-3 rounded-lg transition-colors duration-200
+                    flex items-center px-3 sm:px-4 py-3 rounded-lg transition-colors duration-200 touch-manipulation min-h-[44px]
                     ${
                       active
                         ? 'bg-primary-50 text-primary-700 font-semibold'
@@ -108,8 +107,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     }
                   `}
                 >
-                  <Icon size={20} className="mr-3" />
-                  {item.name}
+                  <Icon size={20} className="mr-3 flex-shrink-0" />
+                  <span className="truncate">{item.name}</span>
                 </Link>
               );
             })}
@@ -135,8 +134,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </div>
                 <button
                   onClick={logout}
-                  className="flex-shrink-0 p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  className="flex-shrink-0 p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors touch-manipulation min-w-[40px] min-h-[40px] flex items-center justify-center"
                   title="Logout"
+                  aria-label="Logout"
                 >
                   <LogOut size={18} />
                 </button>
