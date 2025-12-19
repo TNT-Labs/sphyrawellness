@@ -38,7 +38,59 @@ Per installare l'applicazione in ambiente privato con HTTPS e Nginx:
 - ✅ CouchDB per storage dati
 - ✅ Backend Node.js per email reminders
 
-### 🌐 Deployment HTTPS Pubblico - Cloudflare Tunnel (CONSIGLIATO)
+### 🚀 Deployment HTTPS Pubblico - Quick Tunnel (ZERO CONFIG)
+
+**🎯 La soluzione PIÙ VELOCE: URL pubblico in 2 minuti senza configurare NULLA!**
+
+Ottieni un URL pubblico tipo `sphyrawellness-xxx.trycloudflare.com` **automaticamente**!
+
+**📖 Guida Completa**: Vedi [docs/QUICKTUNNEL_SETUP_IT.md](docs/QUICKTUNNEL_SETUP_IT.md)
+
+**Vantaggi:**
+- ✅ **ZERO configurazione** richiesta
+- ✅ **NESSUN dominio** necessario
+- ✅ **NESSUN token** richiesto
+- ✅ **NESSUNA configurazione DNS**
+- ✅ Deploy in **2 minuti**!
+- ✅ **HTTPS automatico** con certificato valido
+- ✅ Funziona con **CGNAT** (Fastweb, WindTre, ecc.)
+- ✅ Completamente **GRATUITO**
+
+**⚠️ Limitazioni:**
+- ⚠️ URL **casuale** generato ad ogni riavvio
+- ⚠️ Ideale per **test, demo, sviluppo**
+- ⚠️ Per produzione → usa Cloudflare Tunnel con dominio personalizzato
+
+**Quick Start:**
+```bash
+# 1. Configura ambiente (opzionale, usa default)
+cp .env.quicktunnel.example .env
+
+# 2. Deploy immediato!
+chmod +x deploy-quicktunnel.sh
+./deploy-quicktunnel.sh
+
+# 3. Lo script mostrerà l'URL pubblico tipo:
+#    https://sphyrawellness-abc123.trycloudflare.com
+```
+
+**Caso d'uso ideale:**
+- 🎯 Demo rapide a clienti
+- 🧪 Test e sviluppo
+- 📱 Accesso remoto temporaneo
+- 🚀 Proof of concept
+
+**Stack:**
+- ✅ Docker + Docker Compose
+- ✅ Cloudflare Quick Tunnel (cloudflared)
+- ✅ Nginx reverse proxy
+- ✅ HTTPS automatico
+- ✅ CouchDB per storage dati
+- ✅ Backend Node.js per email reminders
+
+---
+
+### 🌐 Deployment HTTPS Pubblico - Cloudflare Tunnel (CONSIGLIATO per produzione)
 
 **🎯 Soluzione ideale per connessioni Fastweb, WindTre e altri ISP con CGNAT**
 
