@@ -192,6 +192,9 @@ sleep 20
 TUNNEL_URL=$(docker logs sphyra-quicktunnel 2>&1 | grep -o 'https://[a-z0-9-]*\.trycloudflare\.com' | head -1)
 
 if [ -n "$TUNNEL_URL" ]; then
+    # Salva l'URL
+    echo "$TUNNEL_URL" > .quicktunnel-url
+
     echo ""
     echo "=========================================="
     echo -e "${GREEN}🎉 TUNNEL ATTIVO!${NC}"
@@ -206,7 +209,12 @@ if [ -n "$TUNNEL_URL" ]; then
     echo -e "${YELLOW}⚠️  IMPORTANTE:${NC}"
     echo "   • Questo URL è TEMPORANEO"
     echo "   • Cambierà ad ogni riavvio del container"
-    echo "   • Salva questo URL per usare il sito"
+    echo "   • URL salvato in: .quicktunnel-url"
+    echo ""
+    echo -e "${BLUE}💡 Comandi utili:${NC}"
+    echo "   Mostra URL:  ./quicktunnel-url.sh"
+    echo "   Monitora:    ./quicktunnel-url.sh watch"
+    echo "   QR Code:     ./quicktunnel-url.sh qr"
     echo ""
     echo -e "${BLUE}💡 Per un URL permanente:${NC}"
     echo "   1. Registra un dominio"
@@ -216,12 +224,11 @@ if [ -n "$TUNNEL_URL" ]; then
 else
     echo -e "${YELLOW}⚠️  URL non ancora disponibile nei log${NC}"
     echo ""
-    echo "Attendi altri 30 secondi e controlla manualmente:"
+    echo "Attendi altri 30 secondi e usa:"
     echo ""
-    echo "   ${BLUE}docker logs sphyra-quicktunnel${NC}"
+    echo "   ${BLUE}./quicktunnel-url.sh${NC}"
     echo ""
-    echo "Cerca una riga tipo:"
-    echo "   https://sphyrawellness-xxx.trycloudflare.com"
+    echo "Per vedere l'URL appena disponibile."
     echo ""
 fi
 
@@ -229,10 +236,10 @@ fi
 # 10. Final Info
 # ========================================
 echo "📝 Comandi utili:"
-echo "   URL tunnel:  docker logs sphyra-quicktunnel | grep trycloudflare"
+echo "   Mostra URL:  ./quicktunnel-url.sh"
+echo "   Monitora:    ./quicktunnel-url.sh watch"
 echo "   Status:      docker compose -f docker-compose.quicktunnel.yml ps"
 echo "   Logs:        docker compose -f docker-compose.quicktunnel.yml logs -f"
-echo "   Logs tunnel: docker logs -f sphyra-quicktunnel"
 echo "   Stop:        docker compose -f docker-compose.quicktunnel.yml down"
 echo ""
 echo "🔒 Primo accesso:"
