@@ -285,7 +285,28 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
         // Step 5.5: Initialize default admin user if no users exist
         if (loadedUsers.length === 0) {
           logger.log('No users found, creating default admin user...');
-          const initialPassword = import.meta.env.VITE_ADMIN_INITIAL_PASSWORD || 'admin123';
+
+          // Security check: ensure password is from environment variable and not default
+          const envPassword = import.meta.env.VITE_ADMIN_INITIAL_PASSWORD;
+          let initialPassword = envPassword;
+
+          // Generate random password if not set or if using insecure default
+          if (!envPassword || envPassword === 'admin123') {
+            // Generate a secure random password
+            const randomPassword = Math.random().toString(36).slice(-12) +
+                                   Math.random().toString(36).toUpperCase().slice(-4) +
+                                   Math.floor(Math.random() * 1000);
+            initialPassword = randomPassword;
+
+            // Log security warning
+            console.error('⚠️ SECURITY WARNING: VITE_ADMIN_INITIAL_PASSWORD not set or using default "admin123"!');
+            console.error('⚠️ Generated random password for admin user. SAVE THIS PASSWORD:');
+            console.error(`⚠️ Username: admin`);
+            console.error(`⚠️ Password: ${randomPassword}`);
+            console.error('⚠️ Set VITE_ADMIN_INITIAL_PASSWORD in .env file for production!');
+            logger.log('⚠️ SECURITY: Using generated random password - check console for details');
+          }
+
           const defaultAdminPassword = await hashPassword(initialPassword);
           const defaultAdmin: User = {
             id: 'admin-default-' + Date.now(),
@@ -299,7 +320,12 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
           };
           await dbAddUser(defaultAdmin);
           setUsers([defaultAdmin]);
-          logger.log(`✓ Default admin user created (username: admin, password: ${initialPassword})`);
+
+          if (envPassword && envPassword !== 'admin123') {
+            logger.log(`✓ Default admin user created (username: admin, password from env)`);
+          } else {
+            logger.log(`✓ Default admin user created (username: admin) - CHECK CONSOLE FOR PASSWORD`);
+          }
         }
 
         logger.log('✓ App data loaded successfully');
