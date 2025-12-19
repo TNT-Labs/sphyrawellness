@@ -12,6 +12,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { User, UserRole } from '../../types';
 import { hashPassword } from '../../utils/auth';
 import { logger } from '../../utils/logger';
+import { validatePassword } from '../../utils/validation';
 
 export default function UserManagementCard(): JSX.Element {
   const { users, addUser, updateUser, deleteUser } = useApp();
@@ -22,6 +23,7 @@ export default function UserManagementCard(): JSX.Element {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -43,6 +45,7 @@ export default function UserManagementCard(): JSX.Element {
     setIsAdding(false);
     setEditingId(null);
     setShowPassword(false);
+    setPasswordErrors([]);
   };
 
   const handleStartEdit = (user: User) => {
@@ -69,6 +72,17 @@ export default function UserManagementCard(): JSX.Element {
       if (!editingId && !formData.password) {
         showError('La password è obbligatoria per i nuovi utenti');
         return;
+      }
+
+      // Validate password if provided (for new users or when changing password)
+      if (formData.password) {
+        const passwordValidation = validatePassword(formData.password);
+        if (!passwordValidation.isValid) {
+          setPasswordErrors(passwordValidation.errors);
+          showError('La password non soddisfa i criteri di sicurezza richiesti');
+          return;
+        }
+        setPasswordErrors([]);
       }
 
       // Check username uniqueness (only for new users or if username changed)
@@ -241,7 +255,7 @@ export default function UserManagementCard(): JSX.Element {
               />
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Password {editingId ? '(lascia vuoto per non modificare)' : '*'}
               </label>
@@ -249,8 +263,16 @@ export default function UserManagementCard(): JSX.Element {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10"
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    // Clear password errors when user starts typing
+                    if (passwordErrors.length > 0) {
+                      setPasswordErrors([]);
+                    }
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-10 ${
+                    passwordErrors.length > 0 ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                  }`}
                   placeholder="••••••••"
                 />
                 <button
@@ -261,6 +283,30 @@ export default function UserManagementCard(): JSX.Element {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+
+              {/* Password Requirements Info */}
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs font-medium text-blue-900 mb-1">Requisiti di sicurezza:</p>
+                <ul className="text-xs text-blue-800 space-y-0.5">
+                  <li>• Minimo 12 caratteri</li>
+                  <li>• Almeno una lettera maiuscola (A-Z)</li>
+                  <li>• Almeno una lettera minuscola (a-z)</li>
+                  <li>• Almeno un numero (0-9)</li>
+                  <li>• Almeno un carattere speciale (!@#$%^&*...)</li>
+                </ul>
+              </div>
+
+              {/* Password Validation Errors */}
+              {passwordErrors.length > 0 && (
+                <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-xs font-medium text-red-900 mb-1">La password non soddisfa i seguenti requisiti:</p>
+                  <ul className="text-xs text-red-800 space-y-0.5">
+                    {passwordErrors.map((error, index) => (
+                      <li key={index}>• {error}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <div>
