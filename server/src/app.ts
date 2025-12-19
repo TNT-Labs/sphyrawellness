@@ -68,6 +68,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   // Production HTTPS-only origins (private network)
   'https://sphyra.local',   // Local domain HTTPS
   'https://192.168.1.95',   // Local IP address HTTPS
+  'https://sphyrawellnesslab.duckdns.org',  // Public DuckDNS domain
 ];
 
 // NOTE: In production, this backend accepts HTTPS connections from:
