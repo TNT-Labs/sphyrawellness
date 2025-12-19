@@ -65,7 +65,7 @@ export async function uploadServiceImage(serviceId: string, file: File): Promise
 export async function deleteServiceImage(serviceId: string): Promise<{ service: Service }> {
   const token = getAuthToken();
   if (!token) {
-    throw new Error('Authentication required');
+    throw new Error('Autenticazione non disponibile. Riprova ad effettuare il login per caricare/eliminare immagini.');
   }
 
   try {
@@ -162,7 +162,7 @@ export async function uploadStaffImage(staffId: string, file: File): Promise<{ i
 export async function deleteStaffImage(staffId: string): Promise<{ staff: Staff }> {
   const token = getAuthToken();
   if (!token) {
-    throw new Error('Authentication required');
+    throw new Error('Autenticazione non disponibile. Riprova ad effettuare il login per caricare/eliminare immagini.');
   }
 
   try {
