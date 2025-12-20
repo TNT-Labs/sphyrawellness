@@ -179,6 +179,15 @@ export class ReminderService {
         return { success: false, error: `Customer email not found (${customer.firstName} ${customer.lastName})` };
       }
 
+      // GDPR COMPLIANCE: Check email reminder consent before sending
+      if (!customer.consents?.emailReminderConsent) {
+        console.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.email}) has not consented to email reminders - skipping`);
+        return {
+          success: false,
+          error: `Customer has not consented to email reminders (GDPR)`
+        };
+      }
+
       console.log(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
 
       // 3. Generate confirmation token if not exists or if expired

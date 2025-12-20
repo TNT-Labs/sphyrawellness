@@ -19,6 +19,7 @@ interface BookingData {
   notes?: string;
   privacyConsent?: boolean;
   emailReminderConsent?: boolean;
+  smsReminderConsent?: boolean;
   healthDataConsent?: boolean;
 }
 
@@ -39,6 +40,7 @@ interface BookingErrors {
   notes?: string;
   privacyConsent?: string;
   emailReminderConsent?: string;
+  smsReminderConsent?: string;
   healthDataConsent?: string;
 }
 
@@ -64,6 +66,7 @@ const PublicBooking: React.FC = () => {
     notes: '',
     privacyConsent: false,
     emailReminderConsent: false,
+    smsReminderConsent: false,
     healthDataConsent: false
   });
 
@@ -649,7 +652,25 @@ const PublicBooking: React.FC = () => {
               className="mt-1 w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
             />
             <label htmlFor="emailReminderConsent" className="text-sm text-gray-700 flex-1">
-              Acconsento a ricevere email di promemoria automatiche relative agli appuntamenti prenotati.
+              Acconsento a ricevere <strong>email</strong> di promemoria automatiche relative agli appuntamenti prenotati.
+            </label>
+          </div>
+
+          {/* Consenso SMS Promemoria */}
+          <div className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="smsReminderConsent"
+              checked={bookingData.smsReminderConsent || false}
+              onChange={(e) => setBookingData({ ...bookingData, smsReminderConsent: e.target.checked })}
+              className="mt-1 w-4 h-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+            />
+            <label htmlFor="smsReminderConsent" className="text-sm text-gray-700 flex-1">
+              Acconsento a ricevere <strong>SMS</strong> di promemoria automatici relativi agli appuntamenti prenotati.
+              <p className="text-xs text-gray-500 mt-1">
+                Gli SMS verranno inviati al numero <strong>{bookingData.phone || '[numero telefono]'}</strong>.
+                Potrebbero essere applicati i costi standard del tuo operatore telefonico.
+              </p>
             </label>
           </div>
 

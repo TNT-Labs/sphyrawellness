@@ -42,7 +42,14 @@ const bookingBodySchema = z.object({
   lastName: z.string().min(1, 'Last name is required').max(100),
   email: z.string().email('Invalid email format'),
   phone: z.string().regex(/^[+\d\s()-]+$/, 'Invalid phone format').min(5).max(20),
-  notes: z.string().max(1000).optional()
+  notes: z.string().max(1000).optional(),
+  // GDPR Consents
+  privacyConsent: z.boolean().refine(val => val === true, {
+    message: 'Privacy consent is required to complete the booking'
+  }),
+  emailReminderConsent: z.boolean().optional().default(false),
+  smsReminderConsent: z.boolean().optional().default(false),
+  healthDataConsent: z.boolean().optional().default(false)
 });
 
 /**
@@ -258,8 +265,21 @@ router.post('/bookings', async (req, res) => {
       lastName,
       email,
       phone,
-      notes
+      notes,
+      privacyConsent,
+      emailReminderConsent,
+      smsReminderConsent,
+      healthDataConsent
     } = validationResult.data;
+
+    // GDPR Validation: If notes contain health data, healthDataConsent is required
+    if (notes && notes.trim() && !healthDataConsent) {
+      return sendError(
+        res,
+        'Health data consent is required when providing notes about allergies or health conditions',
+        400
+      );
+    }
 
     // Fetch the service
     const serviceDoc = await db.services.get(serviceId);
@@ -340,6 +360,46 @@ router.post('/bookings', async (req, res) => {
     // Create new customer if doesn't exist
     if (!customer) {
       const customerId = uuidv4();
+      const timestamp = new Date().toISOString();
+
+      // Build consent history for audit trail
+      const consentHistory: any[] = [
+        {
+          type: 'privacy',
+          action: 'granted',
+          timestamp,
+          ipAddress: req.ip || req.socket.remoteAddress,
+          userAgent: req.get('User-Agent')
+        }
+      ];
+
+      // Add email consent to history if granted
+      if (emailReminderConsent) {
+        consentHistory.push({
+          type: 'emailReminder',
+          action: 'granted',
+          timestamp
+        });
+      }
+
+      // Add SMS consent to history if granted
+      if (smsReminderConsent) {
+        consentHistory.push({
+          type: 'smsReminder',
+          action: 'granted',
+          timestamp
+        });
+      }
+
+      // Add health data consent to history if granted
+      if (healthDataConsent) {
+        consentHistory.push({
+          type: 'healthData',
+          action: 'granted',
+          timestamp
+        });
+      }
+
       const newCustomer: Customer = {
         id: customerId,
         firstName,
@@ -347,7 +407,19 @@ router.post('/bookings', async (req, res) => {
         email,
         phone,
         notes: notes || '',
-        createdAt: new Date().toISOString()
+        consents: {
+          privacyConsent: true, // Always true (validated by Zod)
+          privacyConsentDate: timestamp,
+          privacyConsentVersion: '1.0', // Current Privacy Policy version
+          emailReminderConsent: emailReminderConsent || false,
+          emailReminderConsentDate: emailReminderConsent ? timestamp : undefined,
+          smsReminderConsent: smsReminderConsent || false,
+          smsReminderConsentDate: smsReminderConsent ? timestamp : undefined,
+          healthDataConsent: healthDataConsent || false,
+          healthDataConsentDate: healthDataConsent ? timestamp : undefined,
+          consentHistory
+        },
+        createdAt: timestamp
       };
 
       await db.customers.put({
@@ -357,14 +429,69 @@ router.post('/bookings', async (req, res) => {
 
       customer = newCustomer;
     } else {
-      // Update customer info if it changed
+      // Update existing customer - merge consents intelligently
+      const timestamp = new Date().toISOString();
+
+      // Get existing consents or create default structure for backward compatibility
+      const existingConsents = customer.consents || {
+        privacyConsent: true,
+        privacyConsentDate: customer.createdAt || timestamp,
+        privacyConsentVersion: '1.0',
+        emailReminderConsent: false,
+        smsReminderConsent: false,
+        healthDataConsent: false,
+        consentHistory: []
+      };
+
+      // Build new consent history entries (only for changed consents)
+      const newConsentHistory: any[] = [...(existingConsents.consentHistory || [])];
+
+      // Track email consent change
+      if (emailReminderConsent !== undefined && emailReminderConsent !== existingConsents.emailReminderConsent) {
+        newConsentHistory.push({
+          type: 'emailReminder',
+          action: emailReminderConsent ? 'granted' : 'revoked',
+          timestamp,
+          ipAddress: req.ip || req.socket.remoteAddress
+        });
+      }
+
+      // Track SMS consent change
+      if (smsReminderConsent !== undefined && smsReminderConsent !== existingConsents.smsReminderConsent) {
+        newConsentHistory.push({
+          type: 'smsReminder',
+          action: smsReminderConsent ? 'granted' : 'revoked',
+          timestamp
+        });
+      }
+
+      // Track health data consent change
+      if (healthDataConsent !== undefined && healthDataConsent !== existingConsents.healthDataConsent) {
+        newConsentHistory.push({
+          type: 'healthData',
+          action: healthDataConsent ? 'granted' : 'revoked',
+          timestamp
+        });
+      }
+
       const updatedCustomer = {
         ...customer,
         firstName,
         lastName,
         phone,
         notes: notes ? `${customer.notes || ''}\n${notes}`.trim() : customer.notes,
-        updatedAt: new Date().toISOString()
+        consents: {
+          ...existingConsents,
+          // Update consents only if provided (keep existing if not provided)
+          emailReminderConsent: emailReminderConsent !== undefined ? emailReminderConsent : existingConsents.emailReminderConsent,
+          emailReminderConsentDate: emailReminderConsent ? timestamp : existingConsents.emailReminderConsentDate,
+          smsReminderConsent: smsReminderConsent !== undefined ? smsReminderConsent : existingConsents.smsReminderConsent,
+          smsReminderConsentDate: smsReminderConsent ? timestamp : existingConsents.smsReminderConsentDate,
+          healthDataConsent: healthDataConsent !== undefined ? healthDataConsent : existingConsents.healthDataConsent,
+          healthDataConsentDate: healthDataConsent ? timestamp : existingConsents.healthDataConsentDate,
+          consentHistory: newConsentHistory
+        },
+        updatedAt: timestamp
       };
 
       await db.customers.put({
