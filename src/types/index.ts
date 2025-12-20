@@ -1,3 +1,38 @@
+// GDPR Consent Management Types
+export interface ConsentHistoryEntry {
+  type: 'privacy' | 'emailReminder' | 'smsReminder' | 'healthData' | 'marketing';
+  action: 'granted' | 'revoked' | 'updated';
+  timestamp: string; // ISO timestamp
+  ipAddress?: string; // Optional for audit trail
+  userAgent?: string; // Optional for audit trail
+}
+
+export interface CustomerConsents {
+  // Base privacy consent (Art. 6.1.b GDPR - Contract execution)
+  privacyConsent: boolean;
+  privacyConsentDate: string; // ISO timestamp
+  privacyConsentVersion: string; // e.g., "1.0" - tracks which version of Privacy Policy was accepted
+
+  // Email reminder consent (Art. 6.1.a GDPR - Consent)
+  emailReminderConsent: boolean;
+  emailReminderConsentDate?: string; // ISO timestamp
+
+  // SMS reminder consent (Art. 6.1.a GDPR - Consent)
+  smsReminderConsent: boolean;
+  smsReminderConsentDate?: string; // ISO timestamp
+
+  // Health data consent (Art. 9.2.a GDPR - Explicit consent for special categories)
+  healthDataConsent: boolean;
+  healthDataConsentDate?: string; // ISO timestamp
+
+  // Marketing consent (optional for future use)
+  marketingConsent?: boolean;
+  marketingConsentDate?: string; // ISO timestamp
+
+  // Audit trail of all consent changes
+  consentHistory?: ConsentHistoryEntry[];
+}
+
 export interface Customer {
   id: string;
   firstName: string;
@@ -7,6 +42,10 @@ export interface Customer {
   dateOfBirth?: string;
   notes?: string;
   allergies?: string;
+
+  // GDPR Consents - Optional for backward compatibility with existing customers
+  consents?: CustomerConsents;
+
   createdAt: string;
   updatedAt?: string; // ISO timestamp of last modification
 }
