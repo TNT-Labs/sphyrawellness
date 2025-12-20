@@ -29,7 +29,7 @@ const UpdateNotification: React.FC = () => {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-pink-600 to-pink-500 text-white shadow-lg animate-slide-down"
+      className="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-pink-600 to-pink-500 text-white shadow-lg animate-slide-down"
       role="alert"
       aria-live="polite"
     >
