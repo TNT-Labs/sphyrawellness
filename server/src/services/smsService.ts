@@ -47,7 +47,7 @@ export class SMSService {
 
   /**
    * Send SMS via HTTP gateway (smartphone)
-   * Generic method that works with most SMS gateway apps
+   * Compatible with capcom6/android-sms-gateway API format
    */
   private async sendSMSViaGateway(
     phoneNumber: string,
@@ -73,13 +73,15 @@ export class SMSService {
 
       logger.info(`📱 Sending SMS to ${normalizedPhone.normalized} via gateway ${smsConfig.gatewayUrl}...`);
 
-      // Prepare request payload (compatible with most SMS gateway apps)
+      // Prepare request payload (capcom6 SMS Gateway format)
       const payload = {
-        phone: normalizedPhone.normalized,
-        message: message,
-        // Optional fields for some gateways
-        sim: 1 // Use SIM 1 (default)
+        phoneNumbers: [normalizedPhone.normalized], // capcom6 uses array of phone numbers
+        message: message
       };
+
+      // Generate Basic Auth header from username:password format
+      // SMS_GATEWAY_TOKEN should be in format "username:password"
+      const basicAuth = Buffer.from(smsConfig.gatewayToken).toString('base64');
 
       // Send HTTP POST request to SMS gateway
       const controller = new AbortController();
@@ -90,7 +92,7 @@ export class SMSService {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${smsConfig.gatewayToken}`
+            'Authorization': `Basic ${basicAuth}`
           },
           body: JSON.stringify(payload),
           signal: controller.signal
