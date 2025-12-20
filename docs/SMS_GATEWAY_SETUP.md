@@ -33,41 +33,67 @@ Questa guida spiega come configurare uno smartphone Android come centro di smist
 
 ## Opzioni App Android
 
-### 🟢 OPZIONE 1: SMS Gateway API (Consigliata)
+### 🟢 OPZIONE 1: SMS Gateway by capcom6 (✅ CONSIGLIATA)
 
-**Link:** https://smsgateway.me/ oppure https://github.com/bogkonstantin/android_income_sms_gateway_webhook
+**Link:** https://github.com/capcom6/android-sms-gateway
 
 **Caratteristiche:**
-- Open source
-- API HTTP semplice
-- Supporto autenticazione token
-- Gestione multiple SIM
-- Statistiche invio
+- ✅ **Attivamente mantenuto** (ultimo aggiornamento: 2024)
+- ✅ Open source e gratuito
+- ✅ API REST semplice e ben documentata
+- ✅ Autenticazione Basic Auth (username/password)
+- ✅ Supporto multiple SIM
+- ✅ Statistiche e logging completi
+- ✅ **CONFIGURATO IN SPHYRA WELLNESS**
 
 **Installazione:**
-1. Scarica l'app da Google Play Store o dal repository GitHub
-2. Apri l'app e crea un account (opzionale)
-3. Vai su "Settings" → "HTTP API"
-4. Abilita "HTTP Server"
-5. Imposta porta (default: 9090)
-6. Genera e copia il token di autenticazione
-7. Annota l'indirizzo IP locale (es: 192.168.1.100)
+1. Scarica l'APK dal repository GitHub: https://github.com/capcom6/android-sms-gateway/releases
+2. Installa l'APK sullo smartphone Android
+3. Apri l'app e permetti i permessi richiesti (SMS, notifiche)
+4. Vai su "Settings" e configura:
+   - Port: `8080`
+   - Username: `admin` (o personalizzato)
+   - Password: scegli una password sicura
+   - Enable Authentication: ✅ ON
+5. Annota IP address dello smartphone (visibile nell'app o nelle impostazioni WiFi)
+6. Avvia il server dall'app
 
 **Endpoint API:**
-```
-POST http://[IP_SMARTPHONE]:9090/message
+```bash
+POST http://[IP_SMARTPHONE]:8080/message
 Content-Type: application/json
-Authorization: Bearer [TOKEN]
+Authorization: Basic [base64(username:password)]
 
 {
-  "phone": "+393331234567",
+  "phoneNumbers": ["+393331234567"],
   "message": "Testo del messaggio"
 }
 ```
 
+**Esempio curl:**
+```bash
+curl -X POST http://192.168.1.100:8080/message \
+  -u admin:password \
+  -H "Content-Type: application/json" \
+  -d '{"phoneNumbers": ["+393331234567"], "message": "Test"}'
+```
+
 ---
 
-### 🟡 OPZIONE 2: SMS Forwarder
+### 🟡 OPZIONE 2: SMS Gateway API by bogkonstantin
+
+**Link:** https://github.com/bogkonstantin/android_income_sms_gateway_webhook
+
+**Caratteristiche:**
+- Open source
+- API HTTP semplice
+- Supporto autenticazione Bearer token
+
+**Nota:** Richiede modifiche al codice Sphyra per supportare Bearer token invece di Basic Auth.
+
+---
+
+### 🟡 OPZIONE 3: SMS Forwarder
 
 **Link:** https://github.com/pppscn/SmsForwarder
 
@@ -76,33 +102,39 @@ Authorization: Bearer [TOKEN]
 - Supporto regole complesse
 - Forwarding automatico
 
-**Configurazione:**
-- Simile a SMS Gateway API
-- Consultare documentazione specifica
+**Nota:** Richiede adattamento del codice per il formato API specifico.
 
 ---
 
 ## Configurazione Passo-Passo
 
-### STEP 1: Installare l'App sullo Smartphone
+### STEP 1: Installare l'App capcom6 SMS Gateway sullo Smartphone
 
-1. **Scarica** l'app SMS Gateway API da Play Store
-2. **Apri** l'app
-3. **Permetti** i permessi richiesti (SMS, telefono, notifiche)
-4. **Crea** un account (email + password)
+1. **Scarica** l'APK più recente da: https://github.com/capcom6/android-sms-gateway/releases
+2. **Trasferisci** l'APK sullo smartphone (via USB, email, cloud, ecc.)
+3. **Installa** l'APK (attiva "Installa da fonti sconosciute" se richiesto)
+4. **Apri** l'app SMS Gateway
+5. **Permetti** i permessi richiesti:
+   - ✅ SMS (invio/ricezione)
+   - ✅ Telefono
+   - ✅ Notifiche
+   - ✅ Esecuzione in background
 
-### STEP 2: Configurare HTTP Server
+### STEP 2: Configurare HTTP Server (capcom6)
 
-1. Vai su **⚙️ Settings** → **HTTP API**
-2. Attiva **"Enable HTTP Server"**
-3. Configura:
+1. Apri l'app **SMS Gateway** sullo smartphone
+2. Vai su **⚙️ Settings** (Impostazioni)
+3. Configura i seguenti parametri:
    ```
-   Port: 9090
-   Enable Auth: ✅ ON
-   Token: [genera nuovo token]
+   Port: 8080
+   Username: admin
+   Password: SphyraGW2024! (scegli una password sicura)
+   Enable Authentication: ✅ ON
    ```
-4. **Copia il token** generato (es: `abc123def456...`)
-5. Verifica **IP Address** mostrato (es: `192.168.1.100`)
+4. **Annota** username e password (serviranno per configurare il backend)
+5. Verifica **IP Address** dello smartphone sulla rete locale (es: `192.168.1.100`)
+   - Puoi trovarlo nelle impostazioni WiFi dello smartphone
+6. Attiva **"Start Server"** nell'app per avviare il gateway
 
 ### STEP 3: Configurare Sphyra Wellness Backend
 
@@ -110,11 +142,16 @@ Authorization: Bearer [TOKEN]
 2. **Aggiungi** le seguenti righe:
 
 ```env
-# SMS Gateway Configuration (Smartphone)
-SMS_GATEWAY_URL=http://192.168.1.100:9090
-SMS_GATEWAY_TOKEN=abc123def456_TUO_TOKEN_QUI
+# SMS Gateway Configuration (capcom6 SMS Gateway)
+SMS_GATEWAY_URL=http://192.168.1.100:8080
+SMS_GATEWAY_TOKEN=admin:SphyraGW2024!
 SMS_GATEWAY_PHONE=+393331234567  # Opzionale: numero dello smartphone gateway
 ```
+
+**Importante:**
+- `SMS_GATEWAY_TOKEN` deve essere nel formato `username:password` (Basic Auth)
+- La porta di default per capcom6 è `8080` (non 9090)
+- Username e password sono quelli configurati nell'app Android
 
 3. **Salva** e **riavvia** il server
 
@@ -128,23 +165,25 @@ npm run dev  # oppure pm2 restart sphyra-server
 #### Test 1: Ping manuale al gateway
 
 ```bash
-curl -X GET http://192.168.1.100:9090/ \
-  -H "Authorization: Bearer abc123def456_TUO_TOKEN_QUI"
+curl -X GET http://192.168.1.100:8080/ \
+  -u admin:your-password
 ```
 
-**Risposta attesa:** Status 200 o 404 (gateway raggiungibile)
+**Risposta attesa:** Status 200 o informazioni sul gateway
 
-#### Test 2: Invio SMS di test
+#### Test 2: Invio SMS di test (formato capcom6)
 
 ```bash
-curl -X POST http://192.168.1.100:9090/message \
+curl -X POST http://192.168.1.100:8080/message \
+  -u admin:your-password \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer abc123def456_TUO_TOKEN_QUI" \
   -d '{
-    "phone": "+393331234567",
+    "phoneNumbers": ["+393331234567"],
     "message": "Test SMS da Sphyra Wellness"
   }'
 ```
+
+**Nota:** L'opzione `-u admin:your-password` aggiunge automaticamente l'header `Authorization: Basic` con credenziali codificate in base64.
 
 **Risposta attesa:**
 ```json
