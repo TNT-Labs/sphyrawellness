@@ -132,6 +132,7 @@ export interface ReminderEmailData {
   serviceName: string;
   staffName: string;
   icsContent?: string; // .ics file content to attach to email
+  confirmationLink?: string; // Link for customer to confirm appointment
 }
 
 // API Response types

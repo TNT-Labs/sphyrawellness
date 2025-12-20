@@ -161,6 +161,18 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
         </div>
       </div>
 
+      <!-- Confirmation CTA -->
+      ${data.confirmationLink ? `
+      <div class="cta-container">
+        <a href="${data.confirmationLink}" class="cta-button">
+          ✓ Conferma Appuntamento
+        </a>
+        <p style="margin-top: 15px; font-size: 13px; color: #6b7280;">
+          Clicca sul pulsante per confermare la tua presenza
+        </p>
+      </div>
+      ` : ''}
+
       <!-- Calendar Info -->
       <div class="cta-container">
         <div style="background-color: #f0fdf4; border: 2px solid #86efac; border-radius: 8px; padding: 20px; text-align: left;">
@@ -219,7 +231,13 @@ DETTAGLI APPUNTAMENTO:
 ✨ Servizio: ${data.serviceName}
 👤 Operatore: ${data.staffName}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${data.confirmationLink ? `
+✓ CONFERMA IL TUO APPUNTAMENTO
+Clicca sul link seguente per confermare la tua presenza:
+${data.confirmationLink}
 
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+` : ''}
 📎 FILE CALENDARIO ALLEGATO
 Abbiamo allegato un file "appuntamento.ics" a questa email.
 Scaricalo e aprilo per aggiungere l'appuntamento al tuo calendario
