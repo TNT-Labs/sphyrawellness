@@ -256,7 +256,7 @@ export class ReminderService {
       };
 
       // 5. Generate confirmation link
-      const confirmationLink = `${process.env.DOMAIN || 'http://localhost:5173'}/confirm-appointment/${appointmentId}/${confirmationToken}`;
+      const confirmationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-appointment/${appointmentId}/${confirmationToken}`;
 
       // 6. Send reminder based on type
       let sendResult: { success: boolean; messageId?: string; error?: string };
