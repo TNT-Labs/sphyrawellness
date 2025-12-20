@@ -272,7 +272,8 @@ export class ReminderService {
 
         const emailData: ReminderEmailData = {
           ...commonData,
-          icsContent
+          icsContent,
+          confirmationLink
         };
 
         console.log(`Sending reminder email to ${customer.email} for appointment on ${commonData.appointmentDate}...`);
