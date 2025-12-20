@@ -72,13 +72,14 @@ export const settingsApi = {
  * Reminders API
  */
 export const remindersApi = {
-  async sendForAppointment(appointmentId: string): Promise<{ reminderId: string }> {
+  async sendForAppointment(appointmentId: string, type: 'email' | 'sms' = 'email'): Promise<{ reminderId: string }> {
     try {
       const response = await fetch(`${API_BASE_URL}/reminders/send/${appointmentId}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ type }),
       });
 
       if (!response.ok) {
