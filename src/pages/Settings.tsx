@@ -651,8 +651,8 @@ const Settings: React.FC = () => {
 
         {/* Tabs Navigation - Only for RESPONSABILE */}
         {!isStandardUser && (
-          <div className="border-b border-gray-200 overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-            <nav className="-mb-px flex space-x-4 md:space-x-8 min-w-max md:min-w-0" aria-label="Tabs">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-8 overflow-x-auto" aria-label="Tabs">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -661,16 +661,15 @@ const Settings: React.FC = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors whitespace-nowrap
+                      flex items-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0
                       ${isActive
                         ? 'border-primary-600 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }
                     `}
                   >
-                    <Icon size={20} className="flex-shrink-0" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                    <span className="sm:hidden text-xs">{tab.label}</span>
+                    <Icon size={18} className="flex-shrink-0 sm:w-5 sm:h-5" />
+                    <span className="text-xs sm:text-sm">{tab.label}</span>
                   </button>
                 );
               })}
@@ -925,25 +924,25 @@ const Settings: React.FC = () => {
                       <h3 className="font-semibold text-gray-900 mb-3">Backup Automatici ({backups.length})</h3>
                       <div className="space-y-2">
                         {backups.map((backup) => (
-                          <div key={backup.date} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                            <div>
-                              <p className="font-medium text-gray-900">
+                          <div key={backup.date} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">
                                 {format(new Date(backup.date), 'dd MMMM yyyy', { locale: it })}
                               </p>
                               <p className="text-sm text-gray-600">
                                 {Object.values(backup.itemsCount).reduce((sum, count) => sum + count, 0)} record totali
                               </p>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-shrink-0">
                               <button
                                 onClick={() => handleRestoreBackup(backup.date)}
-                                className="px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold"
+                                className="flex-1 sm:flex-none px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
                               >
                                 Ripristina
                               </button>
                               <button
                                 onClick={() => handleDeleteBackup(backup.date)}
-                                className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold"
+                                className="px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
                               >
                                 <Trash2 size={16} />
                               </button>
@@ -986,7 +985,7 @@ const Settings: React.FC = () => {
                     <h3 className="font-semibold text-gray-900 mb-3">
                       {editingRoleId ? 'Modifica Ruolo' : 'Nuovo Ruolo'}
                     </h3>
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <input
                         type="text"
                         placeholder="Nome ruolo"
@@ -994,18 +993,20 @@ const Settings: React.FC = () => {
                         onChange={(e) => setRoleFormData({ name: e.target.value })}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                       />
-                      <button
-                        onClick={editingRoleId ? handleEditRole : handleAddRole}
-                        className="btn-primary"
-                      >
-                        {editingRoleId ? 'Salva' : 'Aggiungi'}
-                      </button>
-                      <button
-                        onClick={cancelRoleForm}
-                        className="btn-secondary"
-                      >
-                        Annulla
-                      </button>
+                      <div className="flex gap-3 sm:flex-shrink-0">
+                        <button
+                          onClick={editingRoleId ? handleEditRole : handleAddRole}
+                          className="btn-primary flex-1 sm:flex-none touch-manipulation"
+                        >
+                          {editingRoleId ? 'Salva' : 'Aggiungi'}
+                        </button>
+                        <button
+                          onClick={cancelRoleForm}
+                          className="btn-secondary flex-1 sm:flex-none touch-manipulation"
+                        >
+                          Annulla
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1018,20 +1019,20 @@ const Settings: React.FC = () => {
                     staffRoles.map((role) => (
                       <div
                         key={role.id}
-                        className={`flex items-center justify-between p-3 rounded-lg ${
+                        className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg ${
                           role.isActive ? 'bg-gray-50' : 'bg-gray-100 opacity-60'
                         }`}
                       >
-                        <div>
-                          <p className="font-medium text-gray-900">{role.name}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 truncate">{role.name}</p>
                           <p className="text-sm text-gray-600">
                             {role.isActive ? 'Attivo' : 'Disattivato'}
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-shrink-0">
                           <button
                             onClick={() => handleToggleRoleActive(role)}
-                            className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-semibold touch-manipulation ${
                               role.isActive
                                 ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
                                 : 'bg-green-50 text-green-600 hover:bg-green-100'
@@ -1041,13 +1042,13 @@ const Settings: React.FC = () => {
                           </button>
                           <button
                             onClick={() => startEditRole(role)}
-                            className="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold"
+                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold touch-manipulation"
                           >
                             <Edit size={16} className="inline" />
                           </button>
                           <button
                             onClick={() => handleDeleteRole(role.id)}
-                            className="px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold"
+                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold touch-manipulation"
                           >
                             <Trash2 size={16} className="inline" />
                           </button>
@@ -1083,38 +1084,42 @@ const Settings: React.FC = () => {
                     <h3 className="font-semibold text-gray-900 mb-3">
                       {editingCategoryId ? 'Modifica Categoria' : 'Nuova Categoria'}
                     </h3>
-                    <div className="flex gap-3">
-                      <input
-                        type="text"
-                        placeholder="Nome categoria"
-                        value={categoryFormData.name}
-                        onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
-                      />
-                      <div className="flex items-center gap-2">
-                        <label htmlFor="category-color" className="text-sm font-semibold text-gray-700">
-                          Colore:
-                        </label>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex gap-3">
                         <input
-                          id="category-color"
-                          type="color"
-                          value={categoryFormData.color}
-                          onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
-                          className="w-12 h-10 rounded cursor-pointer"
+                          type="text"
+                          placeholder="Nome categoria"
+                          value={categoryFormData.name}
+                          onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                         />
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <label htmlFor="category-color" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
+                            Colore:
+                          </label>
+                          <input
+                            id="category-color"
+                            type="color"
+                            value={categoryFormData.color}
+                            onChange={(e) => setCategoryFormData({ ...categoryFormData, color: e.target.value })}
+                            className="w-12 h-10 rounded cursor-pointer flex-shrink-0"
+                          />
+                        </div>
                       </div>
-                      <button
-                        onClick={editingCategoryId ? handleEditCategory : handleAddCategory}
-                        className="btn-primary"
-                      >
-                        {editingCategoryId ? 'Salva' : 'Aggiungi'}
-                      </button>
-                      <button
-                        onClick={cancelCategoryForm}
-                        className="btn-secondary"
-                      >
-                        Annulla
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={editingCategoryId ? handleEditCategory : handleAddCategory}
+                          className="btn-primary flex-1 touch-manipulation"
+                        >
+                          {editingCategoryId ? 'Salva' : 'Aggiungi'}
+                        </button>
+                        <button
+                          onClick={cancelCategoryForm}
+                          className="btn-secondary flex-1 touch-manipulation"
+                        >
+                          Annulla
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1127,26 +1132,26 @@ const Settings: React.FC = () => {
                     serviceCategories.map((category) => (
                       <div
                         key={category.id}
-                        className={`flex items-center justify-between p-3 rounded-lg ${
+                        className={`flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg ${
                           category.isActive ? 'bg-gray-50' : 'bg-gray-100 opacity-60'
                         }`}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
                           <div
-                            className="w-6 h-6 rounded"
+                            className="w-6 h-6 rounded flex-shrink-0"
                             style={{ backgroundColor: category.color }}
                           />
-                          <div>
-                            <p className="font-medium text-gray-900">{category.name}</p>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-gray-900 truncate">{category.name}</p>
                             <p className="text-sm text-gray-600">
                               {category.isActive ? 'Attiva' : 'Disattivata'}
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-shrink-0">
                           <button
                             onClick={() => handleToggleCategoryActive(category)}
-                            className={`px-3 py-1 rounded-md text-sm font-semibold ${
+                            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-semibold touch-manipulation ${
                               category.isActive
                                 ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
                                 : 'bg-green-50 text-green-600 hover:bg-green-100'
@@ -1156,13 +1161,13 @@ const Settings: React.FC = () => {
                           </button>
                           <button
                             onClick={() => startEditCategory(category)}
-                            className="px-3 py-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold"
+                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold touch-manipulation"
                           >
                             <Edit size={16} className="inline" />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(category.id)}
-                            className="px-3 py-1 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold"
+                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold touch-manipulation"
                           >
                             <Trash2 size={16} className="inline" />
                           </button>
