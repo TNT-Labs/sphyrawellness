@@ -9,18 +9,25 @@ const router = express.Router();
 /**
  * POST /api/reminders/send/:appointmentId
  * Send reminder for a specific appointment
+ * Body: { type?: 'email' | 'sms' } (default: 'email')
  */
 router.post('/send/:appointmentId', emailLimiter, async (req, res) => {
   try {
     const { appointmentId } = req.params;
+    const { type = 'email' } = req.body;
 
-    const result = await reminderService.sendReminderForAppointment(appointmentId);
+    // Validate type
+    if (type !== 'email' && type !== 'sms') {
+      return sendError(res, 'Invalid reminder type. Must be "email" or "sms"', 400);
+    }
+
+    const result = await reminderService.sendReminderForAppointment(appointmentId, type);
 
     if (!result.success) {
       return sendError(res, result.error || 'Failed to send reminder', 400);
     }
 
-    return sendSuccess(res, { reminderId: result.reminderId }, 'Reminder sent successfully');
+    return sendSuccess(res, { reminderId: result.reminderId }, `Reminder ${type} sent successfully`);
   } catch (error) {
     console.error('Error in /send/:appointmentId:', error);
     return handleRouteError(error, res, 'Failed to send reminder');

@@ -4,6 +4,7 @@ import { it } from 'date-fns/locale';
 import bcrypt from 'bcrypt';
 import db from '../config/database.js';
 import emailService from './emailService.js';
+import smsService from './smsService.js';
 import calendarService from './calendarService.js';
 import { getErrorMessage } from '../utils/response.js';
 import type {
@@ -15,6 +16,7 @@ import type {
   Reminder,
   ReminderEmailData
 } from '../types/index.js';
+import type { ReminderSMSData } from '../templates/smsTemplate.js';
 
 const SALT_ROUNDS = 12; // bcrypt salt rounds
 const TOKEN_EXPIRY_HOURS = 48; // Token valid for 48 hours
@@ -126,8 +128,13 @@ export class ReminderService {
 
   /**
    * Send reminder for a specific appointment
+   * @param appointmentId - ID of the appointment
+   * @param type - Type of reminder: 'email' or 'sms'
    */
-  async sendReminderForAppointment(appointmentId: string): Promise<{
+  async sendReminderForAppointment(
+    appointmentId: string,
+    type: 'email' | 'sms' = 'email'
+  ): Promise<{
     success: boolean;
     reminderId?: string;
     error?: string;
@@ -174,21 +181,38 @@ export class ReminderService {
         return { success: false, error: `Staff not found (ID: ${appointment.staffId})` };
       }
 
-      if (!customer.email) {
-        console.error(`Customer ${customer.id} has no email address`);
-        return { success: false, error: `Customer email not found (${customer.firstName} ${customer.lastName})` };
-      }
+      // GDPR COMPLIANCE & VALIDATION: Check based on reminder type
+      if (type === 'email') {
+        if (!customer.email) {
+          console.error(`Customer ${customer.id} has no email address`);
+          return { success: false, error: `Customer email not found (${customer.firstName} ${customer.lastName})` };
+        }
 
-      // GDPR COMPLIANCE: Check email reminder consent before sending
-      if (!customer.consents?.emailReminderConsent) {
-        console.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.email}) has not consented to email reminders - skipping`);
-        return {
-          success: false,
-          error: `Customer has not consented to email reminders (GDPR)`
-        };
-      }
+        if (!customer.consents?.emailReminderConsent) {
+          console.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.email}) has not consented to email reminders - skipping`);
+          return {
+            success: false,
+            error: `Customer has not consented to email reminders (GDPR)`
+          };
+        }
 
-      console.log(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
+        console.log(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
+      } else if (type === 'sms') {
+        if (!customer.phone) {
+          console.error(`Customer ${customer.id} has no phone number`);
+          return { success: false, error: `Customer phone not found (${customer.firstName} ${customer.lastName})` };
+        }
+
+        if (!customer.consents?.smsReminderConsent) {
+          console.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.phone}) has not consented to SMS reminders - skipping`);
+          return {
+            success: false,
+            error: `Customer has not consented to SMS reminders (GDPR)`
+          };
+        }
+
+        console.log(`✓ Related data fetched: Customer=${customer.phone}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
+      }
 
       // 3. Generate confirmation token if not exists or if expired
       let confirmationToken = appointment.confirmationToken;
@@ -222,39 +246,67 @@ export class ReminderService {
         updatedAppointmentDoc = await db.appointments.get(appointmentId) as AppointmentDoc;
       }
 
-      // 4. Generate .ics file content for calendar attachment
-      const icsContent = calendarService.generateICS({
-        appointment,
-        customer,
-        service,
-        staff
-      });
-
-      // 5. Prepare email data
-      const emailData: ReminderEmailData = {
+      // 4. Prepare reminder data (common for both email and SMS)
+      const commonData = {
         customerName: `${customer.firstName} ${customer.lastName}`,
         appointmentDate: format(parseISO(appointment.date), 'EEEE d MMMM yyyy', { locale: it }),
         appointmentTime: appointment.startTime,
         serviceName: service.name,
-        staffName: `${staff.firstName} ${staff.lastName}`,
-        icsContent
+        staffName: `${staff.firstName} ${staff.lastName}`
       };
 
-      // 6. Send email with .ics attachment
-      console.log(`Sending reminder email to ${customer.email} for appointment on ${emailData.appointmentDate}...`);
-      const emailResult = await emailService.sendReminderEmail(customer.email, emailData);
+      // 5. Generate confirmation link
+      const confirmationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-appointment/${appointmentId}/${confirmationToken}`;
 
-      if (!emailResult.success) {
-        console.error(`Failed to send reminder email to ${customer.email}:`, emailResult.error);
+      // 6. Send reminder based on type
+      let sendResult: { success: boolean; messageId?: string; error?: string };
+
+      if (type === 'email') {
+        // Generate .ics file content for calendar attachment (email only)
+        const icsContent = calendarService.generateICS({
+          appointment,
+          customer,
+          service,
+          staff
+        });
+
+        const emailData: ReminderEmailData = {
+          ...commonData,
+          icsContent
+        };
+
+        console.log(`Sending reminder email to ${customer.email} for appointment on ${commonData.appointmentDate}...`);
+        sendResult = await emailService.sendReminderEmail(customer.email, emailData);
+      } else if (type === 'sms') {
+        // Prepare SMS data with confirmation link
+        const smsData: ReminderSMSData = {
+          ...commonData,
+          confirmationLink
+        };
+
+        console.log(`Sending reminder SMS to ${customer.phone} for appointment on ${commonData.appointmentDate}...`);
+        sendResult = await smsService.sendReminderSMS(customer.phone!, smsData);
+      } else {
+        return {
+          success: false,
+          error: `Unsupported reminder type: ${type}`
+        };
+      }
+
+      // 7. Handle send failure
+      if (!sendResult.success) {
+        const recipient = type === 'email' ? customer.email : customer.phone;
+        console.error(`Failed to send reminder ${type} to ${recipient}:`, sendResult.error);
+
         // Create failed reminder record
         const reminderId = uuidv4();
         const failedReminder: Reminder = {
           id: reminderId,
           appointmentId,
-          type: 'email',
+          type,
           scheduledFor: new Date().toISOString(),
           sent: false,
-          error: emailResult.error,
+          error: sendResult.error,
           createdAt: new Date().toISOString()
         };
 
@@ -266,16 +318,16 @@ export class ReminderService {
         return {
           success: false,
           reminderId: failedReminder.id,
-          error: emailResult.error
+          error: sendResult.error
         };
       }
 
-      // 7. Create successful reminder record
+      // 8. Create successful reminder record
       const reminderId = uuidv4();
       const reminder: Reminder = {
         id: reminderId,
         appointmentId,
-        type: 'email',
+        type,
         scheduledFor: new Date().toISOString(),
         sent: true,
         sentAt: new Date().toISOString(),
@@ -287,7 +339,7 @@ export class ReminderService {
         _id: reminderId
       });
 
-      // 8. Update appointment reminderSent flag
+      // 9. Update appointment reminderSent flag
       await db.appointments.put({
         ...updatedAppointmentDoc,
         reminderSent: true,
@@ -295,7 +347,7 @@ export class ReminderService {
         updatedAt: new Date().toISOString()
       });
 
-      console.log(`✅ Reminder sent for appointment ${appointmentId}`);
+      console.log(`✅ Reminder ${type} sent for appointment ${appointmentId}`);
 
       return {
         success: true,

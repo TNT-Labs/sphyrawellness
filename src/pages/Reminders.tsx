@@ -60,17 +60,52 @@ const Reminders: React.FC = () => {
     appointmentId: string,
     type: 'email' | 'sms' | 'whatsapp'
   ) => {
-    // Currently only email is supported
-    if (type !== 'email') {
-      showError(`Invio ${type} non ancora implementato. Usa l'email per ora.`);
+    // Currently only email and SMS are supported
+    if (type === 'whatsapp') {
+      showError(`Invio WhatsApp non ancora implementato.`);
+      return;
+    }
+
+    // Get customer to check for required data
+    const appointment = appointments.find(apt => apt.id === appointmentId);
+    if (!appointment) {
+      showError('Appuntamento non trovato');
+      return;
+    }
+
+    const customer = customers.find(c => c.id === appointment.customerId);
+    if (!customer) {
+      showError('Cliente non trovato');
+      return;
+    }
+
+    // Validate customer has required contact info
+    if (type === 'email' && !customer.email) {
+      showError('Cliente non ha un indirizzo email');
+      return;
+    }
+
+    if (type === 'sms' && !customer.phone) {
+      showError('Cliente non ha un numero di telefono');
+      return;
+    }
+
+    // Check GDPR consent
+    if (type === 'email' && !customer.consents?.emailReminderConsent) {
+      showError('Cliente non ha dato consenso per reminder via email');
+      return;
+    }
+
+    if (type === 'sms' && !customer.consents?.smsReminderConsent) {
+      showError('Cliente non ha dato consenso per reminder via SMS');
       return;
     }
 
     setSendingReminders(prev => new Set(prev).add(appointmentId));
 
     try {
-      await remindersApi.sendForAppointment(appointmentId);
-      showSuccess('Reminder email inviato con successo!');
+      await remindersApi.sendForAppointment(appointmentId, type);
+      showSuccess(`Reminder ${type === 'email' ? 'email' : 'SMS'} inviato con successo!`);
 
       // Refresh data from database
       await refreshAppointments();
