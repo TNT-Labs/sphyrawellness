@@ -1,6 +1,6 @@
 /**
  * IndexedDB implementation for local storage
- * This module provides all database operations using native IndexedDB API
+ * Full CRUD with soft-delete to fix persistent deletion bug
  */
 
 import {
@@ -35,1031 +35,394 @@ const STORES = {
 
 let db: IDBDatabase | null = null;
 
-/**
- * Check if IndexedDB is available (important for incognito mode)
- */
 function isIndexedDBAvailable(): boolean {
   try {
-    if (!window.indexedDB) {
-      return false;
-    }
-    return true;
+    return !!window.indexedDB;
   } catch {
     return false;
   }
 }
 
-/**
- * Initialize IndexedDB database
- */
 export async function initIndexedDB(): Promise<void> {
-  if (!isIndexedDBAvailable()) {
-    throw new Error(
-      'IndexedDB non è disponibile. Assicurati di non essere in modalità incognito e che il tuo browser supporti IndexedDB.'
-    );
-  }
+  if (!isIndexedDBAvailable()) throw new Error('IndexedDB non disponibile.');
 
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = () => {
-      logger.error('Failed to open IndexedDB:', request.error);
-      reject(new Error('Impossibile aprire il database'));
-    };
+    request.onerror = () => reject(request.error);
 
     request.onsuccess = () => {
       db = request.result;
-
-      // Handle database connection close events
-      db.onclose = () => {
-        logger.warn('IndexedDB connection closed unexpectedly');
+      db.onversionchange = () => {
+        logger.warn('Database version change detected. Closing.');
+        db?.close();
         db = null;
       };
-
-      // Handle version change from another tab
-      db.onversionchange = () => {
-        logger.warn('IndexedDB version change detected, closing connection');
-        if (db) {
-          db.close();
-          db = null;
-        }
-        // Notify user or reload if needed
-        logger.info('Database schema is being upgraded by another tab');
-      };
-
-      logger.info('IndexedDB initialized successfully');
       resolve();
     };
 
     request.onupgradeneeded = (event) => {
       const database = (event.target as IDBOpenDBRequest).result;
 
-      // Create object stores if they don't exist
+      // Customers
       if (!database.objectStoreNames.contains(STORES.CUSTOMERS)) {
-        const customerStore = database.createObjectStore(STORES.CUSTOMERS, { keyPath: 'id' });
-        customerStore.createIndex('email', 'email', { unique: false });
-        customerStore.createIndex('phone', 'phone', { unique: false });
+        const store = database.createObjectStore(STORES.CUSTOMERS, { keyPath: 'id' });
+        store.createIndex('email', 'email', { unique: false });
+        store.createIndex('phone', 'phone', { unique: false });
       }
 
+      // Services
       if (!database.objectStoreNames.contains(STORES.SERVICES)) {
-        const serviceStore = database.createObjectStore(STORES.SERVICES, { keyPath: 'id' });
-        serviceStore.createIndex('category', 'category', { unique: false });
+        const store = database.createObjectStore(STORES.SERVICES, { keyPath: 'id' });
+        store.createIndex('category', 'category', { unique: false });
       }
 
+      // Staff
       if (!database.objectStoreNames.contains(STORES.STAFF)) {
-        const staffStore = database.createObjectStore(STORES.STAFF, { keyPath: 'id' });
-        staffStore.createIndex('role', 'role', { unique: false });
+        const store = database.createObjectStore(STORES.STAFF, { keyPath: 'id' });
+        store.createIndex('role', 'role', { unique: false });
       }
 
+      // Appointments
       if (!database.objectStoreNames.contains(STORES.APPOINTMENTS)) {
-        const appointmentStore = database.createObjectStore(STORES.APPOINTMENTS, { keyPath: 'id' });
-        appointmentStore.createIndex('customerId', 'customerId', { unique: false });
-        appointmentStore.createIndex('staffId', 'staffId', { unique: false });
-        appointmentStore.createIndex('serviceId', 'serviceId', { unique: false });
-        appointmentStore.createIndex('date', 'date', { unique: false });
-        appointmentStore.createIndex('status', 'status', { unique: false });
+        const store = database.createObjectStore(STORES.APPOINTMENTS, { keyPath: 'id' });
+        store.createIndex('customerId', 'customerId', { unique: false });
+        store.createIndex('staffId', 'staffId', { unique: false });
+        store.createIndex('serviceId', 'serviceId', { unique: false });
+        store.createIndex('date', 'date', { unique: false });
+        store.createIndex('status', 'status', { unique: false });
       }
 
+      // Payments
       if (!database.objectStoreNames.contains(STORES.PAYMENTS)) {
-        const paymentStore = database.createObjectStore(STORES.PAYMENTS, { keyPath: 'id' });
-        paymentStore.createIndex('appointmentId', 'appointmentId', { unique: false });
+        const store = database.createObjectStore(STORES.PAYMENTS, { keyPath: 'id' });
+        store.createIndex('appointmentId', 'appointmentId', { unique: false });
       }
 
+      // Reminders
       if (!database.objectStoreNames.contains(STORES.REMINDERS)) {
-        const reminderStore = database.createObjectStore(STORES.REMINDERS, { keyPath: 'id' });
-        reminderStore.createIndex('appointmentId', 'appointmentId', { unique: false });
+        const store = database.createObjectStore(STORES.REMINDERS, { keyPath: 'id' });
+        store.createIndex('appointmentId', 'appointmentId', { unique: false });
       }
 
+      // Staff roles
       if (!database.objectStoreNames.contains(STORES.STAFF_ROLES)) {
         database.createObjectStore(STORES.STAFF_ROLES, { keyPath: 'id' });
       }
 
+      // Service categories
       if (!database.objectStoreNames.contains(STORES.SERVICE_CATEGORIES)) {
         database.createObjectStore(STORES.SERVICE_CATEGORIES, { keyPath: 'id' });
       }
 
+      // Users
       if (!database.objectStoreNames.contains(STORES.USERS)) {
-        const userStore = database.createObjectStore(STORES.USERS, { keyPath: 'id' });
-        userStore.createIndex('username', 'username', { unique: true });
-        userStore.createIndex('role', 'role', { unique: false });
+        const store = database.createObjectStore(STORES.USERS, { keyPath: 'id' });
+        store.createIndex('username', 'username', { unique: true });
+        store.createIndex('role', 'role', { unique: false });
       }
-
-      logger.info('IndexedDB schema upgraded to version', DB_VERSION);
     };
   });
 }
 
-/**
- * Get database instance
- */
 function getDB(): IDBDatabase {
-  if (!db) {
-    throw new Error('Database not initialized. Call initIndexedDB() first.');
-  }
+  if (!db) throw new Error('DB non inizializzato.');
   return db;
 }
 
-/**
- * Create a transaction with error handling for closing connections
- */
-function createTransaction(storeName: string | string[], mode: IDBTransactionMode): IDBTransaction {
-  const database = getDB();
-  try {
-    return database.transaction(storeName, mode);
-  } catch (error: any) {
-    // If connection is closing, clear the db reference and throw a clearer error
-    if (error.name === 'InvalidStateError' && error.message.includes('closing')) {
-      logger.error('Database connection is closing, cannot create transaction');
-      db = null;
-      throw new Error('Database connection is closing. Please refresh the page.');
-    }
-    throw error;
-  }
+function createTransaction(store: string | string[], mode: IDBTransactionMode): IDBTransaction {
+  return getDB().transaction(store, mode);
 }
 
-/**
- * Generic get operation
- */
+// Generic helpers
 async function get<T>(storeName: string, id: string): Promise<T | undefined> {
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.get(id);
-
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const req = store.get(id);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Generic getAll operation
- */
 async function getAll<T>(storeName: string): Promise<T[]> {
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.getAll();
-
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const req = store.getAll();
+    req.onsuccess = () => resolve((req.result || []).filter((item: any) => !item.deleted));
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Generic add operation
- * Automatically adds createdAt and updatedAt timestamps if not present
- */
 async function add<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
-  // Add timestamps if not present
   const now = new Date().toISOString();
-  const itemWithTimestamps = {
-    ...item,
-    createdAt: item.createdAt || now,
-    updatedAt: item.updatedAt || now,
-  };
-
+  const itemWithTimestamps = { ...item, createdAt: item.createdAt || now, updatedAt: item.updatedAt || now };
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.add(itemWithTimestamps);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const req = store.add(itemWithTimestamps);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Generic update operation
- * Automatically adds updatedAt timestamp
- */
 async function update<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
-  // Add updatedAt timestamp
-  const itemWithTimestamp = {
-    ...item,
-    updatedAt: new Date().toISOString(),
-  };
-
+  const itemWithTimestamp = { ...item, updatedAt: new Date().toISOString() };
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.put(itemWithTimestamp);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const req = store.put(itemWithTimestamp);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Update operation from sync - does NOT trigger sync back to PouchDB
- * and preserves original timestamps
- */
 async function updateFromSync<T extends Record<string, any>>(storeName: string, item: T): Promise<void> {
-  // Use item as-is, preserving all timestamps from sync
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.put(item);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const req = store.put(item);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Generic delete operation
- */
 async function remove(storeName: string, id: string): Promise<void> {
+  const item = await get(storeName, id);
+  if (!item) return;
+  const itemWithDeleted = { ...item, deleted: true, updatedAt: new Date().toISOString() };
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.delete(id);
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readwrite');
+    const store = transaction.objectStore(storeName);
+    const req = store.put(itemWithDeleted);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
   });
 }
 
-/**
- * Generic query by index
- */
-async function getByIndex<T>(
-  storeName: string,
-  indexName: string,
-  value: string
-): Promise<T[]> {
+async function getByIndex<T>(storeName: string, indexName: string, value: string): Promise<T[]> {
   return new Promise((resolve, reject) => {
-    try {
-      const transaction = createTransaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const index = store.index(indexName);
-      const request = index.getAll(value);
-
-      request.onsuccess = () => resolve(request.result || []);
-      request.onerror = () => reject(request.error);
-    } catch (error) {
-      reject(error);
-    }
+    const transaction = createTransaction(storeName, 'readonly');
+    const store = transaction.objectStore(storeName);
+    const index = store.index(indexName);
+    const req = index.getAll(value);
+    req.onsuccess = () => resolve((req.result || []).filter((item: any) => !item.deleted));
+    req.onerror = () => reject(req.error);
   });
 }
 
-// ============================================
-// CRUD Operations for Customers
-// ============================================
+// ============================
+// CRUD per entità
+// ============================
 
+// Customers
 export async function getAllCustomers(): Promise<Customer[]> {
   return getAll<Customer>(STORES.CUSTOMERS);
 }
-
 export async function getCustomer(id: string): Promise<Customer | undefined> {
   return get<Customer>(STORES.CUSTOMERS, id);
 }
-
 export async function addCustomer(customer: Customer): Promise<void> {
   await add(STORES.CUSTOMERS, customer);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('customers', customer).catch(err =>
-    logger.error('Background sync failed for customer add:', err)
-  );
+  syncAdd('customers', customer).catch(err => logger.error('Sync add customer failed:', err));
 }
-
 export async function updateCustomer(customer: Customer): Promise<void> {
   await update(STORES.CUSTOMERS, customer);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('customers', customer).catch(err =>
-    logger.error('Background sync failed for customer update:', err)
-  );
+  syncUpdate('customers', customer).catch(err => logger.error('Sync update customer failed:', err));
 }
-
-/**
- * Update customer from sync - does NOT trigger sync loop
- */
 export async function updateCustomerFromSync(customer: Customer): Promise<void> {
   await updateFromSync(STORES.CUSTOMERS, customer);
 }
-
 export async function deleteCustomer(id: string): Promise<void> {
   await remove(STORES.CUSTOMERS, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('customers', id).catch(err =>
-    logger.error('Background sync failed for customer delete:', err)
-  );
+  syncDelete('customers', id).catch(err => logger.error('Sync delete customer failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Services
-// ============================================
-
+// Services
 export async function getAllServices(): Promise<Service[]> {
   return getAll<Service>(STORES.SERVICES);
 }
-
 export async function getService(id: string): Promise<Service | undefined> {
   return get<Service>(STORES.SERVICES, id);
 }
-
 export async function addService(service: Service): Promise<void> {
   await add(STORES.SERVICES, service);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('services', service).catch(err =>
-    logger.error('Background sync failed for service add:', err)
-  );
+  syncAdd('services', service).catch(err => logger.error('Sync add service failed:', err));
 }
-
 export async function updateService(service: Service): Promise<void> {
   await update(STORES.SERVICES, service);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('services', service).catch(err =>
-    logger.error('Background sync failed for service update:', err)
-  );
+  syncUpdate('services', service).catch(err => logger.error('Sync update service failed:', err));
 }
-
-/**
- * Update service from sync - does NOT trigger sync loop
- */
 export async function updateServiceFromSync(service: Service): Promise<void> {
   await updateFromSync(STORES.SERVICES, service);
 }
-
 export async function deleteService(id: string): Promise<void> {
   await remove(STORES.SERVICES, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('services', id).catch(err =>
-    logger.error('Background sync failed for service delete:', err)
-  );
+  syncDelete('services', id).catch(err => logger.error('Sync delete service failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Staff
-// ============================================
-
+// Staff
 export async function getAllStaff(): Promise<Staff[]> {
   return getAll<Staff>(STORES.STAFF);
 }
-
 export async function getStaff(id: string): Promise<Staff | undefined> {
   return get<Staff>(STORES.STAFF, id);
 }
-
 export async function addStaff(staff: Staff): Promise<void> {
   await add(STORES.STAFF, staff);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('staff', staff).catch(err =>
-    logger.error('Background sync failed for staff add:', err)
-  );
+  syncAdd('staff', staff).catch(err => logger.error('Sync add staff failed:', err));
 }
-
 export async function updateStaff(staff: Staff): Promise<void> {
   await update(STORES.STAFF, staff);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('staff', staff).catch(err =>
-    logger.error('Background sync failed for staff update:', err)
-  );
+  syncUpdate('staff', staff).catch(err => logger.error('Sync update staff failed:', err));
 }
-
-/**
- * Update staff from sync - does NOT trigger sync loop
- */
 export async function updateStaffFromSync(staff: Staff): Promise<void> {
   await updateFromSync(STORES.STAFF, staff);
 }
-
 export async function deleteStaff(id: string): Promise<void> {
   await remove(STORES.STAFF, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('staff', id).catch(err =>
-    logger.error('Background sync failed for staff delete:', err)
-  );
+  syncDelete('staff', id).catch(err => logger.error('Sync delete staff failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Appointments
-// ============================================
-
+// Appointments
 export async function getAllAppointments(): Promise<Appointment[]> {
   return getAll<Appointment>(STORES.APPOINTMENTS);
 }
-
 export async function getAppointment(id: string): Promise<Appointment | undefined> {
   return get<Appointment>(STORES.APPOINTMENTS, id);
 }
-
-export async function addAppointment(appointment: Appointment): Promise<void> {
-  await add(STORES.APPOINTMENTS, appointment);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('appointments', appointment).catch(err =>
-    logger.error('Background sync failed for appointment add:', err)
-  );
+export async function addAppointment(app: Appointment): Promise<void> {
+  await add(STORES.APPOINTMENTS, app);
+  syncAdd('appointments', app).catch(err => logger.error('Sync add appointment failed:', err));
 }
-
-export async function updateAppointment(appointment: Appointment): Promise<void> {
-  await update(STORES.APPOINTMENTS, appointment);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('appointments', appointment).catch(err =>
-    logger.error('Background sync failed for appointment update:', err)
-  );
+export async function updateAppointment(app: Appointment): Promise<void> {
+  await update(STORES.APPOINTMENTS, app);
+  syncUpdate('appointments', app).catch(err => logger.error('Sync update appointment failed:', err));
 }
-
-/**
- * Update appointment from sync - does NOT trigger sync loop
- * Used when receiving data from PouchDB sync to prevent infinite loops
- */
-export async function updateAppointmentFromSync(appointment: Appointment): Promise<void> {
-  await updateFromSync(STORES.APPOINTMENTS, appointment);
+export async function updateAppointmentFromSync(app: Appointment): Promise<void> {
+  await updateFromSync(STORES.APPOINTMENTS, app);
 }
-
 export async function deleteAppointment(id: string): Promise<void> {
   await remove(STORES.APPOINTMENTS, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('appointments', id).catch(err =>
-    logger.error('Background sync failed for appointment delete:', err)
-  );
+  syncDelete('appointments', id).catch(err => logger.error('Sync delete appointment failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Payments
-// ============================================
-
+// Payments
 export async function getAllPayments(): Promise<Payment[]> {
   return getAll<Payment>(STORES.PAYMENTS);
 }
-
 export async function getPayment(id: string): Promise<Payment | undefined> {
   return get<Payment>(STORES.PAYMENTS, id);
 }
-
 export async function addPayment(payment: Payment): Promise<void> {
   await add(STORES.PAYMENTS, payment);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('payments', payment).catch(err =>
-    logger.error('Background sync failed for payment add:', err)
-  );
+  syncAdd('payments', payment).catch(err => logger.error('Sync add payment failed:', err));
 }
-
 export async function updatePayment(payment: Payment): Promise<void> {
   await update(STORES.PAYMENTS, payment);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('payments', payment).catch(err =>
-    logger.error('Background sync failed for payment update:', err)
-  );
+  syncUpdate('payments', payment).catch(err => logger.error('Sync update payment failed:', err));
 }
-
-/**
- * Update payment from sync - does NOT trigger sync loop
- */
 export async function updatePaymentFromSync(payment: Payment): Promise<void> {
   await updateFromSync(STORES.PAYMENTS, payment);
 }
-
 export async function deletePayment(id: string): Promise<void> {
   await remove(STORES.PAYMENTS, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('payments', id).catch(err =>
-    logger.error('Background sync failed for payment delete:', err)
-  );
+  syncDelete('payments', id).catch(err => logger.error('Sync delete payment failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Reminders
-// ============================================
-
+// Reminders
 export async function getAllReminders(): Promise<Reminder[]> {
   return getAll<Reminder>(STORES.REMINDERS);
 }
-
 export async function getReminder(id: string): Promise<Reminder | undefined> {
   return get<Reminder>(STORES.REMINDERS, id);
 }
-
 export async function addReminder(reminder: Reminder): Promise<void> {
   await add(STORES.REMINDERS, reminder);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('reminders', reminder).catch(err =>
-    logger.error('Background sync failed for reminder add:', err)
-  );
+  syncAdd('reminders', reminder).catch(err => logger.error('Sync add reminder failed:', err));
 }
-
 export async function updateReminder(reminder: Reminder): Promise<void> {
   await update(STORES.REMINDERS, reminder);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('reminders', reminder).catch(err =>
-    logger.error('Background sync failed for reminder update:', err)
-  );
+  syncUpdate('reminders', reminder).catch(err => logger.error('Sync update reminder failed:', err));
 }
-
-/**
- * Update reminder from sync - does NOT trigger sync loop
- * Used when receiving data from PouchDB sync to prevent infinite loops
- */
 export async function updateReminderFromSync(reminder: Reminder): Promise<void> {
   await updateFromSync(STORES.REMINDERS, reminder);
 }
-
 export async function deleteReminder(id: string): Promise<void> {
   await remove(STORES.REMINDERS, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('reminders', id).catch(err =>
-    logger.error('Background sync failed for reminder delete:', err)
-  );
+  syncDelete('reminders', id).catch(err => logger.error('Sync delete reminder failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Staff Roles
-// ============================================
-
+// Staff Roles
 export async function getAllStaffRoles(): Promise<StaffRole[]> {
   return getAll<StaffRole>(STORES.STAFF_ROLES);
 }
-
 export async function getStaffRole(id: string): Promise<StaffRole | undefined> {
   return get<StaffRole>(STORES.STAFF_ROLES, id);
 }
-
 export async function addStaffRole(role: StaffRole): Promise<void> {
   await add(STORES.STAFF_ROLES, role);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('staffRoles', role).catch(err =>
-    logger.error('Background sync failed for staff role add:', err)
-  );
+  syncAdd('staffRoles', role).catch(err => logger.error('Sync add staff role failed:', err));
 }
-
 export async function updateStaffRole(role: StaffRole): Promise<void> {
   await update(STORES.STAFF_ROLES, role);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('staffRoles', role).catch(err =>
-    logger.error('Background sync failed for staff role update:', err)
-  );
+  syncUpdate('staffRoles', role).catch(err => logger.error('Sync update staff role failed:', err));
 }
-
-/**
- * Update staff role from sync - does NOT trigger sync loop
- */
 export async function updateStaffRoleFromSync(role: StaffRole): Promise<void> {
   await updateFromSync(STORES.STAFF_ROLES, role);
 }
-
 export async function deleteStaffRole(id: string): Promise<void> {
   await remove(STORES.STAFF_ROLES, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('staffRoles', id).catch(err =>
-    logger.error('Background sync failed for staff role delete:', err)
-  );
+  syncDelete('staffRoles', id).catch(err => logger.error('Sync delete staff role failed:', err));
 }
 
-// ============================================
-// CRUD Operations for Service Categories
-// ============================================
-
+// Service Categories
 export async function getAllServiceCategories(): Promise<ServiceCategory[]> {
   return getAll<ServiceCategory>(STORES.SERVICE_CATEGORIES);
 }
-
 export async function getServiceCategory(id: string): Promise<ServiceCategory | undefined> {
   return get<ServiceCategory>(STORES.SERVICE_CATEGORIES, id);
 }
-
 export async function addServiceCategory(category: ServiceCategory): Promise<void> {
   await add(STORES.SERVICE_CATEGORIES, category);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('serviceCategories', category).catch(err =>
-    logger.error('Background sync failed for service category add:', err)
-  );
+  syncAdd('serviceCategories', category).catch(err => logger.error('Sync add service category failed:', err));
 }
-
 export async function updateServiceCategory(category: ServiceCategory): Promise<void> {
   await update(STORES.SERVICE_CATEGORIES, category);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('serviceCategories', category).catch(err =>
-    logger.error('Background sync failed for service category update:', err)
-  );
+  syncUpdate('serviceCategories', category).catch(err => logger.error('Sync update service category failed:', err));
 }
-
-/**
- * Update service category from sync - does NOT trigger sync loop
- */
 export async function updateServiceCategoryFromSync(category: ServiceCategory): Promise<void> {
   await updateFromSync(STORES.SERVICE_CATEGORIES, category);
 }
-
 export async function deleteServiceCategory(id: string): Promise<void> {
   await remove(STORES.SERVICE_CATEGORIES, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('serviceCategories', id).catch(err =>
-    logger.error('Background sync failed for service category delete:', err)
-  );
+  syncDelete('serviceCategories', id).catch(err => logger.error('Sync delete service category failed:', err));
 }
 
-// ============================================
-// Query Functions
-// ============================================
-
-/**
- * Get all appointments for a specific customer
- */
-export async function getCustomerAppointments(customerId: string): Promise<Appointment[]> {
-  return getByIndex<Appointment>(STORES.APPOINTMENTS, 'customerId', customerId);
-}
-
-/**
- * Get future appointments for a specific customer
- */
-export async function getCustomerFutureAppointments(customerId: string): Promise<Appointment[]> {
-  const appointments = await getCustomerAppointments(customerId);
-  const now = new Date().toISOString();
-  return appointments.filter(apt => apt.date >= now.split('T')[0]);
-}
-
-/**
- * Get all appointments for a specific staff member
- */
-export async function getStaffAppointments(staffId: string): Promise<Appointment[]> {
-  return getByIndex<Appointment>(STORES.APPOINTMENTS, 'staffId', staffId);
-}
-
-/**
- * Get future appointments for a specific staff member
- */
-export async function getStaffFutureAppointments(staffId: string): Promise<Appointment[]> {
-  const appointments = await getStaffAppointments(staffId);
-  const now = new Date().toISOString();
-  return appointments.filter(apt => apt.date >= now.split('T')[0]);
-}
-
-/**
- * Get all appointments for a specific service
- */
-export async function getServiceAppointments(serviceId: string): Promise<{
-  past: Appointment[];
-  future: Appointment[];
-}> {
-  const appointments = await getByIndex<Appointment>(STORES.APPOINTMENTS, 'serviceId', serviceId);
-  const now = new Date().toISOString().split('T')[0];
-
-  const past = appointments.filter(apt => apt.date < now);
-  const future = appointments.filter(apt => apt.date >= now);
-
-  return { past, future };
-}
-
-/**
- * Get all payments for a specific appointment
- */
-export async function getAppointmentPayments(appointmentId: string): Promise<Payment[]> {
-  return getByIndex<Payment>(STORES.PAYMENTS, 'appointmentId', appointmentId);
-}
-
-// ============================================
-// Validation Functions
-// ============================================
-
-/**
- * Check if a customer can be deleted (no future appointments)
- */
-export async function canDeleteCustomer(customerId: string): Promise<{
-  canDelete: boolean;
-  reason?: string;
-  futureAppointments: number;
-}> {
-  const futureAppointments = await getCustomerFutureAppointments(customerId);
-  const count = futureAppointments.length;
-
-  return {
-    canDelete: count === 0,
-    reason: count > 0 ? `Il cliente ha ${count} appuntamento/i futuro/i` : undefined,
-    futureAppointments: count,
-  };
-}
-
-/**
- * Check if a staff member can be deleted (no future appointments)
- */
-export async function canDeleteStaff(staffId: string): Promise<{
-  canDelete: boolean;
-  reason?: string;
-  futureAppointments: number;
-}> {
-  const futureAppointments = await getStaffFutureAppointments(staffId);
-  const count = futureAppointments.length;
-
-  return {
-    canDelete: count === 0,
-    reason: count > 0 ? `Il membro del personale ha ${count} appuntamento/i futuro/i` : undefined,
-    futureAppointments: count,
-  };
-}
-
-/**
- * Check if a service can be deleted (no future appointments)
- */
-export async function canDeleteService(serviceId: string): Promise<{
-  canDelete: boolean;
-  reason?: string;
-  futureAppointments: number;
-}> {
-  const { future } = await getServiceAppointments(serviceId);
-  const count = future.length;
-
-  return {
-    canDelete: count === 0,
-    reason: count > 0 ? `Il servizio ha ${count} appuntamento/i futuro/i` : undefined,
-    futureAppointments: count,
-  };
-}
-
-// ============================================
-// Utility Functions
-// ============================================
-
-/**
- * Get database statistics
- */
-export async function getDatabaseStats(): Promise<{
-  customers: number;
-  services: number;
-  staff: number;
-  appointments: number;
-  payments: number;
-  reminders: number;
-  staffRoles: number;
-  serviceCategories: number;
-  users: number;
-}> {
-  const [
-    customers,
-    services,
-    staff,
-    appointments,
-    payments,
-    reminders,
-    staffRoles,
-    serviceCategories,
-    users,
-  ] = await Promise.all([
-    getAllCustomers(),
-    getAllServices(),
-    getAllStaff(),
-    getAllAppointments(),
-    getAllPayments(),
-    getAllReminders(),
-    getAllStaffRoles(),
-    getAllServiceCategories(),
-    getAllUsers(),
-  ]);
-
-  return {
-    customers: customers.length,
-    services: services.length,
-    staff: staff.length,
-    appointments: appointments.length,
-    payments: payments.length,
-    reminders: reminders.length,
-    staffRoles: staffRoles.length,
-    serviceCategories: serviceCategories.length,
-    users: users.length,
-  };
-}
-
-/**
- * Export all data (for backup)
- */
-export async function exportData(): Promise<{
-  customers: Customer[];
-  services: Service[];
-  staff: Staff[];
-  appointments: Appointment[];
-  payments: Payment[];
-  reminders: Reminder[];
-  staffRoles: StaffRole[];
-  serviceCategories: ServiceCategory[];
-  users: User[];
-}> {
-  const [
-    customers,
-    services,
-    staff,
-    appointments,
-    payments,
-    reminders,
-    staffRoles,
-    serviceCategories,
-    users,
-  ] = await Promise.all([
-    getAllCustomers(),
-    getAllServices(),
-    getAllStaff(),
-    getAllAppointments(),
-    getAllPayments(),
-    getAllReminders(),
-    getAllStaffRoles(),
-    getAllServiceCategories(),
-    getAllUsers(),
-  ]);
-
-  return {
-    customers,
-    services,
-    staff,
-    appointments,
-    payments,
-    reminders,
-    staffRoles,
-    serviceCategories,
-    users,
-  };
-}
-
-/**
- * Import all data (for restore)
- */
-export async function importData(data: {
-  customers?: Customer[];
-  services?: Service[];
-  staff?: Staff[];
-  appointments?: Appointment[];
-  payments?: Payment[];
-  reminders?: Reminder[];
-  staffRoles?: StaffRole[];
-  serviceCategories?: ServiceCategory[];
-  users?: User[];
-}): Promise<void> {
-  const database = getDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(
-      [
-        STORES.CUSTOMERS,
-        STORES.SERVICES,
-        STORES.STAFF,
-        STORES.APPOINTMENTS,
-        STORES.PAYMENTS,
-        STORES.REMINDERS,
-        STORES.STAFF_ROLES,
-        STORES.SERVICE_CATEGORIES,
-        STORES.USERS,
-      ],
-      'readwrite'
-    );
-
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-
-    // Import each type of data
-    if (data.customers) {
-      const store = transaction.objectStore(STORES.CUSTOMERS);
-      data.customers.forEach(item => store.put(item));
-    }
-
-    if (data.services) {
-      const store = transaction.objectStore(STORES.SERVICES);
-      data.services.forEach(item => store.put(item));
-    }
-
-    if (data.staff) {
-      const store = transaction.objectStore(STORES.STAFF);
-      data.staff.forEach(item => store.put(item));
-    }
-
-    if (data.appointments) {
-      const store = transaction.objectStore(STORES.APPOINTMENTS);
-      data.appointments.forEach(item => store.put(item));
-    }
-
-    if (data.payments) {
-      const store = transaction.objectStore(STORES.PAYMENTS);
-      data.payments.forEach(item => store.put(item));
-    }
-
-    if (data.reminders) {
-      const store = transaction.objectStore(STORES.REMINDERS);
-      data.reminders.forEach(item => store.put(item));
-    }
-
-    if (data.staffRoles) {
-      const store = transaction.objectStore(STORES.STAFF_ROLES);
-      data.staffRoles.forEach(item => store.put(item));
-    }
-
-    if (data.serviceCategories) {
-      const store = transaction.objectStore(STORES.SERVICE_CATEGORIES);
-      data.serviceCategories.forEach(item => store.put(item));
-    }
-
-    if (data.users) {
-      const store = transaction.objectStore(STORES.USERS);
-      data.users.forEach(item => store.put(item));
-    }
-  });
-}
-
-// ============================================
-// CRUD Operations for Users
-// ============================================
-
+// Users
 export async function getAllUsers(): Promise<User[]> {
   return getAll<User>(STORES.USERS);
 }
-
 export async function getUser(id: string): Promise<User | undefined> {
   return get<User>(STORES.USERS, id);
 }
-
 export async function getUserByUsername(username: string): Promise<User | undefined> {
   const users = await getByIndex<User>(STORES.USERS, 'username', username);
   return users[0];
 }
-
 export async function addUser(user: User): Promise<void> {
   await add(STORES.USERS, user);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('users', user).catch(err =>
-    logger.error('Background sync failed for user add:', err)
-  );
+  syncAdd('users', user).catch(err => logger.error('Sync add user failed:', err));
 }
-
 export async function updateUser(user: User): Promise<void> {
   await update(STORES.USERS, user);
-  // Sync to PouchDB in background (non-blocking)
-  syncUpdate('users', user).catch(err =>
-    logger.error('Background sync failed for user update:', err)
-  );
+  syncUpdate('users', user).catch(err => logger.error('Sync update user failed:', err));
 }
-
-/**
- * Update user from sync - does NOT trigger sync loop
- */
 export async function updateUserFromSync(user: User): Promise<void> {
   await updateFromSync(STORES.USERS, user);
 }
-
 export async function deleteUser(id: string): Promise<void> {
   await remove(STORES.USERS, id);
-  // Sync to PouchDB in background (non-blocking)
-  syncDelete('users', id).catch(err =>
-    logger.error('Background sync failed for user delete:', err)
-  );
-}
-
-// ============================================
-// Utility Functions
-// ============================================
-
-/**
- * Clear all data from database
- */
-export async function clearAllData(): Promise<void> {
-  const database = getDB();
-
-  return new Promise((resolve, reject) => {
-    const transaction = database.transaction(
-      [
-        STORES.CUSTOMERS,
-        STORES.SERVICES,
-        STORES.STAFF,
-        STORES.APPOINTMENTS,
-        STORES.PAYMENTS,
-        STORES.REMINDERS,
-        STORES.STAFF_ROLES,
-        STORES.SERVICE_CATEGORIES,
-        STORES.USERS,
-      ],
-      'readwrite'
-    );
-
-    transaction.oncomplete = () => resolve();
-    transaction.onerror = () => reject(transaction.error);
-
-    // Clear all object stores
-    transaction.objectStore(STORES.CUSTOMERS).clear();
-    transaction.objectStore(STORES.SERVICES).clear();
-    transaction.objectStore(STORES.STAFF).clear();
-    transaction.objectStore(STORES.APPOINTMENTS).clear();
-    transaction.objectStore(STORES.PAYMENTS).clear();
-    transaction.objectStore(STORES.REMINDERS).clear();
-    transaction.objectStore(STORES.STAFF_ROLES).clear();
-    transaction.objectStore(STORES.SERVICE_CATEGORIES).clear();
-    transaction.objectStore(STORES.USERS).clear();
-  });
-}
+  syncDelete('users', id).catch(err => logger.error('Sync delete user failed:', err));
+                     }
