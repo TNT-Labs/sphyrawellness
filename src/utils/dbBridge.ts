@@ -1,252 +1,74 @@
 /**
- * Database Bridge - Sincronizza IndexedDB con PouchDB
- *
- * FIX:
- * - Impedisce la ricreazione di documenti eliminati (_deleted)
- * - Allinea il comportamento a CouchDB/PouchDB semantics
+ * dbBridge.ts
+ * Gestisce la sincronizzazione tra IndexedDB e PouchDB
+ * Aggiornato per supportare soft-delete (deleted: true)
  */
 
 import PouchDB from 'pouchdb-browser';
 import { logger } from './logger';
 
-const DB_NAME_MAPPING = {
-  customers: 'sphyra-customers',
-  services: 'sphyra-services',
-  staff: 'sphyra-staff',
-  appointments: 'sphyra-appointments',
-  payments: 'sphyra-payments',
-  reminders: 'sphyra-reminders',
-  staffRoles: 'sphyra-staff-roles',
-  serviceCategories: 'sphyra-service-categories',
-  users: 'sphyra-users',
-} as const;
+const remoteDBUrl = 'https://your-couchdb-server/dbname';
+const pouchDB = new PouchDB('local-db');
+const remoteDB = new PouchDB(remoteDBUrl);
 
-type StoreType = keyof typeof DB_NAME_MAPPING;
-
-const pouchDBCache: Map<string, PouchDB.Database> = new Map();
-
-type QueuedOperation = () => Promise<void>;
-const operationQueues: Map<string, QueuedOperation[]> = new Map();
-const processingQueues: Map<string, boolean> = new Map();
-
-let isCleanupInProgress = false;
+// Sincronizzazione bidirezionale in background
+pouchDB
+  .sync(remoteDB, { live: true, retry: true })
+  .on('change', (info) => logger.info('PouchDB sync change:', info))
+  .on('paused', (err) => logger.info('PouchDB sync paused:', err))
+  .on('active', () => logger.info('PouchDB sync resumed'))
+  .on('error', (err) => logger.error('PouchDB sync error:', err));
 
 /**
- * Utility: verifica se un documento è cancellato
+ * Aggiunge un documento a PouchDB
  */
-function isDeleted(doc: any): boolean {
-  return !!doc && doc._deleted === true;
-}
-
-function getPouchDB(storeName: StoreType): PouchDB.Database | null {
+export async function syncAdd(store: string, item: any): Promise<void> {
   try {
-    const dbName = DB_NAME_MAPPING[storeName];
-
-    if (pouchDBCache.has(dbName)) {
-      return pouchDBCache.get(dbName)!;
+    const doc = { ...item, _id: `${store}:${item.id}` };
+    await pouchDB.put(doc);
+  } catch (err: any) {
+    if (err.status === 409) {
+      // Documento già presente, fare update invece
+      await syncUpdate(store, item);
+    } else {
+      logger.error(`syncAdd failed for ${store} id=${item.id}:`, err);
     }
-
-    const db = new PouchDB(dbName, {
-      auto_compaction: false,
-      revs_limit: 1,
-    });
-
-    pouchDBCache.set(dbName, db);
-    return db;
-  } catch (error) {
-    logger.warn(`Could not access PouchDB for ${storeName}:`, error);
-    return null;
   }
 }
 
 /**
- * ADD
+ * Aggiorna un documento su PouchDB
  */
-export async function syncAdd<T extends { id: string }>(
-  storeName: StoreType,
-  item: T
-): Promise<void> {
-  const queueKey = `${storeName}:${item.id}`;
-
-  queueOperation(queueKey, async () => {
-    const pouchDB = getPouchDB(storeName);
-    if (!pouchDB) return;
-
-    try {
-      const existing = await pouchDB.get(item.id).catch(() => null);
-
-      // 🔒 FIX: non ricreare documenti eliminati
-      if (isDeleted(existing)) {
-        logger.info(`Skip syncAdd: ${storeName}:${item.id} is deleted`);
-        return;
-      }
-
-      const { id, ...itemWithoutId } = item;
-
-      await pouchDB.put({
-        ...itemWithoutId,
-        _id: id,
-        _rev: existing?._rev,
-      });
-
-      logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
-    } catch (error) {
-      logger.error(`Failed to sync add for ${storeName}:${item.id}`, error);
-      throw error;
+export async function syncUpdate(store: string, item: any): Promise<void> {
+  try {
+    const docId = `${store}:${item.id}`;
+    const existing = await pouchDB.get(docId).catch(() => null);
+    const doc = { ...(existing || {}), ...item, _id: docId };
+    if (existing?._rev) {
+      doc._rev = existing._rev;
     }
-  });
-}
-
-/**
- * UPDATE
- */
-export async function syncUpdate<T extends { id: string }>(
-  storeName: StoreType,
-  item: T
-): Promise<void> {
-  const queueKey = `${storeName}:${item.id}`;
-
-  queueOperation(queueKey, async () => {
-    const pouchDB = getPouchDB(storeName);
-    if (!pouchDB) return;
-
-    try {
-      const existing = await pouchDB.get(item.id);
-
-      // 🔒 FIX: non aggiornare documenti eliminati
-      if (isDeleted(existing)) {
-        logger.info(`Skip syncUpdate: ${storeName}:${item.id} is deleted`);
-        return;
-      }
-
-      const { id, ...itemWithoutId } = item;
-
-      await pouchDB.put({
-        ...itemWithoutId,
-        _id: id,
-        _rev: existing._rev,
-      });
-
-      logger.debug(`Synced update to PouchDB for ${storeName}:`, id);
-    } catch (error: any) {
-      if (error.status === 404) {
-        await syncAdd(storeName, item);
-      } else {
-        logger.error(`Failed to sync update for ${storeName}:${item.id}`, error);
-        throw error;
-      }
-    }
-  });
-}
-
-/**
- * DELETE
- */
-export async function syncDelete(
-  storeName: StoreType,
-  id: string
-): Promise<void> {
-  const queueKey = `${storeName}:${id}`;
-
-  queueOperation(queueKey, async () => {
-    const pouchDB = getPouchDB(storeName);
-    if (!pouchDB) return;
-
-    try {
-      const existing = await pouchDB.get(id);
-
-      if (isDeleted(existing)) {
-        logger.debug(`Already deleted: ${storeName}:${id}`);
-        return;
-      }
-
-      await pouchDB.remove(existing);
-      logger.debug(`Synced delete to PouchDB for ${storeName}:`, id);
-    } catch (error: any) {
-      if (error.status === 404) {
-        logger.debug(`Document not found (already deleted): ${storeName}:${id}`);
-        return;
-      }
-      logger.error(`Failed to sync delete for ${storeName}:${id}`, error);
-      throw error;
-    }
-  });
-}
-
-/**
- * Queue handling
- */
-async function processQueue(queueKey: string): Promise<void> {
-  if (processingQueues.get(queueKey) || isCleanupInProgress) return;
-
-  processingQueues.set(queueKey, true);
-
-  const queue = operationQueues.get(queueKey);
-  if (!queue) {
-    processingQueues.set(queueKey, false);
-    return;
+    await pouchDB.put(doc);
+  } catch (err) {
+    logger.error(`syncUpdate failed for ${store} id=${item.id}:`, err);
   }
-
-  while (queue.length > 0) {
-    if (isCleanupInProgress) break;
-    const op = queue.shift();
-    if (op) await op();
-  }
-
-  processingQueues.set(queueKey, false);
-  operationQueues.delete(queueKey);
-}
-
-function queueOperation(queueKey: string, operation: QueuedOperation): void {
-  if (!operationQueues.has(queueKey)) {
-    operationQueues.set(queueKey, []);
-  }
-  operationQueues.get(queueKey)!.push(operation);
-  processQueue(queueKey).catch(err =>
-    logger.error('Queue processing error:', err)
-  );
-}
-/**
- * Pause queue processing (used during shutdown / cleanup)
- */
-export function pauseQueueProcessing(): void {
-  isCleanupInProgress = true;
-  logger.debug('Queue processing paused');
 }
 
 /**
- * Resume queue processing
+ * Soft-delete su PouchDB: imposta deleted: true
  */
-export function resumeQueueProcessing(): void {
-  isCleanupInProgress = false;
-  logger.debug('Queue processing resumed');
-}
-
-/**
- * Wait for all pending operations to complete
- */
-export async function waitForPendingOperations(
-  timeoutMs: number = 5000
-): Promise<void> {
-  const start = Date.now();
-
-  while (Date.now() - start < timeoutMs) {
-    let anyProcessing = false;
-
-    for (const processing of processingQueues.values()) {
-      if (processing) {
-        anyProcessing = true;
-        break;
-      }
+export async function syncDelete(store: string, id: string): Promise<void> {
+  try {
+    const docId = `${store}:${id}`;
+    const existing = await pouchDB.get(docId);
+    if (!existing.deleted) {
+      const updated = { ...existing, deleted: true, updatedAt: new Date().toISOString() };
+      await pouchDB.put(updated);
     }
-
-    if (!anyProcessing) {
-      logger.debug('All pending queue operations completed');
-      return;
+  } catch (err: any) {
+    if (err.status === 404) {
+      logger.warn(`syncDelete: document ${docId} not found, skipping`);
+    } else {
+      logger.error(`syncDelete failed for ${store} id=${id}:`, err);
     }
-
-    await new Promise(resolve => setTimeout(resolve, 50));
   }
-
-  logger.warn('Timeout while waiting for pending queue operations');
 }
