@@ -206,3 +206,47 @@ function queueOperation(queueKey: string, operation: QueuedOperation): void {
     logger.error('Queue processing error:', err)
   );
 }
+/**
+ * Pause queue processing (used during shutdown / cleanup)
+ */
+export function pauseQueueProcessing(): void {
+  isCleanupInProgress = true;
+  logger.debug('Queue processing paused');
+}
+
+/**
+ * Resume queue processing
+ */
+export function resumeQueueProcessing(): void {
+  isCleanupInProgress = false;
+  logger.debug('Queue processing resumed');
+}
+
+/**
+ * Wait for all pending operations to complete
+ */
+export async function waitForPendingOperations(
+  timeoutMs: number = 5000
+): Promise<void> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    let anyProcessing = false;
+
+    for (const processing of processingQueues.values()) {
+      if (processing) {
+        anyProcessing = true;
+        break;
+      }
+    }
+
+    if (!anyProcessing) {
+      logger.debug('All pending queue operations completed');
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  logger.warn('Timeout while waiting for pending queue operations');
+}
