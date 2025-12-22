@@ -1,126 +1,198 @@
 /**
- * db.ts - Wrapper CRUD per IndexedDB con soft-delete
+ * Database module - uses native IndexedDB for local storage
+ * This module delegates all operations to indexedDB.ts
  */
 
-import {
-  Customer,
-  Service,
-  Staff,
-  Appointment,
-  Payment,
-  Reminder,
-  StaffRole,
-  ServiceCategory,
-  User
-} from '../types';
-import * as idb from './indexeddb';
+import * as IndexedDB from './indexedDB';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, StaffRole, ServiceCategory } from '../types';
 import { logger } from './logger';
 
-// ============================
-// Customers
-// ============================
-export const Customers = {
-  getAll: () => idb.getAllCustomers(),
-  get: (id: string) => idb.getCustomer(id),
-  add: (c: Customer) => idb.addCustomer(c),
-  update: (c: Customer) => idb.updateCustomer(c),
-  updateFromSync: (c: Customer) => idb.updateCustomerFromSync(c),
-  delete: (id: string) => idb.deleteCustomer(id)
-};
+/**
+ * Initialize database
+ */
+export async function initDB(): Promise<void> {
+  try {
+    // Initialize IndexedDB
+    await IndexedDB.initIndexedDB();
 
-// ============================
-// Services
-// ============================
-export const Services = {
-  getAll: () => idb.getAllServices(),
-  get: (id: string) => idb.getService(id),
-  add: (s: Service) => idb.addService(s),
-  update: (s: Service) => idb.updateService(s),
-  updateFromSync: (s: Service) => idb.updateServiceFromSync(s),
-  delete: (id: string) => idb.deleteService(id)
-};
+    logger.info('Database initialized successfully');
+  } catch (error) {
+    logger.error('Failed to initialize database:', error);
+    throw error;
+  }
+}
 
-// ============================
-// Staff
-// ============================
-export const Staffs = {
-  getAll: () => idb.getAllStaff(),
-  get: (id: string) => idb.getStaff(id),
-  add: (s: Staff) => idb.addStaff(s),
-  update: (s: Staff) => idb.updateStaff(s),
-  updateFromSync: (s: Staff) => idb.updateStaffFromSync(s),
-  delete: (id: string) => idb.deleteStaff(id)
-};
+// ============================================
+// CRUD Operations for Customers
+// ============================================
 
-// ============================
-// Appointments
-// ============================
-export const Appointments = {
-  getAll: () => idb.getAllAppointments(),
-  get: (id: string) => idb.getAppointment(id),
-  add: (a: Appointment) => idb.addAppointment(a),
-  update: (a: Appointment) => idb.updateAppointment(a),
-  updateFromSync: (a: Appointment) => idb.updateAppointmentFromSync(a),
-  delete: (id: string) => idb.deleteAppointment(id)
-};
+export const getAllCustomers = IndexedDB.getAllCustomers;
+export const getCustomer = IndexedDB.getCustomer;
+export const addCustomer = IndexedDB.addCustomer;
+export const updateCustomer = IndexedDB.updateCustomer;
+export const deleteCustomer = IndexedDB.deleteCustomer;
 
-// ============================
-// Payments
-// ============================
-export const Payments = {
-  getAll: () => idb.getAllPayments(),
-  get: (id: string) => idb.getPayment(id),
-  add: (p: Payment) => idb.addPayment(p),
-  update: (p: Payment) => idb.updatePayment(p),
-  updateFromSync: (p: Payment) => idb.updatePaymentFromSync(p),
-  delete: (id: string) => idb.deletePayment(id)
-};
+// ============================================
+// CRUD Operations for Services
+// ============================================
 
-// ============================
-// Reminders
-// ============================
-export const Reminders = {
-  getAll: () => idb.getAllReminders(),
-  get: (id: string) => idb.getReminder(id),
-  add: (r: Reminder) => idb.addReminder(r),
-  update: (r: Reminder) => idb.updateReminder(r),
-  updateFromSync: (r: Reminder) => idb.updateReminderFromSync(r),
-  delete: (id: string) => idb.deleteReminder(id)
-};
+export const getAllServices = IndexedDB.getAllServices;
+export const getService = IndexedDB.getService;
+export const addService = IndexedDB.addService;
+export const updateService = IndexedDB.updateService;
+export const deleteService = IndexedDB.deleteService;
 
-// ============================
-// Staff Roles
-// ============================
-export const StaffRoles = {
-  getAll: () => idb.getAllStaffRoles(),
-  get: (id: string) => idb.getStaffRole(id),
-  add: (r: StaffRole) => idb.addStaffRole(r),
-  update: (r: StaffRole) => idb.updateStaffRole(r),
-  updateFromSync: (r: StaffRole) => idb.updateStaffRoleFromSync(r),
-  delete: (id: string) => idb.deleteStaffRole(id)
-};
+// ============================================
+// CRUD Operations for Staff
+// ============================================
 
-// ============================
-// Service Categories
-// ============================
-export const ServiceCategories = {
-  getAll: () => idb.getAllServiceCategories(),
-  get: (id: string) => idb.getServiceCategory(id),
-  add: (c: ServiceCategory) => idb.addServiceCategory(c),
-  update: (c: ServiceCategory) => idb.updateServiceCategory(c),
-  updateFromSync: (c: ServiceCategory) => idb.updateServiceCategoryFromSync(c),
-  delete: (id: string) => idb.deleteServiceCategory(id)
-};
+export const getAllStaff = IndexedDB.getAllStaff;
+export const getStaff = IndexedDB.getStaff;
+export const addStaff = IndexedDB.addStaff;
+export const updateStaff = IndexedDB.updateStaff;
+export const deleteStaff = IndexedDB.deleteStaff;
 
-// ============================
-// Users
-// ============================
-export const Users = {
-  getAll: () => idb.getAllUsers(),
-  get: (id: string) => idb.getUser(id),
-  getByUsername: (username: string) => idb.getUserByUsername(username),
-  add: (u: User) => idb.addUser(u),
-  update: (u: User) => idb.updateUser(u),
-  updateFromSync: (u: User) => idb.updateUserFromSync(u),
-  delete: (id: string) => idb.deleteUser(id)
-};
+// ============================================
+// CRUD Operations for Appointments
+// ============================================
+
+export const getAllAppointments = IndexedDB.getAllAppointments;
+export const getAppointment = IndexedDB.getAppointment;
+export const addAppointment = IndexedDB.addAppointment;
+export const updateAppointment = IndexedDB.updateAppointment;
+export const deleteAppointment = IndexedDB.deleteAppointment;
+
+// ============================================
+// CRUD Operations for Payments
+// ============================================
+
+export const getAllPayments = IndexedDB.getAllPayments;
+export const getPayment = IndexedDB.getPayment;
+export const addPayment = IndexedDB.addPayment;
+export const updatePayment = IndexedDB.updatePayment;
+export const deletePayment = IndexedDB.deletePayment;
+
+// ============================================
+// CRUD Operations for Reminders
+// ============================================
+
+export const getAllReminders = IndexedDB.getAllReminders;
+export const getReminder = IndexedDB.getReminder;
+export const addReminder = IndexedDB.addReminder;
+export const updateReminder = IndexedDB.updateReminder;
+export const deleteReminder = IndexedDB.deleteReminder;
+
+// ============================================
+// CRUD Operations for Staff Roles
+// ============================================
+
+export const getAllStaffRoles = IndexedDB.getAllStaffRoles;
+export const getStaffRole = IndexedDB.getStaffRole;
+export const addStaffRole = IndexedDB.addStaffRole;
+export const updateStaffRole = IndexedDB.updateStaffRole;
+export const deleteStaffRole = IndexedDB.deleteStaffRole;
+
+// ============================================
+// CRUD Operations for Service Categories
+// ============================================
+
+export const getAllServiceCategories = IndexedDB.getAllServiceCategories;
+export const getServiceCategory = IndexedDB.getServiceCategory;
+export const addServiceCategory = IndexedDB.addServiceCategory;
+export const updateServiceCategory = IndexedDB.updateServiceCategory;
+export const deleteServiceCategory = IndexedDB.deleteServiceCategory;
+
+// ============================================
+// CRUD Operations for Users
+// ============================================
+
+export const getAllUsers = IndexedDB.getAllUsers;
+export const getUser = IndexedDB.getUser;
+export const getUserByUsername = IndexedDB.getUserByUsername;
+export const addUser = IndexedDB.addUser;
+export const updateUser = IndexedDB.updateUser;
+export const deleteUser = IndexedDB.deleteUser;
+
+// ============================================
+// Utility Functions
+// ============================================
+
+/**
+ * Get database statistics
+ */
+export async function getDatabaseStats(): Promise<{
+  customers: number;
+  services: number;
+  staff: number;
+  appointments: number;
+  payments: number;
+  reminders: number;
+  staffRoles: number;
+  serviceCategories: number;
+}> {
+  return await IndexedDB.getDatabaseStats();
+}
+
+/**
+ * Export all data (for backup)
+ */
+export async function exportAllData(): Promise<{
+  customers: Customer[];
+  services: Service[];
+  staff: Staff[];
+  appointments: Appointment[];
+  payments: Payment[];
+  reminders: Reminder[];
+  staffRoles: StaffRole[];
+  serviceCategories: ServiceCategory[];
+}> {
+  return await IndexedDB.exportData();
+}
+
+/**
+ * Import all data (for restore)
+ */
+export async function importAllData(data: {
+  customers?: Customer[];
+  services?: Service[];
+  staff?: Staff[];
+  appointments?: Appointment[];
+  payments?: Payment[];
+  reminders?: Reminder[];
+  staffRoles?: StaffRole[];
+  serviceCategories?: ServiceCategory[];
+}): Promise<void> {
+  await IndexedDB.importData(data);
+}
+
+/**
+ * Clear all data from database
+ */
+export async function clearAllData(): Promise<void> {
+  await IndexedDB.clearAllData();
+}
+
+// ============================================
+// Query Functions
+// ============================================
+
+export {
+  getCustomerAppointments,
+  getStaffAppointments,
+  getServiceAppointments,
+  getCustomerFutureAppointments,
+  getStaffFutureAppointments,
+  getAppointmentPayments,
+} from './indexedDB';
+
+// ============================================
+// Validation Functions
+// ============================================
+
+export { canDeleteCustomer, canDeleteStaff, canDeleteService } from './indexedDB';
+
+// ============================================
+// Alias for backward compatibility
+// ============================================
+
+export { getDatabaseStats as getDBStats };
