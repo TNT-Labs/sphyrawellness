@@ -26,8 +26,8 @@ const PrivacyPolicy: React.FC = () => {
             <h2 className="text-2xl font-semibold text-gray-900">1. Titolare del Trattamento</h2>
           </div>
           <div className="text-gray-700 space-y-2">
-            <p><strong>[NOME AZIENDA/CENTRO WELLNESS]</strong></p>
-            <p>Sede legale: [INDIRIZZO COMPLETO]</p>
+            <p><strong>SPHYRA Wellness Lab</strong></p>
+            <p>Sede legale: via Roma 21, 24020 Scanzorosciate (BG)</p>
             <p>Partita IVA/Codice Fiscale: [P.IVA/CF]</p>
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-gray-500" />
@@ -35,7 +35,7 @@ const PrivacyPolicy: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <Phone className="w-4 h-4 text-gray-500" />
-              <span>Telefono: [NUMERO TELEFONO]</span>
+              <span>Telefono: +39 3927471954</span>
             </div>
             <p>PEC: [INDIRIZZO PEC]</p>
           </div>
