@@ -32,7 +32,7 @@ http://localhost:5173/admin-debug-panel
 - Avviso se si sta usando la password di default `admin123`
 
 ### 2. Visualizzazione Utenti
-- Lista completa degli utenti nel database locale (PouchDB)
+- Lista completa degli utenti nel database locale (**IndexedDB**)
 - Informazioni dettagliate per ogni utente:
   - Username
   - Ruolo (RESPONSABILE, DIPENDENTE, etc.)
@@ -42,32 +42,44 @@ http://localhost:5173/admin-debug-panel
   - ID univoco
 
 ### 3. Ricarica Utenti
-- Pulsante per ricaricare la lista dal database
+- Pulsante per ricaricare la lista dal database IndexedDB
 - Mostra il numero totale di utenti trovati
 
-### 4. Reset Database Completo
-- Elimina **TUTTI** gli utenti dal database locale
-- Richiede doppia conferma per sicurezza
-- Dopo il reset, ricaricando l'app principale viene ricreato l'admin
+### 4. **Crea Admin (NUOVO!)** ⭐
+- **Crea direttamente l'utente admin** senza dover ricaricare l'app
+- Usa la password configurata in `.env` (VITE_ADMIN_INITIAL_PASSWORD)
+- Se la password non è configurata o è `admin123`, genera una password casuale
+- La password viene mostrata in un **alert** e nella **console**
+- Funziona anche dopo aver fatto il reset del database
 
-### 5. Eliminazione Utente Singolo
+### 5. Reset Database Completo
+- Elimina **TUTTI** gli utenti da **IndexedDB** e **PouchDB**
+- Richiede doppia conferma per sicurezza
+- Dopo il reset, usa il pulsante **"Crea Admin"** per ricreare l'admin
+
+### 6. Eliminazione Utente Singolo
 - Ogni utente ha un pulsante "Elimina"
 - Richiede conferma prima dell'eliminazione
+- Elimina sia da IndexedDB che da PouchDB
 - Utile per rimuovere utenti specifici senza reset completo
 
 ---
 
 ## 🔧 Come Usare
 
-### Scenario 1: Password Dimenticata
+### Scenario 1: Password Dimenticata (RACCOMANDATO) ⭐
+
+**Metodo più veloce - usa il pulsante "Crea Admin":**
 
 1. **Apri l'URL** `/admin-debug-panel` sul tuo smartphone
 2. Clicca su **"Reset Database"**
 3. Clicca di nuovo per **confermare** (il pulsante diventa rosso e lampeggia)
-4. Vedrai il messaggio: *"Database resettato!"*
-5. **Torna alla pagina di login** (pulsante in fondo alla pagina)
-6. **Ricarica la pagina** (pull-to-refresh o F5)
-7. L'app creerà automaticamente un nuovo admin con la password da `.env`
+4. Vedrai il messaggio: *"Database resettato da IndexedDB e PouchDB!"*
+5. Clicca sul pulsante verde **"Crea Admin"**
+6. Se hai configurato `.env`, vedrai la password nel messaggio di successo
+7. Se non hai configurato `.env`, apparirà un **alert** con la password generata casualmente
+8. **Salva la password!**
+9. **Vai al Login** e accedi con `username: admin` e la password mostrata
 
 ### Scenario 2: Vedere la Password Configurata
 
@@ -79,9 +91,10 @@ http://localhost:5173/admin-debug-panel
 ### Scenario 3: Controllare gli Utenti Esistenti
 
 1. Apri `/admin-debug-panel`
-2. Guarda la sezione **"Utenti nel Database"**
-3. Vedi tutti gli utenti salvati localmente
-4. Verifica ruoli, username e stato
+2. Clicca **"Ricarica Utenti"** per caricare dal database IndexedDB
+3. Guarda la sezione **"Utenti nel Database"**
+4. Vedi tutti gli utenti salvati localmente
+5. Verifica ruoli, username e stato
 
 ### Scenario 4: Eliminare un Utente Specifico
 
@@ -89,6 +102,15 @@ http://localhost:5173/admin-debug-panel
 2. Trova l'utente nella lista
 3. Clicca **"Elimina"** accanto all'utente
 4. Conferma l'eliminazione
+5. L'utente viene rimosso da IndexedDB e PouchDB
+
+### Scenario 5: Primo Setup del Sistema
+
+1. Assicurati che il file `.env` esista con `VITE_ADMIN_INITIAL_PASSWORD`
+2. Apri `/admin-debug-panel`
+3. Clicca **"Crea Admin"**
+4. L'admin viene creato con la password da `.env`
+5. Vai al login e accedi
 
 ---
 
@@ -100,15 +122,22 @@ http://localhost:5173/admin-debug-panel
 - ⚠️ In produzione, considera di proteggere questa route
 
 ### Reset Database
-- ⚠️ Il reset elimina **TUTTI** gli utenti in modo permanente
-- ⚠️ Questo interessa solo il database **locale** del dispositivo
+- ⚠️ Il reset elimina **TUTTI** gli utenti da **IndexedDB** e **PouchDB**
+- ⚠️ Questo interessa il database **locale** del dispositivo
 - ⚠️ Se usi CouchDB remoto, gli utenti sul server non vengono toccati
 - ⚠️ La sincronizzazione potrebbe riportare gli utenti dal remoto
+
+### Database Multipli
+- ℹ️ L'app usa **due database** locali:
+  - **IndexedDB**: Database principale dell'applicazione
+  - **PouchDB**: Database di sincronizzazione con CouchDB remoto
+- ℹ️ Le operazioni vengono eseguite su **entrambi** i database
+- ℹ️ Se elimini solo da PouchDB, gli utenti rimangono in IndexedDB
 
 ### Password
 - ⚠️ Le password sono sempre hashate (bcrypt)
 - ⚠️ Non è possibile recuperare la password originale dall'hash
-- ⚠️ L'unico modo è resettare e usare quella configurata in `.env`
+- ⚠️ Usa il pulsante **"Crea Admin"** per creare un nuovo admin con password nota
 
 ---
 
@@ -143,30 +172,56 @@ VITE_ADMIN_INITIAL_PASSWORD=TuaPasswordSicura123!
 - Prima installazione dell'app
 
 **Soluzione:**
-1. Torna alla pagina principale e ricarica
-2. L'app creerà automaticamente l'admin
+1. Clicca il pulsante verde **"Crea Admin"**
+2. Oppure torna alla pagina principale e ricarica (l'app creerà automaticamente l'admin)
 
 ### "Errore caricamento utenti"
 
 **Cause possibili:**
-- Problema con PouchDB
+- Problema con IndexedDB
 - Database corrotto
 
 **Soluzione:**
 1. Usa il pulsante "Reset Database"
-2. Ricarica l'app principale
+2. Poi clicca "Crea Admin"
 
 ### "Password non funziona dopo il reset"
 
-**Cause possibili:**
+**Causa:**
 - File `.env` non configurato correttamente
-- Variabile d'ambiente non caricata
 
 **Soluzione:**
-1. Verifica il file `.env` nella root del progetto
-2. Assicurati che `VITE_ADMIN_INITIAL_PASSWORD` sia impostata
-3. Riavvia il server di sviluppo (se in dev)
-4. In produzione, rebuilda l'app per applicare le variabili d'ambiente
+1. Apri `/admin-debug-panel`
+2. Controlla la sezione "Configurazione Ambiente"
+3. Clicca "Mostra" per vedere la password configurata
+4. Se dice "Non impostata" o "admin123", crea il file `.env`:
+   ```env
+   VITE_ADMIN_INITIAL_PASSWORD=TuaPasswordSicura123!
+   ```
+5. Riavvia il server di sviluppo (se in dev)
+6. In produzione, rebuilda l'app
+7. Oppure usa direttamente **"Crea Admin"** che funziona sempre
+
+### "Admin non ricreato dopo il reset"
+
+**Causa:**
+- Il vecchio sistema eliminava solo da PouchDB, non da IndexedDB
+
+**Soluzione:**
+1. Usa la nuova versione della pagina AdminDebug
+2. Il reset ora elimina da **entrambi** i database
+3. Usa il pulsante **"Crea Admin"** per ricrearlo immediatamente
+
+### "Alert con password casuale"
+
+**Causa:**
+- File `.env` non configurato o usa `admin123`
+
+**Cosa fare:**
+1. **SALVA LA PASSWORD** mostrata nell'alert!
+2. Copia la password da qualche parte sicura
+3. Usa quella password per accedere
+4. Poi configura `.env` per la prossima volta
 
 ---
 
