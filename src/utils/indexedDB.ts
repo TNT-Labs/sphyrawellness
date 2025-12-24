@@ -21,7 +21,7 @@ import { logger } from './logger';
 import { syncAdd, syncUpdate, syncDelete } from './dbBridge';
 
 const DB_NAME = 'sphyra-wellness-db';
-const DB_VERSION = 4;
+const DB_VERSION = 5; // Incrementato per aggiungere store deletedItems
 
 // Object store names
 const STORES = {
@@ -34,6 +34,7 @@ const STORES = {
   STAFF_ROLES: 'staffRoles',
   SERVICE_CATEGORIES: 'serviceCategories',
   USERS: 'users',
+  DELETED_ITEMS: 'deletedItems', // NUOVO: Tracking permanente delle cancellazioni
 } as const;
 
 let db: IDBDatabase | null = null;
@@ -145,6 +146,14 @@ export async function initIndexedDB(): Promise<void> {
         const userStore = database.createObjectStore(STORES.USERS, { keyPath: 'id' });
         userStore.createIndex('username', 'username', { unique: true });
         userStore.createIndex('role', 'role', { unique: false });
+      }
+
+      // NUOVO: Store per tracking permanente delle cancellazioni
+      if (!database.objectStoreNames.contains(STORES.DELETED_ITEMS)) {
+        const deletedStore = database.createObjectStore(STORES.DELETED_ITEMS, { keyPath: 'key' });
+        deletedStore.createIndex('storeName', 'storeName', { unique: false });
+        deletedStore.createIndex('deletedAt', 'deletedAt', { unique: false });
+        logger.info('Created deletedItems store for permanent deletion tracking');
       }
 
       logger.info('IndexedDB schema upgraded to version', DB_VERSION);
@@ -396,6 +405,8 @@ export async function deleteCustomerFromSync(id: string): Promise<void> {
 
 export async function deleteCustomer(id: string): Promise<void> {
   await remove(STORES.CUSTOMERS, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('customers', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('customers', id).catch(err =>
     logger.error('Background sync failed for customer delete:', err)
@@ -446,6 +457,8 @@ export async function deleteServiceFromSync(id: string): Promise<void> {
 
 export async function deleteService(id: string): Promise<void> {
   await remove(STORES.SERVICES, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('services', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('services', id).catch(err =>
     logger.error('Background sync failed for service delete:', err)
@@ -496,6 +509,8 @@ export async function deleteStaffFromSync(id: string): Promise<void> {
 
 export async function deleteStaff(id: string): Promise<void> {
   await remove(STORES.STAFF, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('staff', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('staff', id).catch(err =>
     logger.error('Background sync failed for staff delete:', err)
@@ -548,6 +563,8 @@ export async function deleteAppointmentFromSync(id: string): Promise<void> {
 
 export async function deleteAppointment(id: string): Promise<void> {
   await remove(STORES.APPOINTMENTS, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('appointments', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('appointments', id).catch(err =>
     logger.error('Background sync failed for appointment delete:', err)
@@ -598,6 +615,8 @@ export async function deletePaymentFromSync(id: string): Promise<void> {
 
 export async function deletePayment(id: string): Promise<void> {
   await remove(STORES.PAYMENTS, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('payments', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('payments', id).catch(err =>
     logger.error('Background sync failed for payment delete:', err)
@@ -649,6 +668,8 @@ export async function deleteReminderFromSync(id: string): Promise<void> {
 
 export async function deleteReminder(id: string): Promise<void> {
   await remove(STORES.REMINDERS, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('reminders', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('reminders', id).catch(err =>
     logger.error('Background sync failed for reminder delete:', err)
@@ -699,6 +720,8 @@ export async function deleteStaffRoleFromSync(id: string): Promise<void> {
 
 export async function deleteStaffRole(id: string): Promise<void> {
   await remove(STORES.STAFF_ROLES, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('staffRoles', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('staffRoles', id).catch(err =>
     logger.error('Background sync failed for staff role delete:', err)
@@ -749,6 +772,8 @@ export async function deleteServiceCategoryFromSync(id: string): Promise<void> {
 
 export async function deleteServiceCategory(id: string): Promise<void> {
   await remove(STORES.SERVICE_CATEGORIES, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('serviceCategories', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('serviceCategories', id).catch(err =>
     logger.error('Background sync failed for service category delete:', err)
@@ -870,6 +895,153 @@ export async function canDeleteService(serviceId: string): Promise<{
     reason: count > 0 ? `Il servizio ha ${count} appuntamento/i futuro/i` : undefined,
     futureAppointments: count,
   };
+}
+
+// ============================================
+// Deletion Tracking Functions
+// ============================================
+
+/**
+ * Type for deleted item tracking
+ */
+interface DeletedItem {
+  key: string; // "storeName:id"
+  storeName: string;
+  itemId: string;
+  deletedAt: string; // ISO timestamp
+}
+
+/**
+ * Record a deletion permanently in IndexedDB
+ */
+export async function recordDeletion(storeName: string, id: string): Promise<void> {
+  const key = `${storeName}:${id}`;
+  const deletedItem: DeletedItem = {
+    key,
+    storeName,
+    itemId: id,
+    deletedAt: new Date().toISOString(),
+  };
+
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.DELETED_ITEMS, 'readwrite');
+      const store = transaction.objectStore(STORES.DELETED_ITEMS);
+      const request = store.put(deletedItem);
+
+      request.onsuccess = () => {
+        logger.debug(`[DeletionTracking] Recorded deletion: ${key}`);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Check if an item was deleted (permanently tracked)
+ */
+export async function wasItemDeleted(storeName: string, id: string): Promise<boolean> {
+  const key = `${storeName}:${id}`;
+
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.DELETED_ITEMS, 'readonly');
+      const store = transaction.objectStore(STORES.DELETED_ITEMS);
+      const request = store.get(key);
+
+      request.onsuccess = () => {
+        const exists = !!request.result;
+        if (exists) {
+          logger.debug(`[DeletionTracking] Item was deleted: ${key} at ${request.result.deletedAt}`);
+        }
+        resolve(exists);
+      };
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Remove an item from deletion tracking (if it's restored)
+ */
+export async function clearDeletionRecord(storeName: string, id: string): Promise<void> {
+  const key = `${storeName}:${id}`;
+
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.DELETED_ITEMS, 'readwrite');
+      const store = transaction.objectStore(STORES.DELETED_ITEMS);
+      const request = store.delete(key);
+
+      request.onsuccess = () => {
+        logger.debug(`[DeletionTracking] Cleared deletion record: ${key}`);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Get all deletion records (for debugging/admin)
+ */
+export async function getAllDeletionRecords(): Promise<DeletedItem[]> {
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.DELETED_ITEMS, 'readonly');
+      const store = transaction.objectStore(STORES.DELETED_ITEMS);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Clean old deletion records (older than specified days)
+ * Useful to prevent the store from growing indefinitely
+ */
+export async function cleanOldDeletionRecords(olderThanDays: number = 365): Promise<number> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+  const cutoffTimestamp = cutoffDate.toISOString();
+
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.DELETED_ITEMS, 'readwrite');
+      const store = transaction.objectStore(STORES.DELETED_ITEMS);
+      const index = store.index('deletedAt');
+      const request = index.openCursor(IDBKeyRange.upperBound(cutoffTimestamp));
+
+      let deletedCount = 0;
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result;
+        if (cursor) {
+          cursor.delete();
+          deletedCount++;
+          cursor.continue();
+        } else {
+          logger.info(`[DeletionTracking] Cleaned ${deletedCount} old deletion records (older than ${olderThanDays} days)`);
+          resolve(deletedCount);
+        }
+      };
+
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 // ============================================
@@ -1106,6 +1278,8 @@ export async function deleteUserFromSync(id: string): Promise<void> {
 
 export async function deleteUser(id: string): Promise<void> {
   await remove(STORES.USERS, id);
+  // IMPORTANTE: Registra la cancellazione permanentemente
+  await recordDeletion('users', id);
   // Sync to PouchDB in background (non-blocking)
   syncDelete('users', id).catch(err =>
     logger.error('Background sync failed for user delete:', err)

@@ -12,13 +12,14 @@ import PouchDBFind from 'pouchdb-find';
 import { logger } from './logger';
 import { loadSettingsWithPassword } from './storage';
 import * as IndexedDB from './indexedDB';
-import { 
-  pauseQueueProcessing, 
-  resumeQueueProcessing, 
+import {
+  pauseQueueProcessing,
+  resumeQueueProcessing,
   waitForPendingOperations,
   pauseSyncToPouchDB,
   resumeSyncToPouchDB
 } from './dbBridge';
+import { syncDelete } from './dbBridge';
 import type {
   SyncStatus,
   Appointment,
@@ -97,6 +98,34 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
       // Skip design documents
       if (doc._id.startsWith('_design/')) {
         continue;
+      }
+
+      // Map database name to store name for deletion checking
+      const storeNameMap: Record<string, string> = {
+        'sphyra-appointments': 'appointments',
+        'sphyra-reminders': 'reminders',
+        'sphyra-customers': 'customers',
+        'sphyra-services': 'services',
+        'sphyra-staff': 'staff',
+        'sphyra-payments': 'payments',
+        'sphyra-staff-roles': 'staffRoles',
+        'sphyra-service-categories': 'serviceCategories',
+        'sphyra-users': 'users',
+      };
+      const storeName = storeNameMap[dbName];
+
+      // IMPORTANTE: Verifica se l'elemento è stato cancellato localmente
+      // Se sì, NON ricrearlo e propaga la cancellazione al remoto
+      if (!doc._deleted && storeName) {
+        const wasDeleted = await IndexedDB.wasItemDeleted(storeName, doc._id);
+        if (wasDeleted) {
+          logger.warn(`[Sync] Document ${dbName}:${doc._id} was deleted locally, propagating deletion to remote`);
+          // Riabilita temporaneamente il sync per propagare la cancellazione
+          resumeSyncToPouchDB();
+          await syncDelete(storeName as any, doc._id);
+          pauseSyncToPouchDB();
+          continue; // NON aggiungere/aggiornare questo documento
+        }
       }
 
       // Handle deleted documents
@@ -233,11 +262,11 @@ async function copyAllDocsToIndexedDB(dbName: string, pouchDB: PouchDB.Database)
     const BATCH_SIZE = 50;
     for (let i = 0; i < docs.length; i += BATCH_SIZE) {
       const batch = docs.slice(i, i + BATCH_SIZE);
-      
-      // syncChangedDocsToIndexedDB gestisce già pauseSyncToPouchDB/resume internamente
-      // Ma qui è già in pausa globalmente, quindi è sicuro
+
+      // IMPORTANTE: syncChangedDocsToIndexedDB ora verifica anche se gli elementi
+      // sono stati cancellati localmente e NON li ricrea
       await syncChangedDocsToIndexedDB(dbName, batch);
-      
+
       // Log progress
       const progress = Math.min(i + BATCH_SIZE, docs.length);
       logger.debug(`[INITIAL-SYNC] Progress: ${progress}/${docs.length} for ${dbName}`);
