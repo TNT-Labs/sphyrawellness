@@ -82,8 +82,54 @@ const NOTIFICATION_THROTTLE_MS = 1000; // Max 1 notification per second
 async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<void> {
   try {
     for (const doc of docs) {
-      // Skip design documents and deleted documents
-      if (doc._id.startsWith('_design/') || doc._deleted) {
+      // Skip design documents
+      if (doc._id.startsWith('_design/')) {
+        continue;
+      }
+
+      // Handle deleted documents
+      if (doc._deleted) {
+        // Delete from IndexedDB using *FromSync functions to prevent triggering sync loops
+        switch (dbName) {
+          case 'sphyra-appointments':
+            await IndexedDB.deleteAppointmentFromSync(doc._id);
+            logger.debug(`Deleted appointment ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-reminders':
+            await IndexedDB.deleteReminderFromSync(doc._id);
+            logger.debug(`Deleted reminder ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-customers':
+            await IndexedDB.deleteCustomerFromSync(doc._id);
+            logger.debug(`Deleted customer ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-services':
+            await IndexedDB.deleteServiceFromSync(doc._id);
+            logger.debug(`Deleted service ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-staff':
+            await IndexedDB.deleteStaffFromSync(doc._id);
+            logger.debug(`Deleted staff ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-payments':
+            await IndexedDB.deletePaymentFromSync(doc._id);
+            logger.debug(`Deleted payment ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-staff-roles':
+            await IndexedDB.deleteStaffRoleFromSync(doc._id);
+            logger.debug(`Deleted staff role ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-service-categories':
+            await IndexedDB.deleteServiceCategoryFromSync(doc._id);
+            logger.debug(`Deleted service category ${doc._id} from IndexedDB (sync)`);
+            break;
+          case 'sphyra-users':
+            await IndexedDB.deleteUserFromSync(doc._id);
+            logger.debug(`Deleted user ${doc._id} from IndexedDB (sync)`);
+            break;
+          default:
+            logger.warn(`Unknown database name for sync delete: ${dbName}`);
+        }
         continue;
       }
 
