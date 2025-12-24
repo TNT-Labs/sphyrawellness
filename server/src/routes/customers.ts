@@ -42,7 +42,7 @@ router.put('/:customerId/consents', async (req, res) => {
       logger.warn(`Invalid consent update request: ${validationResult.error.message}`);
       const response: ApiResponse = {
         success: false,
-        error: 'Invalid consent data: ' + validationResult.error.errors.map(e => e.message).join(', '),
+        error: 'Invalid consent data: ' + validationResult.error.issues.map((e: z.ZodIssue) => e.message).join(', '),
       };
       return res.status(400).json(response);
     }
