@@ -88,21 +88,62 @@ export default function AdminDebug(): JSX.Element {
     setLoading(true);
     setMessage(null);
     try {
-      // 1. Elimina da IndexedDB (database principale)
-      const loadedUsers = await getAllUsers();
-      for (const user of loadedUsers) {
-        await dbDeleteUser(user.id);
-      }
+      console.log('🗑️ Iniziando reset database utenti...');
 
-      // 2. Elimina da PouchDB (database sincronizzazione)
-      const db = new PouchDB('sphyra-users');
-      const result = await db.allDocs({ include_docs: true });
+      // 1. Elimina da IndexedDB usando clear() direttamente
+      console.log('🗑️ Eliminazione da IndexedDB...');
+      const dbName = 'sphyra-wellness-db';
+      const dbVersion = 4;
+
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(dbName, dbVersion);
+
+        request.onsuccess = () => {
+          const database = request.result;
+          const tx = database.transaction('users', 'readwrite');
+          const store = tx.objectStore('users');
+          const clearRequest = store.clear();
+
+          clearRequest.onsuccess = () => {
+            console.log('✅ IndexedDB users store cleared');
+            resolve();
+          };
+
+          clearRequest.onerror = () => {
+            console.error('❌ Errore clear IndexedDB:', clearRequest.error);
+            reject(clearRequest.error);
+          };
+
+          tx.oncomplete = () => {
+            database.close();
+          };
+        };
+
+        request.onerror = () => {
+          console.error('❌ Errore apertura IndexedDB:', request.error);
+          reject(request.error);
+        };
+      });
+
+      // 2. Elimina da PouchDB
+      console.log('🗑️ Eliminazione da PouchDB...');
+      const pouchDb = new PouchDB('sphyra-users');
+      const result = await pouchDb.allDocs({ include_docs: true });
+
+      console.log(`📋 Trovati ${result.rows.length} documenti in PouchDB`);
+
       for (const row of result.rows) {
-        if (row.doc && row.id && row.value.rev) {
-          await db.remove(row.id, row.value.rev);
+        if (row.id && row.value.rev) {
+          try {
+            await pouchDb.remove(row.id, row.value.rev);
+            console.log(`✅ Eliminato da PouchDB: ${row.id}`);
+          } catch (err) {
+            console.error(`❌ Errore eliminazione da PouchDB ${row.id}:`, err);
+          }
         }
       }
 
+      console.log('✅ Reset completato!');
       setUsers([]);
       setConfirmReset(false);
       setMessage({
@@ -110,7 +151,7 @@ export default function AdminDebug(): JSX.Element {
         text: '✅ Database resettato da IndexedDB e PouchDB! Ora puoi usare "Crea Admin" o ricaricare la pagina principale.'
       });
     } catch (error) {
-      console.error('Errore reset database:', error);
+      console.error('❌ Errore reset database:', error);
       setMessage({
         type: 'error',
         text: `Errore durante il reset: ${error instanceof Error ? error.message : 'Errore sconosciuto'}`
