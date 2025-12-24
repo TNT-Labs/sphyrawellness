@@ -3,8 +3,6 @@
  *
  * This module provides bidirectional synchronization between local PouchDB
  * and remote CouchDB for multi-device data consistency.
- * 
- * VERSIONE AGGIORNATA: Include coordinamento con dbBridge per prevenire loop
  */
 
 import PouchDB from 'pouchdb-browser';
@@ -12,13 +10,7 @@ import PouchDBFind from 'pouchdb-find';
 import { logger } from './logger';
 import { loadSettingsWithPassword } from './storage';
 import * as IndexedDB from './indexedDB';
-import { 
-  pauseQueueProcessing, 
-  resumeQueueProcessing, 
-  waitForPendingOperations,
-  pauseSyncToPouchDB,
-  resumeSyncToPouchDB
-} from './dbBridge';
+import { pauseQueueProcessing, resumeQueueProcessing, waitForPendingOperations } from './dbBridge';
 import type {
   SyncStatus,
   Appointment,
@@ -86,62 +78,12 @@ const NOTIFICATION_THROTTLE_MS = 1000; // Max 1 notification per second
 
 /**
  * Sync changed documents from PouchDB to IndexedDB
- * AGGIORNATO: Coordina con dbBridge per prevenire loop
  */
 async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<void> {
-  // CRITICO: Disabilita sync verso PouchDB prima di scrivere
-  pauseSyncToPouchDB();
-
   try {
     for (const doc of docs) {
-      // Skip design documents
-      if (doc._id.startsWith('_design/')) {
-        continue;
-      }
-
-      // Handle deleted documents
-      if (doc._deleted) {
-        // Delete from IndexedDB using *FromSync functions to prevent triggering sync loops
-        switch (dbName) {
-          case 'sphyra-appointments':
-            await IndexedDB.deleteAppointmentFromSync(doc._id);
-            logger.debug(`Deleted appointment ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-reminders':
-            await IndexedDB.deleteReminderFromSync(doc._id);
-            logger.debug(`Deleted reminder ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-customers':
-            await IndexedDB.deleteCustomerFromSync(doc._id);
-            logger.debug(`Deleted customer ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-services':
-            await IndexedDB.deleteServiceFromSync(doc._id);
-            logger.debug(`Deleted service ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-staff':
-            await IndexedDB.deleteStaffFromSync(doc._id);
-            logger.debug(`Deleted staff ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-payments':
-            await IndexedDB.deletePaymentFromSync(doc._id);
-            logger.debug(`Deleted payment ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-staff-roles':
-            await IndexedDB.deleteStaffRoleFromSync(doc._id);
-            logger.debug(`Deleted staff role ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-service-categories':
-            await IndexedDB.deleteServiceCategoryFromSync(doc._id);
-            logger.debug(`Deleted service category ${doc._id} from IndexedDB (sync)`);
-            break;
-          case 'sphyra-users':
-            await IndexedDB.deleteUserFromSync(doc._id);
-            logger.debug(`Deleted user ${doc._id} from IndexedDB (sync)`);
-            break;
-          default:
-            logger.warn(`Unknown database name for sync delete: ${dbName}`);
-        }
+      // Skip design documents and deleted documents
+      if (doc._id.startsWith('_design/') || doc._deleted) {
         continue;
       }
 
@@ -196,24 +138,16 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
     }
   } catch (error) {
     logger.error(`Error syncing docs to IndexedDB for ${dbName}:`, error);
-  } finally {
-    // CRITICO: Riabilita sync verso PouchDB dopo aver finito
-    resumeSyncToPouchDB();
   }
 }
 
 /**
  * Copy all documents from a PouchDB database to IndexedDB
  * Used for initial sync to ensure all remote data is loaded
- * AGGIORNATO: Coordina con dbBridge per prevenire traffico inutile
  */
 async function copyAllDocsToIndexedDB(dbName: string, pouchDB: PouchDB.Database): Promise<number> {
   try {
     logger.info(`[INITIAL-SYNC] Copying all documents from ${dbName} to IndexedDB...`);
-
-    // CRITICO: Disabilita completamente dbBridge durante initial sync
-    pauseSyncToPouchDB();
-    pauseQueueProcessing();
 
     // Get all documents from PouchDB
     const result = await pouchDB.allDocs({
@@ -227,31 +161,14 @@ async function copyAllDocsToIndexedDB(dbName: string, pouchDB: PouchDB.Database)
       .filter((row: any) => !row.id.startsWith('_design/') && row.doc && !(row.doc as any)._deleted)
       .map((row: any) => row.doc);
 
-    logger.debug(`[INITIAL-SYNC] Processing ${docs.length} documents from ${dbName}`);
-
-    // Processa in batch per migliori performance
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-      const batch = docs.slice(i, i + BATCH_SIZE);
-      
-      // syncChangedDocsToIndexedDB gestisce già pauseSyncToPouchDB/resume internamente
-      // Ma qui è già in pausa globalmente, quindi è sicuro
-      await syncChangedDocsToIndexedDB(dbName, batch);
-      
-      // Log progress
-      const progress = Math.min(i + BATCH_SIZE, docs.length);
-      logger.debug(`[INITIAL-SYNC] Progress: ${progress}/${docs.length} for ${dbName}`);
-    }
+    // Sync all documents to IndexedDB
+    await syncChangedDocsToIndexedDB(dbName, docs);
 
     logger.info(`[INITIAL-SYNC] ✓ Copied ${docs.length} documents from ${dbName} to IndexedDB`);
     return docs.length;
   } catch (error) {
     logger.error(`[INITIAL-SYNC] Error copying docs from ${dbName} to IndexedDB:`, error);
     return 0;
-  } finally {
-    // CRITICO: Riabilita dbBridge dopo initial sync
-    resumeQueueProcessing();
-    resumeSyncToPouchDB();
   }
 }
 
@@ -501,7 +418,7 @@ export async function startSync(): Promise<boolean> {
         status: 'error',
         error: 'CouchDB URL non configurato',
         isActive: false,
-      }, true);
+      }, true); // Force notification
       return false;
     }
     logger.debug('[SYNC-START] ✓ URL CouchDB configurato');
@@ -616,7 +533,7 @@ export async function startSync(): Promise<boolean> {
         status: 'error',
         error: 'Impossibile creare alcuni database remoti. Verifica i permessi.',
         isActive: false,
-      }, true);
+      }, true); // Force notification
       return false;
     }
 
@@ -642,7 +559,7 @@ export async function startSync(): Promise<boolean> {
       isActive: true,
       direction: 'both',
       documentsSynced: 0,
-    }, true);
+    }, true); // Force notification
     logger.debug('[SYNC-START] ✓ Stato aggiornato a "syncing"');
 
     // Start bidirectional sync for each database
@@ -668,127 +585,127 @@ export async function startSync(): Promise<boolean> {
         });
         logger.debug(`[SYNC-START] [${remoteName}] ✓ Sync avviata`);
 
-        // Handle sync events
-        sync.on('change', (info) => {
-          logger.log(`Sync change for ${remoteName}:`, info);
+      // Handle sync events
+      sync.on('change', (info) => {
+        logger.log(`Sync change for ${remoteName}:`, info);
 
-          // Count documents synced
-          const docsChanged = (info.change?.docs?.length || 0);
-          const currentCount = syncStatus.documentsSynced || 0;
+        // Count documents synced
+        const docsChanged = (info.change?.docs?.length || 0);
+        const currentCount = syncStatus.documentsSynced || 0;
 
-          // IMPORTANTE: Sync changed documents to IndexedDB con coordinamento dbBridge
-          if (info.change?.docs && info.change.docs.length > 0) {
-            syncChangedDocsToIndexedDB(remoteName, info.change.docs).catch((error) => {
-              logger.error(`Failed to sync docs to IndexedDB for ${remoteName}:`, error);
-            });
-          }
+        // Sync changed documents to IndexedDB
+        if (info.change?.docs && info.change.docs.length > 0) {
+          syncChangedDocsToIndexedDB(remoteName, info.change.docs).catch((error) => {
+            logger.error(`Failed to sync docs to IndexedDB for ${remoteName}:`, error);
+          });
+        }
 
-          // Throttled notification (not forced)
-          notifySyncStatusChange({
-            lastSync: new Date().toISOString(),
-            status: 'syncing',
-            documentsSynced: currentCount + docsChanged,
-          }, false);
-        });
+        // Throttled notification (not forced)
+        notifySyncStatusChange({
+          lastSync: new Date().toISOString(),
+          status: 'syncing',
+          documentsSynced: currentCount + docsChanged,
+        }, false);
+      });
 
-        sync.on('paused', async () => {
-          logger.log(`Sync paused for ${remoteName}`);
+      sync.on('paused', async () => {
+        logger.log(`Sync paused for ${remoteName}`);
 
-          // Check if this is the first time this database is being paused (initial sync complete)
-          if (!initialSyncCompletedDatabases.has(key)) {
-            logger.info(`[INITIAL-SYNC] First pause for ${remoteName}, copying all documents to IndexedDB...`);
+        // Check if this is the first time this database is being paused (initial sync complete)
+        if (!initialSyncCompletedDatabases.has(key)) {
+          logger.info(`[INITIAL-SYNC] First pause for ${remoteName}, copying all documents to IndexedDB...`);
 
-            try {
-              // IMPORTANTE: Copy all documents con coordinamento dbBridge
-              const docCount = await copyAllDocsToIndexedDB(remoteName, remoteDB);
-              logger.info(`[INITIAL-SYNC] ✓ Initial sync complete for ${remoteName} (${docCount} documents)`);
+          try {
+            // Copy all documents from PouchDB to IndexedDB
+            const docCount = await copyAllDocsToIndexedDB(remoteName, remoteDB);
+            logger.info(`[INITIAL-SYNC] ✓ Initial sync complete for ${remoteName} (${docCount} documents)`);
 
-              // Mark this database as having completed initial sync
-              initialSyncCompletedDatabases.add(key);
+            // Mark this database as having completed initial sync
+            initialSyncCompletedDatabases.add(key);
 
-              // Check if ALL databases have completed initial sync
-              const allDatabasesInitiallySynced = Object.keys(localDatabases).every(
-                dbKey => initialSyncCompletedDatabases.has(dbKey)
-              );
+            // Check if ALL databases have completed initial sync
+            const allDatabasesInitiallySynced = Object.keys(localDatabases).every(
+              dbKey => initialSyncCompletedDatabases.has(dbKey)
+            );
 
-              if (allDatabasesInitiallySynced) {
-                logger.info('[INITIAL-SYNC] ✓✓✓ ALL DATABASES INITIAL SYNC COMPLETE ✓✓✓');
+            if (allDatabasesInitiallySynced) {
+              logger.info('[INITIAL-SYNC] ✓✓✓ ALL DATABASES INITIAL SYNC COMPLETE ✓✓✓');
 
-                // Notify that initial sync is complete
-                notifySyncStatusChange({
-                  status: 'idle',
-                  lastSync: new Date().toISOString(),
-                  initialSyncComplete: true,
-                }, true);
-              }
-            } catch (error) {
-              logger.error(`[INITIAL-SYNC] Error during initial sync for ${remoteName}:`, error);
+              // Notify that initial sync is complete
+              notifySyncStatusChange({
+                status: 'idle',
+                lastSync: new Date().toISOString(),
+                initialSyncComplete: true,
+              }, true);
             }
+          } catch (error) {
+            logger.error(`[INITIAL-SYNC] Error during initial sync for ${remoteName}:`, error);
           }
+        }
 
-          // Calculate sync duration
-          const duration = syncStartTime ? Date.now() - syncStartTime : undefined;
-          syncStartTime = null;
+        // Calculate sync duration
+        const duration = syncStartTime ? Date.now() - syncStartTime : undefined;
+        syncStartTime = null;
 
-          // Force notification for state change (only if not already notified above)
-          if (initialSyncCompletedDatabases.has(key)) {
-            notifySyncStatusChange({
-              status: 'idle',
-              lastSync: new Date().toISOString(),
-              lastSyncDuration: duration,
-            }, true);
-          }
-        });
-
-        sync.on('active', () => {
-          logger.log(`Sync active for ${remoteName}`);
-
-          // Mark sync start time
-          if (!syncStartTime) {
-            syncStartTime = Date.now();
-          }
-
-          // Force notification for state change
+        // Force notification for state change (only if not already notified above)
+        if (initialSyncCompletedDatabases.has(key)) {
           notifySyncStatusChange({
-            status: 'syncing',
+            status: 'idle',
+            lastSync: new Date().toISOString(),
+            lastSyncDuration: duration,
           }, true);
-        });
+        }
+      });
 
-        sync.on('error', (err: unknown) => {
-          logger.error(`Sync error for ${remoteName}:`, err);
+      sync.on('active', () => {
+        logger.log(`Sync active for ${remoteName}`);
 
-          // Add error to history (keep last 10)
-          const errorMsg = err instanceof Error ? err.message : 'Errore di sincronizzazione';
-          const errors = syncStatus.syncErrors || [];
-          errors.unshift(`${new Date().toISOString()}: ${errorMsg}`);
-          if (errors.length > 10) errors.pop();
+        // Mark sync start time
+        if (!syncStartTime) {
+          syncStartTime = Date.now();
+        }
 
-          // Force notification for errors
-          notifySyncStatusChange({
-            status: 'error',
-            error: errorMsg,
-            syncErrors: errors,
-          }, true);
-        });
+        // Force notification for state change
+        notifySyncStatusChange({
+          status: 'syncing',
+        }, true);
+      });
 
-        sync.on('denied', (err: unknown) => {
-          logger.error(`Sync denied for ${remoteName}:`, err);
+      sync.on('error', (err: unknown) => {
+        logger.error(`Sync error for ${remoteName}:`, err);
 
-          // Add error to history (keep last 10)
-          const errorMsg = 'Accesso negato al server';
-          const errors = syncStatus.syncErrors || [];
-          errors.unshift(`${new Date().toISOString()}: ${errorMsg}`);
-          if (errors.length > 10) errors.pop();
+        // Add error to history (keep last 10)
+        const errorMsg = err instanceof Error ? err.message : 'Errore di sincronizzazione';
+        const errors = syncStatus.syncErrors || [];
+        errors.unshift(`${new Date().toISOString()}: ${errorMsg}`);
+        if (errors.length > 10) errors.pop();
 
-          // Force notification for errors
-          notifySyncStatusChange({
-            status: 'error',
-            error: errorMsg,
-            syncErrors: errors,
-          }, true);
-        });
+        // Force notification for errors
+        notifySyncStatusChange({
+          status: 'error',
+          error: errorMsg,
+          syncErrors: errors,
+        }, true);
+      });
 
-        syncHandlers[key] = sync;
+      sync.on('denied', (err: unknown) => {
+        logger.error(`Sync denied for ${remoteName}:`, err);
+
+        // Add error to history (keep last 10)
+        const errorMsg = 'Accesso negato al server';
+        const errors = syncStatus.syncErrors || [];
+        errors.unshift(`${new Date().toISOString()}: ${errorMsg}`);
+        if (errors.length > 10) errors.pop();
+
+        // Force notification for errors
+        notifySyncStatusChange({
+          status: 'error',
+          error: errorMsg,
+          syncErrors: errors,
+        }, true);
+      });
+
+      syncHandlers[key] = sync;
         logger.debug(`[SYNC-START] [${remoteName}] Sync handler salvato`);
       } catch (syncSetupError) {
         logger.error(`[SYNC-START] [${remoteName}] ERRORE durante setup sync:`, syncSetupError);
@@ -819,7 +736,7 @@ export async function startSync(): Promise<boolean> {
       status: 'error',
       error: error instanceof Error ? error.message : 'Errore sconosciuto',
       isActive: false,
-    }, true);
+    }, true); // Force notification
 
     logger.error('=== FINE AVVIO SINCRONIZZAZIONE (CON ERRORE) ===');
     return false;
@@ -871,7 +788,7 @@ export async function stopSync(): Promise<void> {
       status: 'idle',
       isActive: false,
       error: undefined,
-    }, true);
+    }, true); // Force notification
 
     logger.log('Synchronization stopped');
   } catch (error) {
@@ -1029,6 +946,8 @@ export async function testCouchDBConnection(
 
       if (authUsername && authPassword) {
         // Crea header Authorization con Basic Auth
+        // NOTE: URL object automatically decodes username/password when accessed,
+        // so we should NOT decode them again with decodeURIComponent
         const credentials = `${authUsername}:${authPassword}`;
         const base64Credentials = btoa(credentials);
         fetchHeaders['Authorization'] = `Basic ${base64Credentials}`;
@@ -1317,14 +1236,14 @@ export async function performOneTimeSync(): Promise<boolean> {
         status: 'error',
         error: 'Impossibile creare alcuni database remoti',
         isActive: false,
-      }, true);
+      }, true); // Force notification
       return false;
     }
 
     notifySyncStatusChange({
       status: 'syncing',
       isActive: true,
-    }, true);
+    }, true); // Force notification
 
     // Track remote databases for cleanup
     const remoteDatabases: PouchDB.Database[] = [];
@@ -1375,7 +1294,7 @@ export async function performOneTimeSync(): Promise<boolean> {
       status: 'idle',
       isActive: false,
       lastSync: new Date().toISOString(),
-    }, true);
+    }, true); // Force notification
 
     logger.log('One-time synchronization completed successfully');
     return true;
@@ -1385,7 +1304,7 @@ export async function performOneTimeSync(): Promise<boolean> {
       status: 'error',
       error: error instanceof Error ? error.message : 'Errore di sincronizzazione',
       isActive: false,
-    }, true);
+    }, true); // Force notification
     return false;
   }
 }

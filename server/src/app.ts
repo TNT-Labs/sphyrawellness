@@ -13,6 +13,7 @@ import settingsRouter from './routes/settings.js';
 import publicRouter from './routes/public.js';
 import uploadRouter from './routes/upload.js';
 import authRouter from './routes/auth.js';
+import customersRouter from './routes/customers.js';
 import logger from './utils/logger.js';
 import type { ApiResponse } from './types/index.js';
 
@@ -206,6 +207,7 @@ app.use('/api/appointments', appointmentsRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/customers', customersRouter);
 
 // Manual trigger for testing (now with strict rate limiting)
 app.post('/api/trigger-reminders', strictLimiter, async (req, res) => {
@@ -243,7 +245,8 @@ app.get('/', (req, res) => {
         appointments: '/api/appointments',
         settings: '/api/settings',
         public: '/api/public',
-        upload: '/api/upload'
+        upload: '/api/upload',
+        customers: '/api/customers'
       }
     },
     message: 'Welcome to Sphyra Wellness Lab API'

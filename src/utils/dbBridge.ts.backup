@@ -5,8 +5,6 @@
  * e PouchDB (database per sincronizzazione con CouchDB).
  * Quando si inseriscono/aggiornano dati in IndexedDB, vengono automaticamente
  * propagati a PouchDB se la sincronizzazione è attiva.
- * 
- * VERSIONE AGGIORNATA: Include coordinamento con pouchdbSync per prevenire loop
  */
 
 import PouchDB from 'pouchdb-browser';
@@ -38,36 +36,6 @@ const processingQueues: Map<string, boolean> = new Map();
 // Flag to pause queue processing during cleanup operations
 let isCleanupInProgress = false;
 
-// NUOVO: Flag per disabilitare sync verso PouchDB quando riceviamo dati da remoto
-let isSyncFromRemoteActive = false;
-
-// Tracciamento eliminazioni per evitare ricreazione accidentale
-const deletionLog: Map<string, number> = new Map(); // key: "storeName:id", value: timestamp
-
-/**
- * NUOVO: Disabilita temporaneamente la sincronizzazione verso PouchDB
- * Usato durante l'initial sync e quando riceviamo dati dal remoto
- */
-export function pauseSyncToPouchDB(): void {
-  isSyncFromRemoteActive = true;
-  logger.debug('[dbBridge] Sync to PouchDB PAUSED');
-}
-
-/**
- * NUOVO: Riabilita la sincronizzazione verso PouchDB
- */
-export function resumeSyncToPouchDB(): void {
-  isSyncFromRemoteActive = false;
-  logger.debug('[dbBridge] Sync to PouchDB RESUMED');
-}
-
-/**
- * NUOVO: Verifica se la sincronizzazione verso PouchDB è attiva
- */
-export function isSyncToPouchDBActive(): boolean {
-  return !isSyncFromRemoteActive;
-}
-
 /**
  * Ottieni un database PouchDB (con cache)
  */
@@ -95,50 +63,85 @@ function getPouchDB(storeName: StoreType): PouchDB.Database | null {
 }
 
 /**
- * Confronta timestamp per determinare quale documento è più recente
+ * Sincronizza un'operazione di inserimento con PouchDB
  */
-function isLocalNewer(localDoc: any, remoteDoc: any): boolean {
-  const localTime = new Date(localDoc.updatedAt || localDoc.createdAt || 0).getTime();
-  const remoteTime = new Date(remoteDoc.updatedAt || remoteDoc.createdAt || 0).getTime();
-  
-  // Se i timestamp sono uguali, usa createdAt come tiebreaker
-  if (localTime === remoteTime) {
-    const localCreated = new Date(localDoc.createdAt || 0).getTime();
-    const remoteCreated = new Date(remoteDoc.createdAt || 0).getTime();
-    return localCreated >= remoteCreated;
-  }
-  
-  return localTime > remoteTime;
-}
+export async function syncAdd<T extends { id: string }>(
+  storeName: StoreType,
+  item: T
+): Promise<void> {
+  const queueKey = `${storeName}:${item.id}`;
 
-/**
- * Verifica se un documento è stato eliminato di recente
- */
-function wasRecentlyDeleted(storeName: StoreType, id: string): boolean {
-  const key = `${storeName}:${id}`;
-  const deletionTime = deletionLog.get(key);
-  
-  if (!deletionTime) return false;
-  
-  // Considera "recente" entro 5 minuti
-  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-  return deletionTime > fiveMinutesAgo;
-}
+  // Queue the operation to avoid concurrent modifications
+  queueOperation(queueKey, async () => {
+    let retryCount = 0;
+    const MAX_RETRIES = 3;
 
-/**
- * Registra un'eliminazione
- */
-function logDeletion(storeName: StoreType, id: string): void {
-  const key = `${storeName}:${id}`;
-  deletionLog.set(key, Date.now());
-  
-  // Pulisci vecchie entry (più di 10 minuti)
-  const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
-  for (const [k, timestamp] of deletionLog.entries()) {
-    if (timestamp < tenMinutesAgo) {
-      deletionLog.delete(k);
+    while (retryCount <= MAX_RETRIES) {
+      try {
+        const pouchDB = getPouchDB(storeName);
+        if (!pouchDB) return;
+
+        // Rimuovi la proprietà 'id' da IndexedDB e usa solo '_id' per PouchDB
+        // Questo evita conflitti tra le due chiavi primarie
+        const { id, ...itemWithoutId } = item;
+
+        // Converti l'item in formato PouchDB (aggiunge _id e _rev se necessari)
+        const pouchDoc = {
+          ...itemWithoutId,
+          _id: id,
+        };
+
+        // Inserisci in PouchDB usando put (sovrascrive se esiste)
+        await pouchDB.put(pouchDoc);
+        logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
+        return; // Success, exit
+      } catch (error: any) {
+        // Se l'errore è un conflitto di versione, sovrascrive con dati locali
+        if (error.status === 409 || error.name === 'conflict') {
+          try {
+            const pouchDB = getPouchDB(storeName);
+            if (!pouchDB) return;
+
+            // Recupera il documento esistente per ottenere il _rev
+            const existingDoc = await pouchDB.get(item.id);
+
+            // NO merge - local data is source of truth
+            const { id, ...itemWithoutId } = item;
+
+            const pouchDoc = {
+              ...itemWithoutId,
+              _id: id,
+              _rev: existingDoc._rev,
+            };
+
+            await pouchDB.put(pouchDoc);
+            logger.info(`Resolved conflict with local data for ${storeName}:${id}`);
+            return; // Success after overwriting with local data
+          } catch (retryError) {
+            logger.error(`Failed to resolve conflict for ${storeName}:`, retryError);
+            retryCount++;
+            if (retryCount > MAX_RETRIES) {
+              throw retryError;
+            }
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+          }
+        } else if (isNetworkError(error)) {
+          // Errore di rete: retry con exponential backoff
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            logger.error(`Failed to sync add after ${MAX_RETRIES} retries for ${storeName}:`, error);
+            throw error;
+          }
+          logger.warn(`Network error, retrying (${retryCount}/${MAX_RETRIES}) for ${storeName}:${item.id}`);
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+        } else {
+          logger.error(`Failed to sync add to PouchDB for ${storeName}:`, error);
+          throw error;
+        }
+      }
     }
-  }
+  });
 }
 
 /**
@@ -157,25 +160,12 @@ function isNetworkError(error: any): boolean {
 }
 
 /**
- * Sincronizza un'operazione di inserimento con PouchDB
- * AGGIORNATO: Rispetta il flag isSyncFromRemoteActive
+ * Sincronizza un'operazione di aggiornamento con PouchDB
  */
-export async function syncAdd<T extends { id: string }>(
+export async function syncUpdate<T extends { id: string }>(
   storeName: StoreType,
   item: T
 ): Promise<void> {
-  // NUOVO: SKIP se stiamo ricevendo dati da remote sync
-  if (isSyncFromRemoteActive) {
-    logger.debug(`[dbBridge] Skipping syncAdd for ${storeName}:${item.id} (remote sync active)`);
-    return;
-  }
-
-  // Verifica se è stato eliminato di recente
-  if (wasRecentlyDeleted(storeName, item.id)) {
-    logger.warn(`Skipping add for recently deleted document ${storeName}:${item.id}`);
-    return;
-  }
-
   const queueKey = `${storeName}:${item.id}`;
 
   // Queue the operation to avoid concurrent modifications
@@ -188,103 +178,12 @@ export async function syncAdd<T extends { id: string }>(
         const pouchDB = getPouchDB(storeName);
         if (!pouchDB) return;
 
-        // Rimuovi la proprietà 'id' da IndexedDB e usa solo '_id' per PouchDB
-        const { id, ...itemWithoutId } = item;
-
-        // Converti l'item in formato PouchDB
-        const pouchDoc = {
-          ...itemWithoutId,
-          _id: id,
-        };
-
-        // Inserisci in PouchDB usando put (sovrascrive se esiste)
-        await pouchDB.put(pouchDoc);
-        logger.debug(`Synced add to PouchDB for ${storeName}:`, id);
-        return; // Success, exit
-      } catch (error: any) {
-        // Gestione conflitti con timestamp
-        if (error.status === 409 || error.name === 'conflict') {
-          try {
-            const pouchDB = getPouchDB(storeName);
-            if (!pouchDB) return;
-
-            const existingDoc = await pouchDB.get(item.id);
-            const { id, ...itemWithoutId } = item;
-
-            // Confronta timestamp per decidere quale versione mantenere
-            if (isLocalNewer(item, existingDoc)) {
-              // Il dato locale è più recente, sovrascrive
-              const pouchDoc = {
-                ...itemWithoutId,
-                _id: id,
-                _rev: existingDoc._rev,
-              };
-              await pouchDB.put(pouchDoc);
-              logger.info(`Resolved conflict: local data is newer for ${storeName}:${id}`);
-            } else {
-              // Il dato remoto è più recente, skip
-              logger.info(`Resolved conflict: remote data is newer for ${storeName}:${id}, skipping update`);
-            }
-            return;
-          } catch (retryError) {
-            logger.error(`Failed to resolve conflict for ${storeName}:`, retryError);
-            retryCount++;
-            if (retryCount > MAX_RETRIES) {
-              throw retryError;
-            }
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-          }
-        } else if (isNetworkError(error)) {
-          retryCount++;
-          if (retryCount > MAX_RETRIES) {
-            logger.error(`Failed to sync add after ${MAX_RETRIES} retries for ${storeName}:`, error);
-            throw error;
-          }
-          logger.warn(`Network error, retrying (${retryCount}/${MAX_RETRIES}) for ${storeName}:${item.id}`);
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
-        } else {
-          logger.error(`Failed to sync add to PouchDB for ${storeName}:`, error);
-          throw error;
-        }
-      }
-    }
-  });
-}
-
-/**
- * Sincronizza un'operazione di aggiornamento con PouchDB
- * AGGIORNATO: Rispetta il flag isSyncFromRemoteActive
- */
-export async function syncUpdate<T extends { id: string }>(
-  storeName: StoreType,
-  item: T
-): Promise<void> {
-  // NUOVO: SKIP se stiamo ricevendo dati da remote sync
-  if (isSyncFromRemoteActive) {
-    logger.debug(`[dbBridge] Skipping syncUpdate for ${storeName}:${item.id} (remote sync active)`);
-    return;
-  }
-
-  const queueKey = `${storeName}:${item.id}`;
-
-  queueOperation(queueKey, async () => {
-    let retryCount = 0;
-    const MAX_RETRIES = 3;
-
-    while (retryCount <= MAX_RETRIES) {
-      try {
-        const pouchDB = getPouchDB(storeName);
-        if (!pouchDB) return;
-
         // Recupera il documento esistente per ottenere il _rev
         const existingDoc = await pouchDB.get(item.id);
-        const { id, ...itemWithoutId } = item;
 
-        // Verifica timestamp prima di aggiornare
-        if (!isLocalNewer(item, existingDoc)) {
-          logger.info(`Skipping update: remote data is newer for ${storeName}:${id}`);
-          return;
-        }
+        // NO merge - local data is source of truth when user makes changes
+        // Just get _rev to update the document
+        const { id, ...itemWithoutId } = item;
 
         const pouchDoc = {
           ...itemWithoutId,
@@ -298,6 +197,7 @@ export async function syncUpdate<T extends { id: string }>(
       } catch (error: any) {
         if (error.status === 404 || error.name === 'not_found') {
           // Il documento non esiste in PouchDB, crealo
+          // NOTE: This will also be queued, ensuring serialization
           await syncAdd(storeName, item);
           return;
         } else if (error.status === 409 || error.name === 'conflict') {
@@ -329,23 +229,14 @@ export async function syncUpdate<T extends { id: string }>(
 
 /**
  * Sincronizza un'operazione di cancellazione con PouchDB
- * AGGIORNATO: Rispetta il flag isSyncFromRemoteActive
  */
 export async function syncDelete(
   storeName: StoreType,
   id: string
 ): Promise<void> {
-  // NUOVO: SKIP se stiamo ricevendo dati da remote sync
-  if (isSyncFromRemoteActive) {
-    logger.debug(`[dbBridge] Skipping syncDelete for ${storeName}:${id} (remote sync active)`);
-    return;
-  }
-
-  // Registra l'eliminazione
-  logDeletion(storeName, id);
-
   const queueKey = `${storeName}:${id}`;
 
+  // Queue the operation to avoid concurrent modifications
   queueOperation(queueKey, async () => {
     let retryCount = 0;
     const MAX_RETRIES = 3;
@@ -518,9 +409,6 @@ export async function clearPouchDBCache(): Promise<void> {
   // Clear operation queues
   operationQueues.clear();
   processingQueues.clear();
-
-  // Clear deletion log
-  deletionLog.clear();
 
   // Resume queue processing
   resumeQueueProcessing();

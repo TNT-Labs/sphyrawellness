@@ -1,9 +1,6 @@
 /**
  * Database module - uses native IndexedDB for local storage
  * This module delegates all operations to indexedDB.ts
- * 
- * NOTA: Questo file NON richiede modifiche sostanziali.
- * Aggiornati solo alcuni commenti per chiarezza sul coordinamento con dbBridge.
  */
 
 import * as IndexedDB from './indexedDB';
@@ -29,7 +26,6 @@ export async function initDB(): Promise<void> {
 // CRUD Operations for Customers
 // ============================================
 
-// NOTA: Queste funzioni triggerano automaticamente sync verso PouchDB tramite dbBridge
 export const getAllCustomers = IndexedDB.getAllCustomers;
 export const getCustomer = IndexedDB.getCustomer;
 export const addCustomer = IndexedDB.addCustomer;
