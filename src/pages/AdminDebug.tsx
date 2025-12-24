@@ -9,7 +9,7 @@ import { Shield, RefreshCw, Trash2, Eye, EyeOff, AlertCircle, CheckCircle, Key, 
 import PouchDB from 'pouchdb-browser';
 import { getAllUsers, addUser as dbAddUser, deleteUser as dbDeleteUser } from '../utils/db';
 import { User } from '../types';
-import bcrypt from 'bcryptjs';
+import { hashPassword } from '../utils/auth';
 
 interface UserDoc {
   _id: string;
@@ -20,12 +20,6 @@ interface UserDoc {
   lastName?: string;
   isActive?: boolean;
   passwordHash: string;
-}
-
-// Hash password using bcrypt
-async function hashPassword(password: string): Promise<string> {
-  const salt = await bcrypt.genSalt(10);
-  return bcrypt.hash(password, salt);
 }
 
 export default function AdminDebug(): JSX.Element {
