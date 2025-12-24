@@ -5,8 +5,11 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, RefreshCw, Trash2, Eye, EyeOff, AlertCircle, CheckCircle, Key, Users, Database } from 'lucide-react';
+import { Shield, RefreshCw, Trash2, Eye, EyeOff, AlertCircle, CheckCircle, Key, Users, Database, UserPlus } from 'lucide-react';
 import PouchDB from 'pouchdb-browser';
+import { getAllUsers, addUser as dbAddUser, deleteUser as dbDeleteUser } from '../utils/db';
+import { User } from '../types';
+import bcrypt from 'bcryptjs';
 
 interface UserDoc {
   _id: string;
@@ -17,6 +20,12 @@ interface UserDoc {
   lastName?: string;
   isActive?: boolean;
   passwordHash: string;
+}
+
+// Hash password using bcrypt
+async function hashPassword(password: string): Promise<string> {
+  const salt = await bcrypt.genSalt(10);
+  return bcrypt.hash(password, salt);
 }
 
 export default function AdminDebug(): JSX.Element {
@@ -41,17 +50,24 @@ export default function AdminDebug(): JSX.Element {
     setLoading(true);
     setMessage(null);
     try {
-      const db = new PouchDB('sphyra-users');
-      const result = await db.allDocs({ include_docs: true });
+      // Carica da IndexedDB (database principale)
+      const loadedUsers = await getAllUsers();
 
-      const userDocs = result.rows
-        .filter((row) => row.doc)
-        .map((row) => row.doc as UserDoc);
+      // Converti User[] a UserDoc[]
+      const userDocs: UserDoc[] = loadedUsers.map(user => ({
+        _id: user.id,
+        username: user.username,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        isActive: user.isActive,
+        passwordHash: user.passwordHash
+      }));
 
       setUsers(userDocs);
       setMessage({
         type: 'success',
-        text: `Trovati ${userDocs.length} utente/i nel database`
+        text: `Trovati ${userDocs.length} utente/i nel database IndexedDB`
       });
     } catch (error) {
       console.error('Errore caricamento utenti:', error);
@@ -78,10 +94,15 @@ export default function AdminDebug(): JSX.Element {
     setLoading(true);
     setMessage(null);
     try {
+      // 1. Elimina da IndexedDB (database principale)
+      const loadedUsers = await getAllUsers();
+      for (const user of loadedUsers) {
+        await dbDeleteUser(user.id);
+      }
+
+      // 2. Elimina da PouchDB (database sincronizzazione)
       const db = new PouchDB('sphyra-users');
       const result = await db.allDocs({ include_docs: true });
-
-      // Elimina tutti gli utenti
       for (const row of result.rows) {
         if (row.doc && row.id && row.value.rev) {
           await db.remove(row.id, row.value.rev);
@@ -92,7 +113,7 @@ export default function AdminDebug(): JSX.Element {
       setConfirmReset(false);
       setMessage({
         type: 'success',
-        text: '✅ Database resettato! Ricarica la pagina per ricreare l\'admin con la password da .env'
+        text: '✅ Database resettato da IndexedDB e PouchDB! Ora puoi usare "Crea Admin" o ricaricare la pagina principale.'
       });
     } catch (error) {
       console.error('Errore reset database:', error);
@@ -105,25 +126,97 @@ export default function AdminDebug(): JSX.Element {
     }
   };
 
-  const deleteSpecificUser = async (userId: string, rev: string) => {
+  const deleteSpecificUser = async (userId: string, rev?: string) => {
     if (!confirm(`Sei sicuro di voler eliminare l'utente ${userId}?`)) {
       return;
     }
 
     setLoading(true);
     try {
-      const db = new PouchDB('sphyra-users');
-      await db.remove(userId, rev);
+      // 1. Elimina da IndexedDB
+      await dbDeleteUser(userId);
+
+      // 2. Elimina da PouchDB
+      if (rev) {
+        const db = new PouchDB('sphyra-users');
+        await db.remove(userId, rev);
+      }
+
       await loadUsers();
       setMessage({
         type: 'success',
-        text: `✅ Utente ${userId} eliminato con successo`
+        text: `✅ Utente ${userId} eliminato da entrambi i database`
       });
     } catch (error) {
       console.error('Errore eliminazione utente:', error);
       setMessage({
         type: 'error',
         text: `Errore: ${error instanceof Error ? error.message : 'Impossibile eliminare l\'utente'}`
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createAdminUser = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      // Leggi password da .env
+      const envPassword = import.meta.env.VITE_ADMIN_INITIAL_PASSWORD;
+      let initialPassword = envPassword;
+
+      // Se non configurata o è la default, genera password casuale
+      if (!envPassword || envPassword === 'admin123') {
+        const randomPassword = Math.random().toString(36).slice(-12) +
+                               Math.random().toString(36).toUpperCase().slice(-4) +
+                               Math.floor(Math.random() * 1000);
+        initialPassword = randomPassword;
+
+        console.error('⚠️ SECURITY WARNING: VITE_ADMIN_INITIAL_PASSWORD not set or using default "admin123"!');
+        console.error('⚠️ Generated random password for admin user. SAVE THIS PASSWORD:');
+        console.error(`⚠️ Username: admin`);
+        console.error(`⚠️ Password: ${randomPassword}`);
+
+        alert(`⚠️ PASSWORD GENERATA CASUALMENTE!\n\nUsername: admin\nPassword: ${randomPassword}\n\n⚠️ SALVA QUESTA PASSWORD!`);
+      }
+
+      // Hash della password
+      const hashedPassword = await hashPassword(initialPassword);
+
+      // Crea utente admin
+      const newAdmin: User = {
+        id: 'admin-default-' + Date.now(),
+        username: 'admin',
+        passwordHash: hashedPassword,
+        role: 'RESPONSABILE',
+        firstName: 'Admin',
+        lastName: 'Default',
+        isActive: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      // Aggiungi a IndexedDB (che propagherà automaticamente a PouchDB)
+      await dbAddUser(newAdmin);
+
+      await loadUsers();
+
+      if (envPassword && envPassword !== 'admin123') {
+        setMessage({
+          type: 'success',
+          text: `✅ Admin creato! Username: admin, Password: ${envPassword}`
+        });
+      } else {
+        setMessage({
+          type: 'success',
+          text: '✅ Admin creato con password casuale! Controlla la console e l\'alert.'
+        });
+      }
+    } catch (error) {
+      console.error('Errore creazione admin:', error);
+      setMessage({
+        type: 'error',
+        text: `Errore: ${error instanceof Error ? error.message : 'Impossibile creare l\'admin'}`
       });
     } finally {
       setLoading(false);
@@ -205,7 +298,7 @@ export default function AdminDebug(): JSX.Element {
             <h2 className="text-xl font-semibold text-white">Azioni Database</h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <button
               onClick={loadUsers}
               disabled={loading}
@@ -213,6 +306,15 @@ export default function AdminDebug(): JSX.Element {
             >
               <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
               Ricarica Utenti
+            </button>
+
+            <button
+              onClick={createAdminUser}
+              disabled={loading}
+              className="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white px-4 py-3 rounded-lg font-medium transition-colors"
+            >
+              <UserPlus className="w-5 h-5" />
+              Crea Admin
             </button>
 
             <button
@@ -229,10 +331,17 @@ export default function AdminDebug(): JSX.Element {
             </button>
           </div>
 
-          <div className="mt-4 p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
+          <div className="mt-4 p-3 bg-green-900/30 border border-green-500/50 rounded-lg mb-2">
+            <p className="text-green-200 text-sm">
+              ✅ <strong>Crea Admin:</strong> Crea l'utente admin con la password da .env.
+              Se non configurata, genera una password casuale e la mostra in un alert.
+            </p>
+          </div>
+
+          <div className="mt-2 p-3 bg-red-900/30 border border-red-500/50 rounded-lg">
             <p className="text-red-200 text-sm">
-              ⚠️ <strong>Attenzione:</strong> Il reset elimina TUTTI gli utenti.
-              Dopo il reset, ricarica la pagina principale per ricreare l'admin.
+              ⚠️ <strong>Reset Database:</strong> Elimina TUTTI gli utenti da IndexedDB e PouchDB.
+              Dopo il reset, usa "Crea Admin" o ricarica la pagina principale.
             </p>
           </div>
         </div>
