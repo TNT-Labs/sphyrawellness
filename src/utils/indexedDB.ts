@@ -292,6 +292,25 @@ async function updateFromSync<T extends Record<string, any>>(storeName: string, 
 }
 
 /**
+ * Delete operation specifically for sync (doesn't trigger sync back to PouchDB)
+ * Used when receiving deleted documents from remote sync
+ */
+async function deleteFromSync(storeName: string, id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(storeName, 'readwrite');
+      const store = transaction.objectStore(storeName);
+      const request = store.delete(id);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * Generic delete operation
  */
 async function remove(storeName: string, id: string): Promise<void> {
@@ -368,6 +387,13 @@ export async function updateCustomerFromSync(customer: Customer): Promise<void> 
   await updateFromSync(STORES.CUSTOMERS, customer);
 }
 
+/**
+ * Delete customer from sync - does NOT trigger sync loop
+ */
+export async function deleteCustomerFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.CUSTOMERS, id);
+}
+
 export async function deleteCustomer(id: string): Promise<void> {
   await remove(STORES.CUSTOMERS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -411,6 +437,13 @@ export async function updateServiceFromSync(service: Service): Promise<void> {
   await updateFromSync(STORES.SERVICES, service);
 }
 
+/**
+ * Delete service from sync - does NOT trigger sync loop
+ */
+export async function deleteServiceFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.SERVICES, id);
+}
+
 export async function deleteService(id: string): Promise<void> {
   await remove(STORES.SERVICES, id);
   // Sync to PouchDB in background (non-blocking)
@@ -452,6 +485,13 @@ export async function updateStaff(staff: Staff): Promise<void> {
  */
 export async function updateStaffFromSync(staff: Staff): Promise<void> {
   await updateFromSync(STORES.STAFF, staff);
+}
+
+/**
+ * Delete staff from sync - does NOT trigger sync loop
+ */
+export async function deleteStaffFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.STAFF, id);
 }
 
 export async function deleteStaff(id: string): Promise<void> {
@@ -498,6 +538,14 @@ export async function updateAppointmentFromSync(appointment: Appointment): Promi
   await updateFromSync(STORES.APPOINTMENTS, appointment);
 }
 
+/**
+ * Delete appointment from sync - does NOT trigger sync loop
+ * Used when receiving deleted documents from PouchDB sync
+ */
+export async function deleteAppointmentFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.APPOINTMENTS, id);
+}
+
 export async function deleteAppointment(id: string): Promise<void> {
   await remove(STORES.APPOINTMENTS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -539,6 +587,13 @@ export async function updatePayment(payment: Payment): Promise<void> {
  */
 export async function updatePaymentFromSync(payment: Payment): Promise<void> {
   await updateFromSync(STORES.PAYMENTS, payment);
+}
+
+/**
+ * Delete payment from sync - does NOT trigger sync loop
+ */
+export async function deletePaymentFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.PAYMENTS, id);
 }
 
 export async function deletePayment(id: string): Promise<void> {
@@ -585,6 +640,13 @@ export async function updateReminderFromSync(reminder: Reminder): Promise<void> 
   await updateFromSync(STORES.REMINDERS, reminder);
 }
 
+/**
+ * Delete reminder from sync - does NOT trigger sync loop
+ */
+export async function deleteReminderFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.REMINDERS, id);
+}
+
 export async function deleteReminder(id: string): Promise<void> {
   await remove(STORES.REMINDERS, id);
   // Sync to PouchDB in background (non-blocking)
@@ -628,6 +690,13 @@ export async function updateStaffRoleFromSync(role: StaffRole): Promise<void> {
   await updateFromSync(STORES.STAFF_ROLES, role);
 }
 
+/**
+ * Delete staff role from sync - does NOT trigger sync loop
+ */
+export async function deleteStaffRoleFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.STAFF_ROLES, id);
+}
+
 export async function deleteStaffRole(id: string): Promise<void> {
   await remove(STORES.STAFF_ROLES, id);
   // Sync to PouchDB in background (non-blocking)
@@ -669,6 +738,13 @@ export async function updateServiceCategory(category: ServiceCategory): Promise<
  */
 export async function updateServiceCategoryFromSync(category: ServiceCategory): Promise<void> {
   await updateFromSync(STORES.SERVICE_CATEGORIES, category);
+}
+
+/**
+ * Delete service category from sync - does NOT trigger sync loop
+ */
+export async function deleteServiceCategoryFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.SERVICE_CATEGORIES, id);
 }
 
 export async function deleteServiceCategory(id: string): Promise<void> {
@@ -1019,6 +1095,13 @@ export async function updateUser(user: User): Promise<void> {
  */
 export async function updateUserFromSync(user: User): Promise<void> {
   await updateFromSync(STORES.USERS, user);
+}
+
+/**
+ * Delete user from sync - does NOT trigger sync loop
+ */
+export async function deleteUserFromSync(id: string): Promise<void> {
+  await deleteFromSync(STORES.USERS, id);
 }
 
 export async function deleteUser(id: string): Promise<void> {
