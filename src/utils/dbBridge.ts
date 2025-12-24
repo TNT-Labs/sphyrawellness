@@ -11,6 +11,7 @@
 
 import PouchDB from 'pouchdb-browser';
 import { logger } from './logger';
+import { wasItemDeleted } from './indexedDB';
 
 // Mapping tra object stores IndexedDB e database PouchDB
 const DB_NAME_MAPPING = {
@@ -40,9 +41,6 @@ let isCleanupInProgress = false;
 
 // NUOVO: Flag per disabilitare sync verso PouchDB quando riceviamo dati da remoto
 let isSyncFromRemoteActive = false;
-
-// Tracciamento eliminazioni per evitare ricreazione accidentale
-const deletionLog: Map<string, number> = new Map(); // key: "storeName:id", value: timestamp
 
 /**
  * NUOVO: Disabilita temporaneamente la sincronizzazione verso PouchDB
@@ -112,32 +110,15 @@ function isLocalNewer(localDoc: any, remoteDoc: any): boolean {
 }
 
 /**
- * Verifica se un documento è stato eliminato di recente
+ * Verifica se un documento è stato eliminato (usa tracking permanente da IndexedDB)
+ * AGGIORNATO: Sostituisce il vecchio sistema in-memory con tracking permanente
  */
-function wasRecentlyDeleted(storeName: StoreType, id: string): boolean {
-  const key = `${storeName}:${id}`;
-  const deletionTime = deletionLog.get(key);
-  
-  if (!deletionTime) return false;
-  
-  // Considera "recente" entro 5 minuti
-  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-  return deletionTime > fiveMinutesAgo;
-}
-
-/**
- * Registra un'eliminazione
- */
-function logDeletion(storeName: StoreType, id: string): void {
-  const key = `${storeName}:${id}`;
-  deletionLog.set(key, Date.now());
-  
-  // Pulisci vecchie entry (più di 10 minuti)
-  const tenMinutesAgo = Date.now() - (10 * 60 * 1000);
-  for (const [k, timestamp] of deletionLog.entries()) {
-    if (timestamp < tenMinutesAgo) {
-      deletionLog.delete(k);
-    }
+async function wasDeleted(storeName: StoreType, id: string): Promise<boolean> {
+  try {
+    return await wasItemDeleted(storeName, id);
+  } catch (error) {
+    logger.error(`Error checking deletion status for ${storeName}:${id}:`, error);
+    return false;
   }
 }
 
@@ -170,9 +151,9 @@ export async function syncAdd<T extends { id: string }>(
     return;
   }
 
-  // Verifica se è stato eliminato di recente
-  if (wasRecentlyDeleted(storeName, item.id)) {
-    logger.warn(`Skipping add for recently deleted document ${storeName}:${item.id}`);
+  // IMPORTANTE: Verifica se è stato eliminato permanentemente
+  if (await wasDeleted(storeName, item.id)) {
+    logger.warn(`[dbBridge] Skipping add for deleted document ${storeName}:${item.id} (permanent deletion)`);
     return;
   }
 
@@ -341,8 +322,7 @@ export async function syncDelete(
     return;
   }
 
-  // Registra l'eliminazione
-  logDeletion(storeName, id);
+  // NOTA: L'eliminazione viene già registrata in IndexedDB dalla funzione delete*() che chiama recordDeletion()
 
   const queueKey = `${storeName}:${id}`;
 
@@ -519,8 +499,8 @@ export async function clearPouchDBCache(): Promise<void> {
   operationQueues.clear();
   processingQueues.clear();
 
-  // Clear deletion log
-  deletionLog.clear();
+  // NOTA: Non puliamo più il deletionLog perché ora è permanente in IndexedDB
+  // Le cancellazioni sono gestite dal nuovo store 'deletedItems' in IndexedDB
 
   // Resume queue processing
   resumeQueueProcessing();
