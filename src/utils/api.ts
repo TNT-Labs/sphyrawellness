@@ -1,4 +1,4 @@
-import type { Settings, Appointment } from '../types';
+import type { Settings, Appointment, CustomerConsents } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -223,6 +223,57 @@ export const appointmentsApi = {
     return result.data;
   },
 };
+
+/**
+ * Customers API
+ */
+export const customersApi = {
+  async updateConsents(customerId: string, consents: Partial<CustomerConsents>): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/customers/${customerId}/consents`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ consents }),
+      });
+
+      if (!response.ok) {
+        const result: ApiResponse = await response.json();
+        throw new Error(result.error || `HTTP error! status: ${response.status}`);
+      }
+
+      const result: ApiResponse = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to update consents');
+      }
+    } catch (error: any) {
+      // Handle CORS and network errors with clearer messages
+      if (error.message === 'Failed to fetch' || error.message.includes('NetworkError')) {
+        const apiUrl = API_BASE_URL.replace('/api', '');
+        throw new Error(
+          `Impossibile connettersi al server backend.\n\n` +
+          `Possibili cause:\n` +
+          `• Il server backend non è in esecuzione\n` +
+          `• Stai accedendo da un IP non autorizzato\n` +
+          `• Problema di configurazione CORS\n\n` +
+          `URL cercato: ${apiUrl}\n\n` +
+          `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+        );
+      }
+      if (error.message.includes('CORS')) {
+        throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
+      }
+      throw error;
+    }
+  },
+};
+
+/**
+ * Export helper function for backward compatibility
+ */
+export const updateCustomerConsents = customersApi.updateConsents;
 
 /**
  * Health check
