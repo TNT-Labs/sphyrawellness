@@ -4,7 +4,7 @@ import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
-import { Customer } from '../types';
+import { Customer, CustomerConsents } from '../types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User, Calendar, X } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
@@ -12,6 +12,8 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import { canDeleteCustomer } from '../utils/db';
 import { logger } from '../utils/logger';
 import AppointmentModal from '../components/calendar/AppointmentModal';
+import ConsentManagement from '../components/ConsentManagement';
+import { updateCustomerConsents } from '../utils/api';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer, appointments } = useApp();
@@ -178,6 +180,32 @@ const Customers: React.FC = () => {
     setSelectedCustomerId(undefined);
   };
 
+  const handleUpdateConsents = async (customerId: string, consents: Partial<CustomerConsents>) => {
+    try {
+      // Chiama l'API per aggiornare i consensi
+      await updateCustomerConsents(customerId, consents);
+
+      // Aggiorna il cliente localmente
+      const customer = customers.find(c => c.id === customerId);
+      if (customer) {
+        const updatedCustomer: Customer = {
+          ...customer,
+          consents: {
+            ...customer.consents!,
+            ...consents,
+          },
+          updatedAt: new Date().toISOString(),
+        };
+        await updateCustomer(updatedCustomer);
+        showSuccess('Consensi aggiornati con successo!');
+      }
+    } catch (error) {
+      logger.error('Error updating consents:', error);
+      showError('Errore durante l\'aggiornamento dei consensi');
+      throw error;
+    }
+  };
+
   return (
     <>
       <ConfirmationDialog />
@@ -308,6 +336,14 @@ const Customers: React.FC = () => {
                   {customer.notes}
                 </p>
               )}
+
+              {/* Consent Management */}
+              <div className="mb-4">
+                <ConsentManagement
+                  customer={customer}
+                  onUpdateConsents={handleUpdateConsents}
+                />
+              </div>
 
               <div className="space-y-2 pt-4 border-t border-gray-200">
                 <button
