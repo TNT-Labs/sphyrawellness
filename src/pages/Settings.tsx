@@ -13,7 +13,7 @@ import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StaffRole, ServiceCategory, SyncStatus } from '../types';
 import { logger, LogEntry } from '../utils/logger';
-import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange, deleteAllLocalDatabases } from '../utils/pouchdbSync';
+import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange, deleteAllLocalDatabases, deleteAllRemoteDatabases } from '../utils/pouchdbSync';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 import UserManagementCard from '../components/settings/UserManagementCard';
 
@@ -209,45 +209,75 @@ const Settings: React.FC = () => {
   };
 
   const handleClearAllData = async () => {
-    const confirmed = await confirmWithInput({
-      title: 'ATTENZIONE: Cancellazione Totale Dati',
-      message: 'Questa operazione cancellerà FISICAMENTE e PERMANENTEMENTE tutti i database locali (IndexedDB e PouchDB) e tutti i dati dell\'applicazione. Verrai riportato al login. I dati sul server CouchDB remoto NON saranno cancellati. Questa azione NON può essere annullata! Assicurati di aver esportato un backup prima di procedere.',
-      confirmText: 'Cancella Tutto',
+    // Step 1: Prima conferma - cancellazione dati locali
+    const confirmedLocal = await confirmWithInput({
+      title: 'ATTENZIONE: Cancellazione Totale Dati Locali',
+      message: 'Questa operazione cancellerà FISICAMENTE e PERMANENTEMENTE tutti i database locali (IndexedDB e PouchDB) e tutti i dati dell\'applicazione su questo dispositivo. Verrai riportato al login. Questa azione NON può essere annullata! Assicurati di aver esportato un backup prima di procedere.',
+      confirmText: 'Cancella Dati Locali',
       expectedInput: 'CANCELLA',
       inputLabel: 'Digita "CANCELLA" per confermare',
       variant: 'danger',
     });
 
-    if (!confirmed) return;
+    if (!confirmedLocal) return;
+
+    // Step 2: Chiedi se cancellare anche i dati remoti (solo se CouchDB è configurato)
+    const settings = loadSettings();
+    let deleteRemote = false;
+
+    if (settings.couchdbUrl) {
+      const confirmedRemote = await confirmWithInput({
+        title: '⚠️ ATTENZIONE: Cancellare anche i dati sul server CouchDB?',
+        message: 'PERICOLO: Questa operazione cancellerà TUTTI i database sul server CouchDB remoto. Questo influenzerà TUTTI i dispositivi che si sincronizzano con questo server! I dati saranno persi PERMANENTEMENTE da tutti i dispositivi. Sei ASSOLUTAMENTE SICURO di voler procedere?',
+        confirmText: 'Cancella Anche Server Remoto',
+        expectedInput: 'CANCELLA TUTTO',
+        inputLabel: 'Digita "CANCELLA TUTTO" per confermare la cancellazione del server remoto',
+        variant: 'danger',
+      });
+
+      deleteRemote = confirmedRemote;
+    }
 
     try {
-      // 1. Cancella tutti i database PouchDB locali (9 database)
+      // 1. Cancella i database remoti se richiesto (prima dei locali per sicurezza)
+      if (deleteRemote) {
+        logger.warn('⚠️ User confirmed deletion of REMOTE databases ⚠️');
+        await deleteAllRemoteDatabases();
+        logger.warn('Tutti i database CouchDB remoti cancellati fisicamente');
+        showSuccess('Database remoti cancellati con successo');
+      }
+
+      // 2. Cancella tutti i database PouchDB locali (9 database)
       await deleteAllLocalDatabases();
       logger.info('Tutti i database PouchDB locali cancellati fisicamente');
 
-      // 2. Cancella fisicamente il database IndexedDB principale
+      // 3. Cancella fisicamente il database IndexedDB principale
       await deleteDatabase();
       logger.info('Database IndexedDB principale cancellato fisicamente');
 
-      // 3. Cancella tutto il localStorage
+      // 4. Cancella tutto il localStorage
       localStorage.clear();
       logger.info('localStorage cancellato completamente');
 
-      // 4. Cancella sessionStorage
+      // 5. Cancella sessionStorage
       sessionStorage.clear();
       logger.info('sessionStorage cancellato completamente');
 
-      // 5. Mostra messaggio di successo prima del logout
-      showSuccess('Tutti i dati locali sono stati cancellati. Verrai riportato al login...');
+      // 6. Mostra messaggio di successo prima del logout
+      const message = deleteRemote
+        ? 'Tutti i dati locali e remoti sono stati cancellati. Verrai riportato al login...'
+        : 'Tutti i dati locali sono stati cancellati. Verrai riportato al login...';
+      showSuccess(message);
 
-      // 6. Logout e redirect al login (dopo un breve delay per mostrare il messaggio)
+      // 7. Logout e redirect al login (dopo un breve delay per mostrare il messaggio)
       setTimeout(() => {
         logout();
         // Il redirect al login avverrà automaticamente tramite il router
-      }, 1500);
+      }, 2000);
     } catch (error) {
-      showError('Errore durante la cancellazione dei dati');
-      logger.error(error);
+      const errorMessage = error instanceof Error ? error.message : 'Errore sconosciuto';
+      showError(`Errore durante la cancellazione: ${errorMessage}`);
+      logger.error('Error in handleClearAllData:', error);
     }
   };
 
