@@ -164,6 +164,15 @@ router.get('/available-slots', async (req, res) => {
 
     const { serviceId, date } = validationResult.data;
 
+    // Validate that the date is not in the past
+    const requestedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (requestedDate < today) {
+      return sendError(res, 'Cannot book appointments for past dates', 400);
+    }
+
     // Fetch the service to get duration
     const serviceDoc = await db.services.get(serviceId as string);
     const service: Service = {
@@ -184,15 +193,21 @@ router.get('/available-slots', async (req, res) => {
       })) as Staff[];
 
     // Filter staff that can perform this service (have the service category in specializations)
+    // and are currently active
     const qualifiedStaff = allStaff.filter(
       staff =>
+        staff.isActive &&
         staff.specializations &&
         service.category &&
         staff.specializations.includes(service.category)
     );
 
     if (qualifiedStaff.length === 0) {
-      return sendSuccess(res, { slots: [] }, 'No staff available for this service');
+      return sendSuccess(
+        res,
+        { slots: [] },
+        'No active staff members are currently qualified to perform this service'
+      );
     }
 
     // Fetch all appointments for the given date
@@ -273,6 +288,15 @@ router.post('/bookings', async (req, res) => {
       healthDataConsent
     } = validationResult.data;
 
+    // Validate that the date is not in the past
+    const requestedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (requestedDate < today) {
+      return sendError(res, 'Cannot book appointments for past dates', 400);
+    }
+
     // GDPR Validation: If notes contain health data, healthDataConsent is required
     if (notes && notes.trim() && !healthDataConsent) {
       return sendError(
@@ -306,13 +330,18 @@ router.post('/bookings', async (req, res) => {
 
     const qualifiedStaff = allStaff.filter(
       staff =>
+        staff.isActive &&
         staff.specializations &&
         service.category &&
         staff.specializations.includes(service.category)
     );
 
     if (qualifiedStaff.length === 0) {
-      return sendError(res, 'No staff available for this service', 400);
+      return sendError(
+        res,
+        'No active staff members are currently qualified to perform this service. Please contact us for assistance.',
+        400
+      );
     }
 
     // Fetch all appointments for the given date

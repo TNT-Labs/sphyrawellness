@@ -325,7 +325,7 @@ const PublicBooking: React.FC = () => {
                           {service.duration} min
                         </span>
                         <span className="font-semibold text-primary-600">
-                          €{service.price.toFixed(2)}
+                          {service.price != null ? `€${service.price.toFixed(2)}` : 'Prezzo da definire'}
                         </span>
                       </div>
                     </button>
@@ -521,7 +521,7 @@ const PublicBooking: React.FC = () => {
             <p><strong>Data:</strong> {bookingData.date && format(parse(bookingData.date, 'yyyy-MM-dd', new Date()), 'dd MMMM yyyy', { locale: it })}</p>
             <p><strong>Orario:</strong> {bookingData.startTime}</p>
             <p><strong>Durata:</strong> {selectedService?.duration} minuti</p>
-            <p><strong>Prezzo:</strong> €{selectedService?.price.toFixed(2)}</p>
+            <p><strong>Prezzo:</strong> {selectedService?.price != null ? `€${selectedService.price.toFixed(2)}` : 'Prezzo da definire'}</p>
           </div>
         </div>
 
