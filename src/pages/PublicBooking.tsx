@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
 import type { Service, ServiceCategory, Staff } from '../types';
@@ -47,13 +47,22 @@ interface BookingErrors {
 const PublicBooking: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Separate loading states for better UX
+  const [isLoadingServices, setIsLoadingServices] = useState(false);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const SERVICES_PER_PAGE = 10;
+
+  // Refs for AbortController to cancel previous requests
+  const slotsAbortControllerRef = useRef<AbortController | null>(null);
 
   const [bookingData, setBookingData] = useState<BookingData>({
     serviceId: '',
@@ -72,21 +81,41 @@ const PublicBooking: React.FC = () => {
 
   const [errors, setErrors] = useState<BookingErrors>({});
 
+  // Debounce search query to avoid excessive re-renders
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
   // Carica servizi e categorie all'avvio
   useEffect(() => {
     loadServices();
   }, []);
 
   // Carica slot disponibili quando servizio e data sono selezionati
+  // Uses AbortController to prevent race conditions
   useEffect(() => {
     if (bookingData.serviceId && bookingData.date) {
       loadAvailableSlots(bookingData.serviceId, bookingData.date);
+    } else {
+      // Clear slots if service or date is deselected
+      setAvailableSlots([]);
     }
+
+    // Cleanup: abort pending requests when dependencies change
+    return () => {
+      if (slotsAbortControllerRef.current) {
+        slotsAbortControllerRef.current.abort();
+      }
+    };
   }, [bookingData.serviceId, bookingData.date]);
 
   const loadServices = async () => {
     try {
-      setIsLoading(true);
+      setIsLoadingServices(true);
       const response = await fetch(`${API_URL}/public/services`);
       const data = await response.json();
 
@@ -100,44 +129,72 @@ const PublicBooking: React.FC = () => {
       console.error('Errore nel caricamento dei servizi:', error);
       alert('Impossibile caricare i servizi. Riprova più tardi.');
     } finally {
-      setIsLoading(false);
+      setIsLoadingServices(false);
     }
   };
 
   const loadAvailableSlots = async (serviceId: string, date: string) => {
+    // Abort previous request if still pending
+    if (slotsAbortControllerRef.current) {
+      slotsAbortControllerRef.current.abort();
+    }
+
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    slotsAbortControllerRef.current = abortController;
+
     try {
-      setIsLoading(true);
-      const response = await fetch(`${API_URL}/public/available-slots?serviceId=${serviceId}&date=${date}`);
+      setIsLoadingSlots(true);
+      const response = await fetch(
+        `${API_URL}/public/available-slots?serviceId=${serviceId}&date=${date}`,
+        { signal: abortController.signal }
+      );
       const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || 'Errore nel caricamento degli slot');
       }
 
-      setAvailableSlots(data.data?.slots || []);
+      // Only update state if this request wasn't aborted
+      if (!abortController.signal.aborted) {
+        setAvailableSlots(data.data?.slots || []);
+      }
     } catch (error: any) {
+      // Ignore abort errors
+      if (error.name === 'AbortError') {
+        return;
+      }
       console.error('Errore nel caricamento degli slot:', error);
-      setAvailableSlots([]);
+      if (!abortController.signal.aborted) {
+        setAvailableSlots([]);
+      }
     } finally {
-      setIsLoading(false);
+      if (!abortController.signal.aborted) {
+        setIsLoadingSlots(false);
+      }
     }
   };
 
   const selectedService = services.find(s => s.id === bookingData.serviceId);
 
-  // Filtra e pagina i servizi
+  // Utility: check if health data consent is required
+  const isHealthConsentRequired = useCallback(() => {
+    return !!(bookingData.notes && bookingData.notes.trim());
+  }, [bookingData.notes]);
+
+  // Filtra e pagina i servizi (using debounced search query)
   const filteredServices = useMemo(() => {
-    if (!searchQuery.trim()) {
+    if (!debouncedSearchQuery.trim()) {
       return services;
     }
 
-    const query = searchQuery.toLowerCase();
+    const query = debouncedSearchQuery.toLowerCase();
     return services.filter(service =>
       service.name.toLowerCase().includes(query) ||
       service.description?.toLowerCase().includes(query) ||
       categories.find(c => c.id === service.category)?.name.toLowerCase().includes(query)
     );
-  }, [services, searchQuery, categories]);
+  }, [services, debouncedSearchQuery, categories]);
 
   const paginatedServices = useMemo(() => {
     const startIndex = (currentPage - 1) * SERVICES_PER_PAGE;
@@ -150,7 +207,7 @@ const PublicBooking: React.FC = () => {
   // Reset alla prima pagina quando cambia la ricerca
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [debouncedSearchQuery]);
 
   const validateStep = (currentStep: number): boolean => {
     const newErrors: BookingErrors = {};
@@ -178,8 +235,8 @@ const PublicBooking: React.FC = () => {
       if (!bookingData.privacyConsent) {
         newErrors.privacyConsent = 'Devi accettare l\'informativa sulla privacy per procedere';
       }
-      // Validazione consenso dati sensibili solo se ci sono note
-      if (bookingData.notes && bookingData.notes.trim() && !bookingData.healthDataConsent) {
+      // Validazione consenso dati sensibili solo se ci sono note (centralized logic)
+      if (isHealthConsentRequired() && !bookingData.healthDataConsent) {
         newErrors.healthDataConsent = 'Devi acconsentire al trattamento dei dati relativi ad allergie/condizioni di salute';
       }
     }
@@ -197,13 +254,19 @@ const PublicBooking: React.FC = () => {
   const handleBack = () => {
     setStep((step - 1) as 1 | 2 | 3 | 4);
     setErrors({});
+
+    // Reset startTime when going back from step 3 to step 2
+    // to avoid confusion if user changes date
+    if (step === 3) {
+      setBookingData(prev => ({ ...prev, startTime: '' }));
+    }
   };
 
   const handleSubmit = async () => {
     if (!validateStep(3)) return;
 
     try {
-      setIsLoading(true);
+      setIsSubmitting(true);
       const response = await fetch(`${API_URL}/public/bookings`, {
         method: 'POST',
         headers: {
@@ -215,27 +278,46 @@ const PublicBooking: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || data.message || 'Errore nella prenotazione');
+        // Specific error messages based on backend response
+        const errorMessage = data.error || data.message || 'Errore nella prenotazione';
+
+        // Check for specific error types
+        if (errorMessage.includes('slot is no longer available') || errorMessage.includes('slot non')) {
+          throw new Error('⏰ Questo orario non è più disponibile.\n\nQualcun altro potrebbe averlo prenotato.\nTorna indietro e scegli un altro orario.');
+        } else if (errorMessage.includes('past date') || errorMessage.includes('data passata')) {
+          throw new Error('📅 Non è possibile prenotare per date passate.\n\nSeleziona una data futura.');
+        } else if (errorMessage.includes('consent') || errorMessage.includes('consenso')) {
+          throw new Error('🔒 ' + errorMessage);
+        } else {
+          throw new Error(errorMessage);
+        }
       }
 
       setStep(4);
     } catch (error: any) {
+      console.error('Booking error:', error);
+
       // Handle network errors with clearer messages
       if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
         const apiUrl = API_URL.replace('/api', '');
         alert(
-          `Impossibile connettersi al server.\n\n` +
+          `🌐 Impossibile connettersi al server.\n\n` +
           `Possibili cause:\n` +
           `• Il server non è in esecuzione\n` +
-          `• Problema di connessione\n` +
+          `• Problema di connessione di rete\n` +
           `• Configurazione CORS\n\n` +
-          `URL: ${apiUrl}`
+          `Server: ${apiUrl}\n\n` +
+          `💡 Riprova tra qualche istante.`
         );
+      } else if (error.name === 'AbortError') {
+        // Request was aborted, ignore
+        return;
       } else {
-        alert(error.message || 'Errore durante la prenotazione. Riprova.');
+        // Display the error message (which may have emoji and formatting)
+        alert(error.message || '❌ Errore durante la prenotazione.\n\nRiprova più tardi o contattaci.');
       }
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -337,7 +419,7 @@ const PublicBooking: React.FC = () => {
         })}
 
             {errors.serviceId && (
-              <p className="text-red-600 text-sm text-center">{errors.serviceId}</p>
+              <p className="text-red-600 text-sm mt-2">{errors.serviceId}</p>
             )}
 
             {/* Paginazione */}
@@ -455,9 +537,10 @@ const PublicBooking: React.FC = () => {
               <Clock className="inline w-4 h-4 mr-2" />
               Seleziona un orario
             </label>
-            {isLoading ? (
+            {isLoadingSlots ? (
               <div className="flex justify-center py-8">
                 <Loader className="animate-spin text-primary-600" size={32} />
+                <p className="ml-3 text-gray-600">Caricamento slot disponibili...</p>
               </div>
             ) : availableSlots.length === 0 ? (
               <p className="text-center text-gray-600 py-8">
@@ -674,8 +757,8 @@ const PublicBooking: React.FC = () => {
             </label>
           </div>
 
-          {/* Consenso Dati Sensibili - Solo se ci sono note */}
-          {bookingData.notes && bookingData.notes.trim() && (
+          {/* Consenso Dati Sensibili - Solo se ci sono note (centralized logic) */}
+          {isHealthConsentRequired() && (
             <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
               <div className="flex items-start gap-3">
                 <input
@@ -720,13 +803,13 @@ const PublicBooking: React.FC = () => {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="btn-primary flex items-center gap-2"
           >
-            {isLoading ? (
+            {isSubmitting ? (
               <>
                 <Loader className="animate-spin" size={20} />
-                Prenotazione...
+                Prenotazione in corso...
               </>
             ) : (
               <>
