@@ -1327,3 +1327,42 @@ export async function clearAllData(): Promise<void> {
     transaction.objectStore(STORES.USERS).clear();
   });
 }
+
+/**
+ * Physically delete the entire IndexedDB database
+ * WARNING: This is a destructive operation that cannot be undone
+ */
+export async function deleteDatabase(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      // Close the current connection if open
+      if (db) {
+        db.close();
+        db = null;
+        logger.info('Database connection closed before deletion');
+      }
+
+      // Delete the database
+      const request = indexedDB.deleteDatabase(DB_NAME);
+
+      request.onsuccess = () => {
+        logger.info('IndexedDB database deleted successfully');
+        resolve();
+      };
+
+      request.onerror = () => {
+        logger.error('Failed to delete IndexedDB database:', request.error);
+        reject(new Error('Impossibile cancellare il database'));
+      };
+
+      request.onblocked = () => {
+        logger.warn('Database deletion blocked - other connections may be open');
+        // Even if blocked, we'll consider it a success since we've initiated deletion
+        resolve();
+      };
+    } catch (error) {
+      logger.error('Error during database deletion:', error);
+      reject(error);
+    }
+  });
+}

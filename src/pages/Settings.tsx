@@ -3,7 +3,7 @@ import { Download, Upload, Trash2, Database, HardDrive, AlertCircle, CheckCircle
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useConfirmWithInput } from '../hooks/useConfirmWithInput';
-import { exportAllData, clearAllData, getDBStats, importAllData } from '../utils/db';
+import { exportAllData, clearAllData, getDBStats, importAllData, deleteDatabase } from '../utils/db';
 import { getAvailableBackups, restoreFromBackup, deleteBackup } from '../utils/autoBackup';
 import { getStoragePersistenceInfo, requestStoragePersistence } from '../utils/storagePersistence';
 import { loadSettings, loadSettingsWithPassword, saveSettings } from '../utils/storage';
@@ -24,7 +24,7 @@ const Settings: React.FC = () => {
   const { confirm, ConfirmationDialog } = useConfirm();
   const { confirm: confirmWithInput, ConfirmationDialog: ConfirmationDialogWithInput } = useConfirmWithInput();
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory, refreshAppointments, refreshReminders } = useApp();
-  const { canModifySettings } = useAuth();
+  const { canModifySettings, logout } = useAuth();
   const [stats, setStats] = useState<Awaited<ReturnType<typeof getDBStats>> | null>(null);
   const [backups, setBackups] = useState<ReturnType<typeof getAvailableBackups>>([]);
   const [storageInfo, setStorageInfo] = useState<Awaited<ReturnType<typeof getStoragePersistenceInfo>> | null>(null);
@@ -211,7 +211,7 @@ const Settings: React.FC = () => {
   const handleClearAllData = async () => {
     const confirmed = await confirmWithInput({
       title: 'ATTENZIONE: Cancellazione Totale Dati',
-      message: 'Questa operazione cancellerà TUTTI i dati del database in modo PERMANENTE. Questa azione NON può essere annullata! Assicurati di aver esportato un backup prima di procedere.',
+      message: 'Questa operazione cancellerà FISICAMENTE e PERMANENTEMENTE tutti i database e tutti i dati dell\'applicazione. Verrai riportato al login. Questa azione NON può essere annullata! Assicurati di aver esportato un backup prima di procedere.',
       confirmText: 'Cancella Tutto',
       expectedInput: 'CANCELLA',
       inputLabel: 'Digita "CANCELLA" per confermare',
@@ -221,11 +221,26 @@ const Settings: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      await clearAllData();
-      await loadStats();
-      await refreshAppointments();
-      await refreshReminders();
-      showSuccess('Tutti i dati sono stati cancellati');
+      // 1. Cancella fisicamente il database IndexedDB
+      await deleteDatabase();
+      logger.info('Database IndexedDB cancellato fisicamente');
+
+      // 2. Cancella tutto il localStorage
+      localStorage.clear();
+      logger.info('localStorage cancellato completamente');
+
+      // 3. Cancella sessionStorage
+      sessionStorage.clear();
+      logger.info('sessionStorage cancellato completamente');
+
+      // 4. Mostra messaggio di successo prima del logout
+      showSuccess('Tutti i dati sono stati cancellati. Verrai riportato al login...');
+
+      // 5. Logout e redirect al login (dopo un breve delay per mostrare il messaggio)
+      setTimeout(() => {
+        logout();
+        // Il redirect al login avverrà automaticamente tramite il router
+      }, 1500);
     } catch (error) {
       showError('Errore durante la cancellazione dei dati');
       logger.error(error);
