@@ -1499,6 +1499,100 @@ export async function closeDatabases(): Promise<void> {
 }
 
 /**
+ * Physically delete all local PouchDB databases
+ * WARNING: This is a destructive operation that cannot be undone
+ * NOTE: This does NOT delete data from the remote CouchDB server
+ */
+export async function deleteAllLocalDatabases(): Promise<void> {
+  try {
+    // First, close all databases and stop sync
+    await closeDatabases();
+
+    logger.info('Starting deletion of all local PouchDB databases...');
+
+    // Delete each database
+    const deletionPromises = Object.values(DB_NAMES).map(async (dbName) => {
+      try {
+        await new PouchDB(dbName).destroy();
+        logger.info(`Deleted PouchDB database: ${dbName}`);
+      } catch (error) {
+        logger.error(`Failed to delete PouchDB database ${dbName}:`, error);
+        // Continue with other deletions even if one fails
+      }
+    });
+
+    await Promise.all(deletionPromises);
+
+    logger.info('All local PouchDB databases have been deleted');
+  } catch (error) {
+    logger.error('Error deleting local PouchDB databases:', error);
+    throw error;
+  }
+}
+
+/**
+ * Physically delete all databases from the remote CouchDB server
+ * WARNING: This is a DESTRUCTIVE operation that cannot be undone
+ * WARNING: This will delete data for ALL devices syncing with this CouchDB server
+ * @throws Error if not connected to a CouchDB server or if deletion fails
+ */
+export async function deleteAllRemoteDatabases(): Promise<void> {
+  try {
+    // Load settings to get CouchDB URL
+    const settings = await loadSettingsWithPassword();
+
+    if (!settings.couchdbUrl) {
+      throw new Error('Nessun server CouchDB configurato');
+    }
+
+    const remoteUrl = settings.couchdbUrl.trim();
+    logger.warn('⚠️ STARTING DELETION OF ALL REMOTE COUCHDB DATABASES ⚠️');
+    logger.warn(`Remote URL: ${remoteUrl.replace(/\/\/.*@/, '//***:***@')}`); // Hide credentials in logs
+
+    // Stop sync first
+    await stopSync();
+
+    const deletionResults: { dbName: string; success: boolean; error?: string }[] = [];
+
+    // Delete each remote database
+    for (const [key, dbName] of Object.entries(DB_NAMES)) {
+      try {
+        const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${dbName}`);
+
+        logger.info(`Deleting remote database: ${dbName}...`);
+        await remoteDB.destroy();
+
+        deletionResults.push({ dbName, success: true });
+        logger.info(`✅ Successfully deleted remote database: ${dbName}`);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        deletionResults.push({ dbName, success: false, error: errorMessage });
+        logger.error(`❌ Failed to delete remote database ${dbName}:`, error);
+      }
+    }
+
+    // Log summary
+    const successCount = deletionResults.filter(r => r.success).length;
+    const failCount = deletionResults.filter(r => !r.success).length;
+
+    logger.warn(`Remote database deletion summary: ${successCount} succeeded, ${failCount} failed`);
+
+    if (failCount > 0) {
+      const failedDbs = deletionResults
+        .filter(r => !r.success)
+        .map(r => `${r.dbName}: ${r.error}`)
+        .join(', ');
+      throw new Error(`Alcuni database remoti non sono stati cancellati: ${failedDbs}`);
+    }
+
+    logger.warn('⚠️ ALL REMOTE COUCHDB DATABASES HAVE BEEN DELETED ⚠️');
+  } catch (error) {
+    logger.error('Error deleting remote CouchDB databases:', error);
+    throw error;
+  }
+}
+
+/**
  * Cleanup on page unload - closes all connections gracefully
  */
 function cleanupOnUnload(): void {

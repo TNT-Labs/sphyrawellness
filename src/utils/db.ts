@@ -176,6 +176,14 @@ export async function clearAllData(): Promise<void> {
   await IndexedDB.clearAllData();
 }
 
+/**
+ * Physically delete the entire IndexedDB database
+ * WARNING: This is a destructive operation that cannot be undone
+ */
+export async function deleteDatabase(): Promise<void> {
+  await IndexedDB.deleteDatabase();
+}
+
 // ============================================
 // Query Functions
 // ============================================
