@@ -95,17 +95,17 @@ function getPouchDB(storeName: StoreType): PouchDB.Database | null {
 /**
  * Confronta timestamp per determinare quale documento è più recente
  */
-function isLocalNewer(localDoc: any, remoteDoc: any): boolean {
+export function isLocalNewer(localDoc: any, remoteDoc: any): boolean {
   const localTime = new Date(localDoc.updatedAt || localDoc.createdAt || 0).getTime();
   const remoteTime = new Date(remoteDoc.updatedAt || remoteDoc.createdAt || 0).getTime();
-  
+
   // Se i timestamp sono uguali, usa createdAt come tiebreaker
   if (localTime === remoteTime) {
     const localCreated = new Date(localDoc.createdAt || 0).getTime();
     const remoteCreated = new Date(remoteDoc.createdAt || 0).getTime();
     return localCreated >= remoteCreated;
   }
-  
+
   return localTime > remoteTime;
 }
 
