@@ -211,7 +211,13 @@ const StaffPage: React.FC = () => {
         setIsUploadingImage(true);
         try {
           const { staff: updatedStaff } = await uploadStaffImage(staffData.id, selectedImage);
-          await updateStaff(updatedStaff);
+          // FIX: Preserve original staff data, only update profileImageUrl
+          // This prevents the backend's minimal placeholder data from overwriting the correct staff data
+          await updateStaff({
+            ...staffData,
+            profileImageUrl: updatedStaff.profileImageUrl,
+            updatedAt: updatedStaff.updatedAt
+          });
           showSuccess(editingStaff ? 'Membro e immagine aggiornati con successo!' : 'Membro e immagine aggiunti con successo!');
           // Wait a bit to ensure React updates the UI before closing modal
           await new Promise(resolve => setTimeout(resolve, 100));
