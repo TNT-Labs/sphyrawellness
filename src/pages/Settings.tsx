@@ -13,7 +13,7 @@ import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
 import { StaffRole, ServiceCategory, SyncStatus } from '../types';
 import { logger, LogEntry } from '../utils/logger';
-import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange } from '../utils/pouchdbSync';
+import { startSync, stopSync, testCouchDBConnection, performOneTimeSync, getSyncStatus, onSyncStatusChange, deleteAllLocalDatabases } from '../utils/pouchdbSync';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 import UserManagementCard from '../components/settings/UserManagementCard';
 
@@ -211,7 +211,7 @@ const Settings: React.FC = () => {
   const handleClearAllData = async () => {
     const confirmed = await confirmWithInput({
       title: 'ATTENZIONE: Cancellazione Totale Dati',
-      message: 'Questa operazione cancellerà FISICAMENTE e PERMANENTEMENTE tutti i database e tutti i dati dell\'applicazione. Verrai riportato al login. Questa azione NON può essere annullata! Assicurati di aver esportato un backup prima di procedere.',
+      message: 'Questa operazione cancellerà FISICAMENTE e PERMANENTEMENTE tutti i database locali (IndexedDB e PouchDB) e tutti i dati dell\'applicazione. Verrai riportato al login. I dati sul server CouchDB remoto NON saranno cancellati. Questa azione NON può essere annullata! Assicurati di aver esportato un backup prima di procedere.',
       confirmText: 'Cancella Tutto',
       expectedInput: 'CANCELLA',
       inputLabel: 'Digita "CANCELLA" per confermare',
@@ -221,22 +221,26 @@ const Settings: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      // 1. Cancella fisicamente il database IndexedDB
-      await deleteDatabase();
-      logger.info('Database IndexedDB cancellato fisicamente');
+      // 1. Cancella tutti i database PouchDB locali (9 database)
+      await deleteAllLocalDatabases();
+      logger.info('Tutti i database PouchDB locali cancellati fisicamente');
 
-      // 2. Cancella tutto il localStorage
+      // 2. Cancella fisicamente il database IndexedDB principale
+      await deleteDatabase();
+      logger.info('Database IndexedDB principale cancellato fisicamente');
+
+      // 3. Cancella tutto il localStorage
       localStorage.clear();
       logger.info('localStorage cancellato completamente');
 
-      // 3. Cancella sessionStorage
+      // 4. Cancella sessionStorage
       sessionStorage.clear();
       logger.info('sessionStorage cancellato completamente');
 
-      // 4. Mostra messaggio di successo prima del logout
-      showSuccess('Tutti i dati sono stati cancellati. Verrai riportato al login...');
+      // 5. Mostra messaggio di successo prima del logout
+      showSuccess('Tutti i dati locali sono stati cancellati. Verrai riportato al login...');
 
-      // 5. Logout e redirect al login (dopo un breve delay per mostrare il messaggio)
+      // 6. Logout e redirect al login (dopo un breve delay per mostrare il messaggio)
       setTimeout(() => {
         logout();
         // Il redirect al login avverrà automaticamente tramite il router

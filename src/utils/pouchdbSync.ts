@@ -1499,6 +1499,38 @@ export async function closeDatabases(): Promise<void> {
 }
 
 /**
+ * Physically delete all local PouchDB databases
+ * WARNING: This is a destructive operation that cannot be undone
+ * NOTE: This does NOT delete data from the remote CouchDB server
+ */
+export async function deleteAllLocalDatabases(): Promise<void> {
+  try {
+    // First, close all databases and stop sync
+    await closeDatabases();
+
+    logger.info('Starting deletion of all local PouchDB databases...');
+
+    // Delete each database
+    const deletionPromises = Object.values(DB_NAMES).map(async (dbName) => {
+      try {
+        await new PouchDB(dbName).destroy();
+        logger.info(`Deleted PouchDB database: ${dbName}`);
+      } catch (error) {
+        logger.error(`Failed to delete PouchDB database ${dbName}:`, error);
+        // Continue with other deletions even if one fails
+      }
+    });
+
+    await Promise.all(deletionPromises);
+
+    logger.info('All local PouchDB databases have been deleted');
+  } catch (error) {
+    logger.error('Error deleting local PouchDB databases:', error);
+    throw error;
+  }
+}
+
+/**
  * Cleanup on page unload - closes all connections gracefully
  */
 function cleanupOnUnload(): void {
