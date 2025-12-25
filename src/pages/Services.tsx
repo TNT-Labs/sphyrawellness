@@ -197,7 +197,13 @@ const Services: React.FC = () => {
         setIsUploadingImage(true);
         try {
           const { service } = await uploadServiceImage(serviceData.id, selectedImage);
-          await updateService(service);
+          // FIX: Preserve original service data, only update imageUrl
+          // This prevents the backend's minimal placeholder data from overwriting the correct service data
+          await updateService({
+            ...serviceData,
+            imageUrl: service.imageUrl,
+            updatedAt: service.updatedAt
+          });
           showSuccess(editingService ? 'Servizio e immagine aggiornati con successo!' : 'Servizio e immagine aggiunti con successo!');
           // Wait a bit to ensure React updates the UI before closing modal
           await new Promise(resolve => setTimeout(resolve, 100));
