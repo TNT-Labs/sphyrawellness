@@ -1545,9 +1545,27 @@ export async function deleteAllRemoteDatabases(): Promise<void> {
       throw new Error('Nessun server CouchDB configurato');
     }
 
-    const remoteUrl = settings.couchdbUrl.trim();
+    let remoteUrl = settings.couchdbUrl.trim();
     logger.warn('⚠️ STARTING DELETION OF ALL REMOTE COUCHDB DATABASES ⚠️');
-    logger.warn(`Remote URL: ${remoteUrl.replace(/\/\/.*@/, '//***:***@')}`); // Hide credentials in logs
+
+    // Normalize URL (remove trailing slashes)
+    remoteUrl = remoteUrl.replace(/\/+$/, '');
+
+    // Add credentials to URL if provided (same logic as startSync)
+    if (settings.couchdbUsername && settings.couchdbPassword) {
+      try {
+        const url = new URL(remoteUrl);
+        url.username = encodeURIComponent(settings.couchdbUsername);
+        url.password = encodeURIComponent(settings.couchdbPassword);
+        remoteUrl = url.toString();
+        logger.debug('Credentials added to URL for remote database deletion');
+      } catch (urlError) {
+        logger.error('Failed to construct URL with credentials:', urlError);
+        throw new Error('URL CouchDB non valido');
+      }
+    }
+
+    logger.warn(`Remote URL: ${remoteUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`); // Hide credentials in logs
 
     // Stop sync first
     await stopSync();
@@ -1557,7 +1575,11 @@ export async function deleteAllRemoteDatabases(): Promise<void> {
     // Delete each remote database
     for (const [key, dbName] of Object.entries(DB_NAMES)) {
       try {
-        const remoteDB = new PouchDB(`${remoteUrl.replace(/\/$/, '')}/${dbName}`);
+        // Construct full database URL (no need to remove trailing slash again since we already normalized)
+        const fullDbUrl = `${remoteUrl}/${dbName}`;
+        logger.debug(`Deleting remote database at: ${fullDbUrl.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')}`);
+
+        const remoteDB = new PouchDB(fullDbUrl);
 
         logger.info(`Deleting remote database: ${dbName}...`);
         await remoteDB.destroy();
