@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Loader, Calendar } from 'lucide-react';
+import { format, parse } from 'date-fns';
+import { it } from 'date-fns/locale';
 import { appointmentsApi } from '../utils/api';
 import type { Appointment } from '../types';
 
@@ -32,10 +34,18 @@ const ConfirmAppointment: React.FC = () => {
     // Check if coming from redirect with success/error params
     const successParam = searchParams.get('success');
     const errorParam = searchParams.get('message');
+    const redirectAppointmentId = searchParams.get('appointmentId');
 
     if (successParam === 'true') {
+      // Coming from backend redirect after successful confirmation
       setSuccess(true);
       setIsLoading(false);
+
+      // Try to load appointment details if appointmentId is provided
+      if (redirectAppointmentId && appointmentId) {
+        // Note: We can't load full appointment details without authentication
+        // The appointment object will remain null, which is acceptable for the success page
+      }
       return;
     }
 
@@ -89,7 +99,9 @@ const ConfirmAppointment: React.FC = () => {
               <div className="text-sm text-gray-700 space-y-1 ml-6">
                 <p>
                   <span className="text-gray-600">Data:</span>{' '}
-                  <span className="font-semibold">{new Date(appointment.date).toLocaleDateString('it-IT')}</span>
+                  <span className="font-semibold">
+                    {format(parse(appointment.date, 'yyyy-MM-dd', new Date()), 'dd MMMM yyyy', { locale: it })}
+                  </span>
                 </p>
                 <p>
                   <span className="text-gray-600">Orario:</span>{' '}

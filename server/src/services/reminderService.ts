@@ -342,10 +342,10 @@ export class ReminderService {
       });
 
       // 9. Update appointment reminderSent flag
+      // SECURITY: Never store plain text confirmation token - only the hash is stored
       await db.appointments.put({
         ...updatedAppointmentDoc,
         reminderSent: true,
-        confirmationToken,
         updatedAt: new Date().toISOString()
       });
 
