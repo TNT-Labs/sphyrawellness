@@ -17,7 +17,8 @@ import {
   resumeQueueProcessing,
   waitForPendingOperations,
   pauseSyncToPouchDB,
-  resumeSyncToPouchDB
+  resumeSyncToPouchDB,
+  isLocalNewer
 } from './dbBridge';
 import { syncDelete } from './dbBridge';
 import type {
@@ -180,47 +181,94 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
         id: doc._id,
       };
 
-      // Update IndexedDB based on database name
-      // Use *FromSync functions to prevent triggering sync loops
+      // IMPORTANTE: Verifica se il dato remoto è più recente di quello locale
+      // prima di sovrascriverlo (previene la perdita di modifiche locali)
+      let shouldUpdate = true;
+      let localDoc: any = null;
+
+      // Recupera il documento locale corrente per confrontare i timestamp
       switch (dbName) {
         case 'sphyra-appointments':
-          await IndexedDB.updateAppointmentFromSync(appDoc as Appointment);
-          logger.debug(`Updated appointment ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getAppointment(doc._id);
           break;
         case 'sphyra-reminders':
-          await IndexedDB.updateReminderFromSync(appDoc as Reminder);
-          logger.debug(`Updated reminder ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getReminder(doc._id);
           break;
         case 'sphyra-customers':
-          await IndexedDB.updateCustomerFromSync(appDoc as Customer);
-          logger.debug(`Updated customer ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getCustomer(doc._id);
           break;
         case 'sphyra-services':
-          await IndexedDB.updateServiceFromSync(appDoc as Service);
-          logger.debug(`Updated service ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getService(doc._id);
           break;
         case 'sphyra-staff':
-          await IndexedDB.updateStaffFromSync(appDoc as Staff);
-          logger.debug(`Updated staff ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getStaff(doc._id);
           break;
         case 'sphyra-payments':
-          await IndexedDB.updatePaymentFromSync(appDoc as Payment);
-          logger.debug(`Updated payment ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getPayment(doc._id);
           break;
         case 'sphyra-staff-roles':
-          await IndexedDB.updateStaffRoleFromSync(appDoc as StaffRole);
-          logger.debug(`Updated staff role ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getStaffRole(doc._id);
           break;
         case 'sphyra-service-categories':
-          await IndexedDB.updateServiceCategoryFromSync(appDoc as ServiceCategory);
-          logger.debug(`Updated service category ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getServiceCategory(doc._id);
           break;
         case 'sphyra-users':
-          await IndexedDB.updateUserFromSync(appDoc as User);
-          logger.debug(`Updated user ${doc._id} in IndexedDB from sync`);
+          localDoc = await IndexedDB.getUser(doc._id);
           break;
-        default:
-          logger.warn(`Unknown database name for sync: ${dbName}`);
+      }
+
+      // Se esiste un documento locale, confronta i timestamp
+      if (localDoc) {
+        // Se il dato locale è più recente, NON sovrascriverlo
+        if (isLocalNewer(localDoc, appDoc)) {
+          logger.info(`[Sync] Skipping update for ${dbName}:${doc._id} - local version is newer`);
+          shouldUpdate = false;
+        }
+      }
+
+      // Aggiorna IndexedDB solo se il dato remoto è più recente o non esiste localmente
+      if (shouldUpdate) {
+        // Use *FromSync functions to prevent triggering sync loops
+        switch (dbName) {
+          case 'sphyra-appointments':
+            await IndexedDB.updateAppointmentFromSync(appDoc as Appointment);
+            logger.debug(`Updated appointment ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-reminders':
+            await IndexedDB.updateReminderFromSync(appDoc as Reminder);
+            logger.debug(`Updated reminder ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-customers':
+            await IndexedDB.updateCustomerFromSync(appDoc as Customer);
+            logger.debug(`Updated customer ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-services':
+            await IndexedDB.updateServiceFromSync(appDoc as Service);
+            logger.debug(`Updated service ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-staff':
+            await IndexedDB.updateStaffFromSync(appDoc as Staff);
+            logger.debug(`Updated staff ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-payments':
+            await IndexedDB.updatePaymentFromSync(appDoc as Payment);
+            logger.debug(`Updated payment ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-staff-roles':
+            await IndexedDB.updateStaffRoleFromSync(appDoc as StaffRole);
+            logger.debug(`Updated staff role ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-service-categories':
+            await IndexedDB.updateServiceCategoryFromSync(appDoc as ServiceCategory);
+            logger.debug(`Updated service category ${doc._id} in IndexedDB from sync`);
+            break;
+          case 'sphyra-users':
+            await IndexedDB.updateUserFromSync(appDoc as User);
+            logger.debug(`Updated user ${doc._id} in IndexedDB from sync`);
+            break;
+          default:
+            logger.warn(`Unknown database name for sync: ${dbName}`);
+        }
       }
     }
   } catch (error) {
