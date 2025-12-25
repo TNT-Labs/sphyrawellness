@@ -64,7 +64,7 @@ router.get('/services', async (req, res) => {
       include_docs: true
     });
 
-    const services: Service[] = servicesResult.rows
+    const allServices: Service[] = servicesResult.rows
       .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
@@ -76,14 +76,23 @@ router.get('/services', async (req, res) => {
       include_docs: true
     });
 
-    const categories: any[] = categoriesResult.rows
+    const allCategories: any[] = categoriesResult.rows
       .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
         id: row.id
       }));
 
-    return sendSuccess(res, { services, categories });
+    // Filter only active categories (same rule as frontend admin - Services.tsx:48)
+    const activeCategories = allCategories.filter(cat => cat.isActive === true);
+    const activeCategoryIds = new Set(activeCategories.map(cat => cat.id));
+
+    // Filter services that belong to active categories only
+    const services = allServices.filter(service =>
+      service.category && activeCategoryIds.has(service.category)
+    );
+
+    return sendSuccess(res, { services, categories: activeCategories });
   } catch (error) {
     logger.error('Error fetching services:', error);
     return handleRouteError(error, res, 'Failed to fetch services');
