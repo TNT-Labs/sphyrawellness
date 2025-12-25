@@ -70,6 +70,38 @@ let syncStartTime: number | null = null;
 // Track which databases have completed initial sync
 const initialSyncCompletedDatabases: Set<string> = new Set();
 
+// FIX #1: Lock per sezioni critiche (previene race conditions)
+let criticalSectionLock = false;
+
+/**
+ * FIX #1: Acquisisce lock esclusivo per sezioni critiche
+ * Previene race conditions quando si propaga una cancellazione
+ */
+async function acquireCriticalSectionLock(): Promise<void> {
+  const maxWaitTime = 5000; // 5 secondi max
+  const startTime = Date.now();
+
+  while (criticalSectionLock) {
+    if (Date.now() - startTime > maxWaitTime) {
+      logger.error('[CRITICAL-SECTION] Lock timeout - forcing unlock');
+      criticalSectionLock = false;
+      break;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+
+  criticalSectionLock = true;
+  logger.debug('[CRITICAL-SECTION] Lock acquired');
+}
+
+/**
+ * FIX #1: Rilascia lock esclusivo
+ */
+function releaseCriticalSectionLock(): void {
+  criticalSectionLock = false;
+  logger.debug('[CRITICAL-SECTION] Lock released');
+}
+
 // Online/Offline detection
 let isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
 let autoSyncEnabled: boolean = false;
@@ -121,10 +153,21 @@ async function syncChangedDocsToIndexedDB(dbName: string, docs: any[]): Promise<
         const wasDeleted = await IndexedDB.wasItemDeleted(storeName, doc._id);
         if (wasDeleted) {
           logger.warn(`[Sync] Document ${dbName}:${doc._id} was deleted locally, propagating deletion to remote`);
-          // Riabilita temporaneamente il sync per propagare la cancellazione
-          resumeSyncToPouchDB();
-          await syncDelete(storeName as any, doc._id);
-          pauseSyncToPouchDB();
+
+          // FIX #1: Acquisci lock esclusivo prima della sezione critica
+          // Questo previene race conditions quando altri documenti arrivano durante la propagazione
+          await acquireCriticalSectionLock();
+
+          try {
+            // Riabilita temporaneamente il sync per propagare la cancellazione
+            resumeSyncToPouchDB();
+            await syncDelete(storeName as any, doc._id);
+          } finally {
+            // CRITICO: Assicurati che pause/unlock avvengano sempre
+            pauseSyncToPouchDB();
+            releaseCriticalSectionLock();
+          }
+
           continue; // NON aggiungere/aggiornare questo documento
         }
       }
