@@ -79,8 +79,8 @@ router.get('/:appointmentId/confirm/:token', async (req, res) => {
       return res.redirect(`${frontendUrl}/confirm-appointment/error?message=${encodeURIComponent(result.error || 'Invalid token')}`);
     }
 
-    // Redirect to success page
-    res.redirect(`${frontendUrl}/confirm-appointment/success?appointmentId=${appointmentId}`);
+    // Redirect to success page with success flag
+    res.redirect(`${frontendUrl}/confirm-appointment/success?success=true&appointmentId=${appointmentId}`);
   } catch (error) {
     console.error('Error in GET /confirm:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'https://sphyra.local';

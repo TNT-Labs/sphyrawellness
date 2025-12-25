@@ -106,7 +106,10 @@ export interface Appointment {
   status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
   notes?: string;
   reminderSent?: boolean;
-  confirmationToken?: string; // Token for email confirmation
+  confirmationToken?: string; // Token shown to user (for generating link)
+  confirmationTokenHash?: string; // Hashed token stored in DB (backend only)
+  tokenExpiresAt?: string; // ISO date when token expires
+  confirmedAt?: string; // ISO date when appointment was confirmed
   createdAt: string;
   updatedAt?: string; // ISO timestamp of last modification
 }
