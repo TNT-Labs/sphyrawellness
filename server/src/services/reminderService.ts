@@ -107,6 +107,7 @@ export class ReminderService {
         selector: {
           date: targetDate,
           status: { $in: ['scheduled', 'confirmed'] },
+          _deleted: { $ne: true },
           $or: [
             { reminderSent: { $exists: false } },
             { reminderSent: false }
