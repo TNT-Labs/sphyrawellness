@@ -66,7 +66,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       id: service.id,
       label: service.name,
       secondaryLabel: service.description,
-      metadata: `€${service.price.toFixed(2)} • ${service.duration} min`,
+      metadata: `€${service.price != null ? service.price.toFixed(2) : 'N/A'} • ${service.duration} min`,
     }));
   }, [services]);
 

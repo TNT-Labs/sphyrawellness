@@ -391,7 +391,7 @@ const Services: React.FC = () => {
                 </div>
                 <div className="flex items-center text-lg font-bold text-gray-900">
                   <Euro size={18} className="mr-1" />
-                  {service.price.toFixed(2)}
+                  {service.price != null ? service.price.toFixed(2) : 'N/A'}
                 </div>
               </div>
 
