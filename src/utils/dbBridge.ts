@@ -39,31 +39,38 @@ const processingQueues: Map<string, boolean> = new Map();
 // Flag to pause queue processing during cleanup operations
 let isCleanupInProgress = false;
 
-// NUOVO: Flag per disabilitare sync verso PouchDB quando riceviamo dati da remoto
-let isSyncFromRemoteActive = false;
+// FIX #5: Reference counting invece di boolean flag per maggiore robustezza
+// Questo previene problemi con chiamate nested di pause/resume
+let syncPauseRefCount = 0;
 
 /**
- * NUOVO: Disabilita temporaneamente la sincronizzazione verso PouchDB
+ * FIX #5: Disabilita temporaneamente la sincronizzazione verso PouchDB
  * Usato durante l'initial sync e quando riceviamo dati dal remoto
+ * Usa reference counting per supportare chiamate nested
  */
 export function pauseSyncToPouchDB(): void {
-  isSyncFromRemoteActive = true;
-  logger.debug('[dbBridge] Sync to PouchDB PAUSED');
+  syncPauseRefCount++;
+  logger.debug(`[dbBridge] Sync to PouchDB PAUSED (refCount: ${syncPauseRefCount})`);
 }
 
 /**
- * NUOVO: Riabilita la sincronizzazione verso PouchDB
+ * FIX #5: Riabilita la sincronizzazione verso PouchDB
+ * Decrementa il reference count, riabilita solo quando torna a 0
  */
 export function resumeSyncToPouchDB(): void {
-  isSyncFromRemoteActive = false;
-  logger.debug('[dbBridge] Sync to PouchDB RESUMED');
+  if (syncPauseRefCount > 0) {
+    syncPauseRefCount--;
+  } else {
+    logger.warn('[dbBridge] resumeSyncToPouchDB called but refCount is already 0');
+  }
+  logger.debug(`[dbBridge] Sync to PouchDB ${syncPauseRefCount === 0 ? 'RESUMED' : 'still PAUSED'} (refCount: ${syncPauseRefCount})`);
 }
 
 /**
- * NUOVO: Verifica se la sincronizzazione verso PouchDB è attiva
+ * FIX #5: Verifica se la sincronizzazione verso PouchDB è attiva
  */
 export function isSyncToPouchDBActive(): boolean {
-  return !isSyncFromRemoteActive;
+  return syncPauseRefCount === 0;
 }
 
 /**
@@ -145,9 +152,9 @@ export async function syncAdd<T extends { id: string }>(
   storeName: StoreType,
   item: T
 ): Promise<void> {
-  // NUOVO: SKIP se stiamo ricevendo dati da remote sync
-  if (isSyncFromRemoteActive) {
-    logger.debug(`[dbBridge] Skipping syncAdd for ${storeName}:${item.id} (remote sync active)`);
+  // FIX #5: SKIP se stiamo ricevendo dati da remote sync (usa reference counting)
+  if (!isSyncToPouchDBActive()) {
+    logger.debug(`[dbBridge] Skipping syncAdd for ${storeName}:${item.id} (remote sync active, refCount: ${syncPauseRefCount})`);
     return;
   }
 
@@ -240,9 +247,9 @@ export async function syncUpdate<T extends { id: string }>(
   storeName: StoreType,
   item: T
 ): Promise<void> {
-  // NUOVO: SKIP se stiamo ricevendo dati da remote sync
-  if (isSyncFromRemoteActive) {
-    logger.debug(`[dbBridge] Skipping syncUpdate for ${storeName}:${item.id} (remote sync active)`);
+  // FIX #5: SKIP se stiamo ricevendo dati da remote sync (usa reference counting)
+  if (!isSyncToPouchDBActive()) {
+    logger.debug(`[dbBridge] Skipping syncUpdate for ${storeName}:${item.id} (remote sync active, refCount: ${syncPauseRefCount})`);
     return;
   }
 
@@ -316,9 +323,9 @@ export async function syncDelete(
   storeName: StoreType,
   id: string
 ): Promise<void> {
-  // NUOVO: SKIP se stiamo ricevendo dati da remote sync
-  if (isSyncFromRemoteActive) {
-    logger.debug(`[dbBridge] Skipping syncDelete for ${storeName}:${id} (remote sync active)`);
+  // FIX #5: SKIP se stiamo ricevendo dati da remote sync (usa reference counting)
+  if (!isSyncToPouchDBActive()) {
+    logger.debug(`[dbBridge] Skipping syncDelete for ${storeName}:${id} (remote sync active, refCount: ${syncPauseRefCount})`);
     return;
   }
 

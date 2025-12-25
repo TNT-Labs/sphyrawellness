@@ -43,6 +43,7 @@ import {
   addUser as dbAddUser,
   updateUser as dbUpdateUser,
   deleteUser as dbDeleteUser,
+  cleanOldDeletionRecords,
 } from '../utils/db';
 import { migrateFromLocalStorage } from '../utils/migration';
 import { initializeDemoData } from '../utils/storage';
@@ -53,6 +54,7 @@ import { initializeSync, onSyncStatusChange } from '../utils/pouchdbSync';
 import { hashPassword } from '../utils/auth';
 import { useDB } from './DBContext';
 import { appointmentsApi } from '../utils/api';
+import { startSyncQueueWorker, stopSyncQueueWorker } from '../utils/syncQueueWorker';
 
 interface AppContextType {
   // Loading state
@@ -359,6 +361,53 @@ export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean
     // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
+    };
+  }, [isDBReady]);
+
+  // FIX #7: Auto-cleanup old deletion records (ogni 7 giorni)
+  // Previene la crescita indefinita dello store deletedItems
+  useEffect(() => {
+    const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 giorni
+    const RETENTION_DAYS = 90; // Mantieni solo ultimi 90 giorni
+
+    const cleanupInterval = setInterval(async () => {
+      try {
+        const deletedCount = await cleanOldDeletionRecords(RETENTION_DAYS);
+        if (deletedCount > 0) {
+          logger.info(`[AUTO-CLEANUP] Cleaned ${deletedCount} old deletion records (older than ${RETENTION_DAYS} days)`);
+        } else {
+          logger.debug(`[AUTO-CLEANUP] No old deletion records to clean`);
+        }
+      } catch (error) {
+        logger.error('[AUTO-CLEANUP] Failed to clean old deletion records:', error);
+      }
+    }, CLEANUP_INTERVAL_MS);
+
+    // Run cleanup immediately on mount (in background)
+    cleanOldDeletionRecords(RETENTION_DAYS).then(deletedCount => {
+      if (deletedCount > 0) {
+        logger.info(`[AUTO-CLEANUP] Initial cleanup: removed ${deletedCount} old deletion records`);
+      }
+    }).catch(error => {
+      logger.error('[AUTO-CLEANUP] Initial cleanup failed:', error);
+    });
+
+    return () => clearInterval(cleanupInterval);
+  }, []); // Empty deps - solo al mount
+
+  // FIX #2: Avvia background worker per pending sync operations
+  // Previene la perdita permanente di dati quando le operazioni sync falliscono
+  useEffect(() => {
+    if (!isDBReady) {
+      return; // Attendi che il database sia pronto
+    }
+
+    logger.info('[SYNC-QUEUE] Starting sync queue worker');
+    startSyncQueueWorker();
+
+    return () => {
+      logger.info('[SYNC-QUEUE] Stopping sync queue worker');
+      stopSyncQueueWorker();
     };
   }, [isDBReady]);
 

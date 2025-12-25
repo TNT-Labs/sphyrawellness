@@ -204,6 +204,12 @@ export {
 export { canDeleteCustomer, canDeleteStaff, canDeleteService } from './indexedDB';
 
 // ============================================
+// Deletion Tracking Functions (FIX #7)
+// ============================================
+
+export { cleanOldDeletionRecords } from './indexedDB';
+
+// ============================================
 // Alias for backward compatibility
 // ============================================
 

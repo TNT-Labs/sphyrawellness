@@ -21,7 +21,7 @@ import { logger } from './logger';
 import { syncAdd, syncUpdate, syncDelete } from './dbBridge';
 
 const DB_NAME = 'sphyra-wellness-db';
-const DB_VERSION = 5; // Incrementato per aggiungere store deletedItems
+const DB_VERSION = 6; // FIX #2: Incrementato per aggiungere store pendingSyncOps
 
 // Object store names
 const STORES = {
@@ -34,7 +34,8 @@ const STORES = {
   STAFF_ROLES: 'staffRoles',
   SERVICE_CATEGORIES: 'serviceCategories',
   USERS: 'users',
-  DELETED_ITEMS: 'deletedItems', // NUOVO: Tracking permanente delle cancellazioni
+  DELETED_ITEMS: 'deletedItems', // Tracking permanente delle cancellazioni
+  PENDING_SYNC_OPS: 'pendingSyncOps', // FIX #2: Queue per operazioni sync fallite
 } as const;
 
 let db: IDBDatabase | null = null;
@@ -148,12 +149,22 @@ export async function initIndexedDB(): Promise<void> {
         userStore.createIndex('role', 'role', { unique: false });
       }
 
-      // NUOVO: Store per tracking permanente delle cancellazioni
+      // Store per tracking permanente delle cancellazioni
       if (!database.objectStoreNames.contains(STORES.DELETED_ITEMS)) {
         const deletedStore = database.createObjectStore(STORES.DELETED_ITEMS, { keyPath: 'key' });
         deletedStore.createIndex('storeName', 'storeName', { unique: false });
         deletedStore.createIndex('deletedAt', 'deletedAt', { unique: false });
         logger.info('Created deletedItems store for permanent deletion tracking');
+      }
+
+      // FIX #2: Store per queue persistente delle operazioni sync fallite
+      if (!database.objectStoreNames.contains(STORES.PENDING_SYNC_OPS)) {
+        const pendingOpsStore = database.createObjectStore(STORES.PENDING_SYNC_OPS, { keyPath: 'id' });
+        pendingOpsStore.createIndex('operation', 'operation', { unique: false });
+        pendingOpsStore.createIndex('storeName', 'storeName', { unique: false });
+        pendingOpsStore.createIndex('createdAt', 'createdAt', { unique: false });
+        pendingOpsStore.createIndex('retryCount', 'retryCount', { unique: false });
+        logger.info('Created pendingSyncOps store for persistent sync queue');
       }
 
       logger.info('IndexedDB schema upgraded to version', DB_VERSION);
@@ -531,10 +542,22 @@ export async function getAppointment(id: string): Promise<Appointment | undefine
 
 export async function addAppointment(appointment: Appointment): Promise<void> {
   await add(STORES.APPOINTMENTS, appointment);
-  // Sync to PouchDB in background (non-blocking)
-  syncAdd('appointments', appointment).catch(err =>
-    logger.error('Background sync failed for appointment add:', err)
-  );
+
+  // FIX #2: Sync to PouchDB con fallback a persistent queue
+  try {
+    await syncAdd('appointments', appointment);
+  } catch (err) {
+    logger.error('Sync failed for appointment add, adding to persistent queue:', err);
+    await addToPendingQueue({
+      operation: 'add',
+      storeName: 'appointments',
+      data: appointment,
+      retryCount: 0,
+      maxRetries: 10,
+    }).catch(queueErr => {
+      logger.error('Failed to add to pending queue:', queueErr);
+    });
+  }
 }
 
 export async function updateAppointment(appointment: Appointment): Promise<void> {
@@ -1037,6 +1060,129 @@ export async function cleanOldDeletionRecords(olderThanDays: number = 365): Prom
         }
       };
 
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+// ============================================
+// FIX #2: Pending Sync Operations Queue
+// ============================================
+
+/**
+ * Type for pending sync operation
+ */
+export interface PendingSyncOp {
+  id: string; // UUID
+  operation: 'add' | 'update' | 'delete';
+  storeName: string;
+  data: any; // Documento completo per add/update, solo id per delete
+  retryCount: number;
+  maxRetries: number;
+  createdAt: string; // ISO timestamp
+  lastAttempt: string | null; // ISO timestamp
+  lastError: string | null;
+}
+
+/**
+ * FIX #2: Aggiungi operazione alla queue persistente
+ */
+export async function addToPendingQueue(op: Omit<PendingSyncOp, 'id' | 'createdAt' | 'lastAttempt' | 'lastError'>): Promise<void> {
+  const pendingOp: PendingSyncOp = {
+    id: `pending-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    ...op,
+    createdAt: new Date().toISOString(),
+    lastAttempt: null,
+    lastError: null,
+  };
+
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.PENDING_SYNC_OPS, 'readwrite');
+      const store = transaction.objectStore(STORES.PENDING_SYNC_OPS);
+      const request = store.add(pendingOp);
+
+      request.onsuccess = () => {
+        logger.info(`[PENDING-QUEUE] Added operation to queue: ${op.operation} ${op.storeName}`);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * FIX #2: Ottieni tutte le operazioni pending
+ */
+export async function getPendingOperations(): Promise<PendingSyncOp[]> {
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.PENDING_SYNC_OPS, 'readonly');
+      const store = transaction.objectStore(STORES.PENDING_SYNC_OPS);
+      const request = store.getAll();
+
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * FIX #2: Rimuovi operazione dalla queue (quando completata con successo)
+ */
+export async function removePendingOperation(id: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.PENDING_SYNC_OPS, 'readwrite');
+      const store = transaction.objectStore(STORES.PENDING_SYNC_OPS);
+      const request = store.delete(id);
+
+      request.onsuccess = () => {
+        logger.debug(`[PENDING-QUEUE] Removed operation ${id} from queue`);
+        resolve();
+      };
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * FIX #2: Aggiorna retry count per operazione fallita
+ */
+export async function updatePendingOperation(op: PendingSyncOp): Promise<void> {
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.PENDING_SYNC_OPS, 'readwrite');
+      const store = transaction.objectStore(STORES.PENDING_SYNC_OPS);
+      const request = store.put(op);
+
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * FIX #2: Conta operazioni pending nella queue
+ */
+export async function getPendingOperationsCount(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    try {
+      const transaction = createTransaction(STORES.PENDING_SYNC_OPS, 'readonly');
+      const store = transaction.objectStore(STORES.PENDING_SYNC_OPS);
+      const request = store.count();
+
+      request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     } catch (error) {
       reject(error);
