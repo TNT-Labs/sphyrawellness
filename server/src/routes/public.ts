@@ -173,6 +173,12 @@ router.get('/available-slots', async (req, res) => {
       return sendError(res, 'Cannot book appointments for past dates', 400);
     }
 
+    // Validate business days (synchronized with frontend - Sundays disabled)
+    const dayOfWeek = requestedDate.getDay();
+    if (dayOfWeek === 0) { // Sunday
+      return sendError(res, 'Bookings are not available on Sundays', 400);
+    }
+
     // Fetch the service to get duration
     const serviceDoc = await db.services.get(serviceId as string);
     const service: Service = {
@@ -225,6 +231,9 @@ router.get('/available-slots', async (req, res) => {
     })) as any;
 
     // Generate time slots (9:00 - 19:00, every 30 minutes)
+    // NOTE: Individual staff working hours are not currently verified.
+    // Future enhancement: Add workingHours field to Staff model to enable
+    // per-staff schedule validation (e.g., part-time staff availability)
     const slots = [];
     const workDayStart = '09:00';
     const workDayEnd = '19:00';
@@ -238,6 +247,9 @@ router.get('/available-slots', async (req, res) => {
       // Check if slot end time is within work hours
       if (endTime <= workDayEnd) {
         // Check if any staff member is available for this slot
+        // TODO: When Staff.workingHours is implemented, filter staff by:
+        // - staff.workingHours[dayOfWeek].start <= currentTime
+        // - staff.workingHours[dayOfWeek].end >= endTime
         const availableStaff = qualifiedStaff.find(staff =>
           isStaffAvailable(staff.id, date as string, currentTime, endTime, appointments)
         );
@@ -295,6 +307,12 @@ router.post('/bookings', async (req, res) => {
 
     if (requestedDate < today) {
       return sendError(res, 'Cannot book appointments for past dates', 400);
+    }
+
+    // Validate business days (synchronized with frontend - Sundays disabled)
+    const dayOfWeek = requestedDate.getDay();
+    if (dayOfWeek === 0) { // Sunday
+      return sendError(res, 'Bookings are not available on Sundays', 400);
     }
 
     // GDPR Validation: If notes contain health data, healthDataConsent is required
