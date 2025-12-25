@@ -20,7 +20,7 @@ router.get('/', authenticateToken, async (req, res) => {
     });
 
     const appointments: Appointment[] = result.rows
-      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
         id: row.id

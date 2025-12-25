@@ -65,7 +65,7 @@ router.get('/services', async (req, res) => {
     });
 
     const services: Service[] = servicesResult.rows
-      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
         id: row.id
@@ -77,7 +77,7 @@ router.get('/services', async (req, res) => {
     });
 
     const categories: any[] = categoriesResult.rows
-      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
         id: row.id
@@ -177,7 +177,7 @@ router.get('/available-slots', async (req, res) => {
     });
 
     const allStaff: Staff[] = staffResult.rows
-      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
         id: row.id
@@ -297,7 +297,7 @@ router.post('/bookings', async (req, res) => {
     });
 
     const allStaff: Staff[] = staffResult.rows
-      .filter(row => row.doc && !row.id.startsWith('_design/'))
+      .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
       .map(row => ({
         ...row.doc,
         id: row.id
