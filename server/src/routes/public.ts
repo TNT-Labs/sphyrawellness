@@ -199,7 +199,8 @@ router.get('/available-slots', async (req, res) => {
     const appointmentsResult = await db.appointments.find({
       selector: {
         date: date as string,
-        status: { $in: ['scheduled', 'confirmed'] }
+        status: { $in: ['scheduled', 'confirmed'] },
+        _deleted: { $ne: true }
       }
     });
 
@@ -318,7 +319,8 @@ router.post('/bookings', async (req, res) => {
     const appointmentsResult = await db.appointments.find({
       selector: {
         date: date,
-        status: { $in: ['scheduled', 'confirmed'] }
+        status: { $in: ['scheduled', 'confirmed'] },
+        _deleted: { $ne: true }
       }
     });
 
@@ -342,7 +344,10 @@ router.post('/bookings', async (req, res) => {
     let customer: Customer | null = null;
     try {
       const result = await db.customers.find({
-        selector: { email: email },
+        selector: {
+          email: email,
+          _deleted: { $ne: true }
+        },
         limit: 1
       });
 
