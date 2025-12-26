@@ -37,7 +37,7 @@ router.get('/services', async (req, res, next) => {
 
     // Filter only active services with active categories
     const activeServices = services.filter(
-      (s) => s.category === null || s.category.isActive
+      (s) => !s.categoryId || (s.category && s.category.isActive)
     );
 
     res.json(activeServices);

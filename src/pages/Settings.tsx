@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Clock, Users, Tag, Plus, Edit, FileText, Download, Trash2 } from 'lucide-react';
+import { AlertCircle, Clock, Users, Tag, Plus, Edit, FileText, Download, Trash2, Shield } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { loadSettings, saveSettings } from '../utils/storage';
@@ -318,7 +318,6 @@ const Settings: React.FC = () => {
   return (
     <>
       <ConfirmationDialog />
-      <ConfirmationDialogWithInput />
       <div className="space-y-6">
         {/* Header */}
         <div>
