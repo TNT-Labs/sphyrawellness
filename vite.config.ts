@@ -15,16 +15,8 @@ export default defineConfig(({ mode }) => {
     // Optimize dependency pre-bundling for CommonJS modules
     optimizeDeps: {
       include: [
-        'pouchdb-browser',
-        'pouchdb-find',
-        // Include PouchDB's critical CommonJS dependencies explicitly
-        'inherits',
-        'immediate',
-        'argsarray',
-        'spark-md5',
-        'buffer-from',
+        // Common dependencies
         'uuid',
-        'double-ended-queue',
         'events'
       ],
       esbuildOptions: {
@@ -53,7 +45,7 @@ export default defineConfig(({ mode }) => {
     build: {
       // Handle CommonJS modules during production build
       commonjsOptions: {
-        include: [/pouchdb/, /inherits/, /immediate/, /node_modules/],
+        include: [/node_modules/],
         transformMixedEsModules: true,
         defaultIsModuleExports: 'auto',
         requireReturnsDefault: 'auto',
@@ -63,9 +55,8 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            'pouchdb': ['pouchdb-browser', 'pouchdb-find'],
             'ui-vendor': ['lucide-react'],
-            'utils': ['date-fns', 'zod', 'idb']
+            'utils': ['date-fns', 'zod']
           }
         }
       }
