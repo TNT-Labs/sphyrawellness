@@ -9,6 +9,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { logger } from '../../utils/logger';
+import { formatPrice } from '../../utils/currency';
 import SearchableSelect, { SearchableOption } from '../SearchableSelect';
 
 interface AppointmentModalProps {
@@ -66,7 +67,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
       id: service.id,
       label: service.name,
       secondaryLabel: service.description,
-      metadata: `€${service.price != null ? service.price.toFixed(2) : 'N/A'} • ${service.duration} min`,
+      metadata: `€${formatPrice(service.price)} • ${service.duration} min`,
     }));
   }, [services]);
 

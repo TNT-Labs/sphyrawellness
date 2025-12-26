@@ -5,6 +5,7 @@ import type { Service, ServiceCategory, Staff } from '../types';
 import { format, addDays, startOfWeek, isBefore, startOfDay, parse } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getImageUrl } from '../services/uploadService';
+import { formatCurrency } from '../utils/currency';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -407,7 +408,7 @@ const PublicBooking: React.FC = () => {
                           {service.duration} min
                         </span>
                         <span className="font-semibold text-primary-600">
-                          {service.price != null ? `€${service.price.toFixed(2)}` : 'Prezzo da definire'}
+                          {formatCurrency(service.price)}
                         </span>
                       </div>
                     </button>
@@ -604,7 +605,7 @@ const PublicBooking: React.FC = () => {
             <p><strong>Data:</strong> {bookingData.date && format(parse(bookingData.date, 'yyyy-MM-dd', new Date()), 'dd MMMM yyyy', { locale: it })}</p>
             <p><strong>Orario:</strong> {bookingData.startTime}</p>
             <p><strong>Durata:</strong> {selectedService?.duration} minuti</p>
-            <p><strong>Prezzo:</strong> {selectedService?.price != null ? `€${selectedService.price.toFixed(2)}` : 'Prezzo da definire'}</p>
+            <p><strong>Prezzo:</strong> {formatCurrency(selectedService?.price)}</p>
           </div>
         </div>
 
