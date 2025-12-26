@@ -32,7 +32,7 @@ router.post('/login', async (req, res, next) => {
         role: user.role,
       },
       JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
+      { expiresIn: JWT_EXPIRES_IN } as jwt.SignOptions
     );
 
     // Return token and user info (without password)

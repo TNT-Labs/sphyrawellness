@@ -2,7 +2,7 @@ import { prisma } from '../lib/prisma.js';
 import type { Service, ServiceCategory, Prisma } from '@prisma/client';
 
 export class ServiceRepository {
-  async findAll(): Promise<Service[]> {
+  async findAll(): Promise<(Service & { category: ServiceCategory | null })[]> {
     return prisma.service.findMany({
       include: {
         category: true,
