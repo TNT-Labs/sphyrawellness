@@ -131,6 +131,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   useEffect(() => {
     if (isAuthenticated) {
       refreshData();
+    } else {
+      // User is not authenticated, stop loading
+      setIsLoading(false);
     }
   }, [isAuthenticated]);
 
