@@ -270,10 +270,14 @@ const StaffPage: React.FC = () => {
     }
 
     try {
-      const imageUrl = await uploadStaffImage(id, file);
+      const { staff: updatedStaff } = await uploadStaffImage(id, file);
       const member = staff.find((s) => s.id === id);
       if (member) {
-        await updateStaff({ ...member, imageUrl });
+        await updateStaff({
+          ...member,
+          profileImageUrl: updatedStaff.profileImageUrl,
+          updatedAt: updatedStaff.updatedAt
+        });
         showSuccess('Immagine caricata con successo');
       }
     } catch (error) {
