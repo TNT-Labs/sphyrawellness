@@ -207,11 +207,33 @@ export class ReminderServicePrisma {
 
       if (type === 'email') {
         // Generate .ics file content for calendar attachment (email only)
+        // Convert Prisma types to legacy types for calendarService
         const icsContent = calendarService.generateICS({
-          appointment,
-          customer,
-          service,
-          staff
+          appointment: {
+            ...appointment,
+            date: format(appointment.date, 'yyyy-MM-dd'),
+            startTime: typeof appointment.startTime === 'string' ? appointment.startTime : format(appointment.startTime, 'HH:mm'),
+            endTime: typeof appointment.endTime === 'string' ? appointment.endTime : format(appointment.endTime, 'HH:mm'),
+            createdAt: appointment.createdAt.toISOString(),
+          } as any,
+          customer: {
+            ...customer,
+            email: customer.email || '',
+            phone: customer.phone || '',
+            createdAt: customer.createdAt.toISOString(),
+          } as any,
+          service: {
+            ...service,
+            description: service.description || undefined,
+            price: Number(service.price),
+            createdAt: service.createdAt.toISOString(),
+          } as any,
+          staff: {
+            ...staff,
+            role: staff.roleId || '',
+            phone: staff.phone || '',
+            createdAt: staff.createdAt.toISOString(),
+          } as any
         });
 
         const emailData: ReminderEmailData = {
