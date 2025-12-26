@@ -539,7 +539,7 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
               </div>
-
+            </>
           )}
 
           {/* CONFIGURATION TAB */}
@@ -765,6 +765,8 @@ const Settings: React.FC = () => {
 
               {/* Reminder Settings */}
               <ReminderSettingsCard />
+            </>
+          )}
 
           {/* USERS TAB */}
           {activeTab === 'users' && (
@@ -893,7 +895,7 @@ const Settings: React.FC = () => {
                   )}
                 </div>
               </div>
-
+            </>
           )}
             </>
           )}
