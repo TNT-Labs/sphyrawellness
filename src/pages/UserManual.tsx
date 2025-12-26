@@ -77,20 +77,18 @@ const UserManual: React.FC = () => {
           <h3 className="font-semibold text-lg mb-2">Cos'è Sphyra Wellness Lab?</h3>
           <p className="mb-4">
             Sphyra Wellness Lab è una Progressive Web App (PWA) completa per la gestione di centri estetici e spa.
-            L'applicazione è progettata per funzionare completamente offline e può essere installata su qualsiasi
+            L'applicazione utilizza un database PostgreSQL e può essere installata su qualsiasi
             dispositivo (smartphone, tablet, computer) come un'app nativa.
           </p>
 
           <h3 className="font-semibold text-lg mb-2">Caratteristiche Principali</h3>
           <ul className="list-disc list-inside space-y-2 ml-4">
-            <li><strong>Funzionamento Offline:</strong> Tutti i dati sono salvati localmente sul dispositivo, funziona anche senza connessione internet</li>
+            <li><strong>Database PostgreSQL:</strong> Tutti i dati sono salvati in modo sicuro su database PostgreSQL con accesso tramite REST API</li>
             <li><strong>Sistema di Autenticazione:</strong> Login con username e password, due ruoli (RESPONSABILE/UTENTE) con permessi differenziati</li>
             <li><strong>Gestione Completa:</strong> Appuntamenti, clienti, servizi, personale, pagamenti, statistiche tutto in un'unica applicazione</li>
             <li><strong>Calendario Avanzato:</strong> 3 viste (Giorno, Settimana, Mese), orari 6:00-22:00, drag & drop, auto-scroll all'ora corrente</li>
             <li><strong>Reminder Email Automatici:</strong> Invio automatico o manuale con file .ics calendario, link di conferma e cron job configurabile</li>
             <li><strong>Filtri "Solo Oggi":</strong> Visualizzazione rapida di clienti, servizi e personale coinvolti negli appuntamenti del giorno</li>
-            <li><strong>Backup Automatici:</strong> Backup giornalieri degli ultimi 7 giorni con export/import manuale</li>
-            <li><strong>Sincronizzazione Multi-Dispositivo:</strong> Opzionale tramite server CouchDB per lavorare su più dispositivi</li>
             <li><strong>Statistiche Avanzate:</strong> Dashboard con metriche, grafici colorati, top servizi/categorie, performance personale</li>
             <li><strong>Sistema di Logging:</strong> Visualizzatore logs con 5 livelli, filtri, export JSON e permessi per ruolo</li>
             <li><strong>Controlli Intelligenti:</strong> Validazioni automatiche, formattazione telefono, controllo conflitti appuntamenti</li>
@@ -142,7 +140,7 @@ const UserManual: React.FC = () => {
             </div>
             <div className="bg-gray-50 p-3 rounded">
               <p className="font-medium text-pink-600">⚙️ Impostazioni</p>
-              <p className="text-sm">Configurazione completa: sync, backup, utenti, logs, categorie e ruoli</p>
+              <p className="text-sm">Configurazione completa: utenti, logs, categorie servizi, ruoli personale e reminder</p>
             </div>
           </div>
 
@@ -680,28 +678,7 @@ const UserManual: React.FC = () => {
 
           <h3 className="font-semibold text-lg mb-3 mt-6 text-pink-600">Tab: Configurazione</h3>
 
-          <h3 className="font-semibold mb-2">Sincronizzazione Database</h3>
-          <p className="mb-2">
-            Configura la sincronizzazione con un server CouchDB per utilizzare l'app su più dispositivi:
-          </p>
-          <ol className="list-decimal list-inside space-y-2 ml-4">
-            <li>Inserisci l'<strong>URL del server</strong> CouchDB</li>
-            <li>Specifica il <strong>nome del database</strong></li>
-            <li>Fornisci <strong>Username</strong> e <strong>Password</strong></li>
-            <li>Scegli la modalità:
-              <ul className="list-disc list-inside ml-6 mt-1">
-                <li><strong>Continua:</strong> Sincronizzazione in tempo reale automatica</li>
-                <li><strong>Manuale:</strong> Sincronizzi quando vuoi con il pulsante</li>
-              </ul>
-            </li>
-            <li>Clicca "Avvia Sincronizzazione"</li>
-          </ol>
-          <p className="mt-2 bg-blue-50 border border-blue-200 rounded p-3">
-            <strong>💡 Vantaggi:</strong> Con la sincronizzazione attiva puoi usare l'app su più dispositivi
-            (es. reception e postazioni operative) mantenendo i dati sempre allineati.
-          </p>
-
-          <h3 className="font-semibold mb-2 mt-4">Gestione Ruoli Personale</h3>
+          <h3 className="font-semibold mb-2">Gestione Ruoli Personale</h3>
           <p className="mb-2">
             Personalizza i ruoli disponibili per il tuo team:
           </p>
@@ -737,34 +714,6 @@ const UserManual: React.FC = () => {
           <p className="mt-2 text-sm italic">
             I reminder automatici richiedono che il server backend sia in esecuzione e configurato correttamente.
           </p>
-
-          <h3 className="font-semibold mb-2 mt-4">Backup e Ripristino</h3>
-          <div className="space-y-3 ml-4">
-            <div>
-              <p className="font-medium">Backup Automatici</p>
-              <p className="text-sm">L'app crea automaticamente un backup giornaliero e conserva gli ultimi 7 giorni</p>
-            </div>
-            <div>
-              <p className="font-medium">Backup Manuale</p>
-              <p className="text-sm">Clicca "Esporta Dati" per scaricare un file JSON con tutti i dati</p>
-            </div>
-            <div>
-              <p className="font-medium">Ripristino</p>
-              <p className="text-sm">
-                Puoi ripristinare da un backup automatico o importare un file JSON precedentemente esportato
-              </p>
-            </div>
-          </div>
-
-          <h3 className="font-semibold mb-2 mt-4">Protezione Dati</h3>
-          <p className="mb-2">
-            L'app richiede la persistenza dello storage al browser per evitare cancellazioni automatiche:
-          </p>
-          <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Protegge i dati dalla pulizia automatica del browser</li>
-            <li>Mostra l'utilizzo dello spazio di archiviazione</li>
-            <li>Monitora la quota disponibile</li>
-          </ul>
 
           <h3 className="font-semibold text-lg mb-3 mt-6 text-pink-600">Tab: Utenti</h3>
 
@@ -818,49 +767,32 @@ const UserManual: React.FC = () => {
           <p className="mt-2 text-sm italic">
             I logs sono utili per identificare problemi, monitorare le operazioni e comprendere il comportamento dell'applicazione.
           </p>
-
-          <h3 className="font-semibold mb-2 mt-6">Zona Pericolosa</h3>
-          <p className="bg-red-50 border border-red-200 rounded p-3">
-            <strong>⚠️ Attenzione:</strong> La funzione "Cancella Tutti i Dati" elimina permanentemente
-            TUTTI i dati dell'applicazione. Questa azione è irreversibile! Assicurati di avere un backup
-            prima di procedere.
-          </p>
         </div>
       </Section>
 
       <Section id="faq" title="Domande Frequenti (FAQ)" icon={BookOpen}>
         <div className="space-y-4">
           <div>
-            <p className="font-semibold mb-1">L'app funziona senza connessione internet?</p>
+            <p className="font-semibold mb-1">L'app richiede connessione internet?</p>
             <p className="text-sm">
-              Sì, Sphyra Wellness Lab è progettata per funzionare completamente offline. Tutti i dati sono
-              salvati localmente sul dispositivo. La connessione internet è necessaria solo se vuoi
-              sincronizzare i dati con altri dispositivi tramite CouchDB.
+              Sì, l'applicazione richiede connessione internet per comunicare con il server PostgreSQL tramite REST API.
+              Tutti i dati sono salvati in modo sicuro sul database server per garantire affidabilità e accessibilità.
             </p>
           </div>
 
           <div>
             <p className="font-semibold mb-1">I miei dati sono al sicuro?</p>
             <p className="text-sm">
-              I dati sono salvati localmente sul tuo dispositivo e non vengono inviati a server esterni
-              (a meno che tu non configuri volontariamente la sincronizzazione CouchDB). L'app crea backup
-              automatici giornalieri per proteggere i tuoi dati.
+              Sì, i dati sono salvati in modo sicuro su database PostgreSQL con autenticazione JWT.
+              Solo gli utenti autorizzati possono accedere ai dati tramite login con username e password.
             </p>
           </div>
 
           <div>
             <p className="font-semibold mb-1">Posso usare l'app su più dispositivi?</p>
             <p className="text-sm">
-              Sì, configurando la sincronizzazione con un server CouchDB nelle Impostazioni. In questo modo
-              tutti i dispositivi collegati avranno sempre i dati aggiornati in tempo reale.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">Cosa succede se cancello per errore un dato?</p>
-            <p className="text-sm">
-              Puoi ripristinare i dati da uno dei backup automatici (ultimi 7 giorni) o da un backup manuale
-              se ne hai creato uno. Vai in Impostazioni → Backup e Ripristino.
+              Sì, puoi usare l'app su qualsiasi dispositivo con accesso al server. I dati sono sincronizzati
+              automaticamente poiché risiedono sul database PostgreSQL centrale accessibile da tutti i dispositivi.
             </p>
           </div>
 
@@ -883,27 +815,9 @@ const UserManual: React.FC = () => {
           <div>
             <p className="font-semibold mb-1">I reminder vengono inviati automaticamente?</p>
             <p className="text-sm">
-              No, l'app identifica gli appuntamenti che richiedono un reminder (nelle prossime 24h) ma
-              l'invio deve essere confermato manualmente dalla sezione Reminder. Questo ti dà controllo
-              completo sulle comunicazioni con i clienti.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">Quanti dati può contenere l'app?</p>
-            <p className="text-sm">
-              L'app utilizza IndexedDB che può contenere grandi quantità di dati (generalmente diversi GB).
-              Lo spazio utilizzato è monitorabile nella sezione Impostazioni. Per uso tipico di un centro
-              estetico, lo spazio non sarà mai un problema.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">Posso esportare i dati in Excel?</p>
-            <p className="text-sm">
-              Attualmente l'esportazione è in formato JSON. Puoi usare strumenti online o Excel stesso per
-              convertire il JSON in formato foglio di calcolo. Funzionalità di export Excel diretto potrebbero
-              essere aggiunte in futuro.
+              Sì, se configurati nelle Impostazioni Reminder. Puoi attivare l'invio automatico giornaliero
+              impostando l'orario e i giorni prima dell'appuntamento. Il sistema invierà le email automaticamente
+              tramite cron job. Puoi anche inviare reminder manualmente dalla sezione Reminder.
             </p>
           </div>
 
@@ -969,22 +883,6 @@ const UserManual: React.FC = () => {
             <p className="text-sm">
               Installa Sphyra Wellness Lab sul tuo dispositivo per un'esperienza simile a un'app nativa,
               con accesso rapido e modalità fullscreen.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">🔄 Abilita la Sincronizzazione</p>
-            <p className="text-sm">
-              Se usi più dispositivi (es. tablet alla reception e smartphone personale), configura
-              la sincronizzazione CouchDB per avere sempre i dati allineati.
-            </p>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">💾 Backup Regolari</p>
-            <p className="text-sm">
-              Anche se l'app fa backup automatici giornalieri, è buona pratica fare un backup manuale
-              prima di operazioni importanti o periodicamente (es. fine mese).
             </p>
           </div>
 
@@ -1117,19 +1015,8 @@ const UserManual: React.FC = () => {
             <ul className="list-disc list-inside text-sm space-y-1 ml-4">
               <li>Prova a chiudere e riaprire l'app</li>
               <li>Svuota la cache del browser</li>
-              <li>Assicurati di avere abbastanza spazio di archiviazione (controlla in Impostazioni)</li>
-              <li>Se il problema persiste, considera di ripristinare da un backup recente</li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">La sincronizzazione non funziona</p>
-            <ul className="list-disc list-inside text-sm space-y-1 ml-4">
-              <li>Verifica la connessione internet</li>
-              <li>Controlla che l'URL del server CouchDB sia corretto</li>
-              <li>Verifica username e password</li>
-              <li>Assicurati che il server CouchDB sia raggiungibile e in esecuzione</li>
-              <li>Prova a fermare e riavviare la sincronizzazione</li>
+              <li>Verifica la connessione internet al server</li>
+              <li>Controlla i logs nella sezione Avanzate per identificare eventuali errori</li>
             </ul>
           </div>
 
@@ -1138,7 +1025,7 @@ const UserManual: React.FC = () => {
             <ul className="list-disc list-inside text-sm space-y-1 ml-4">
               <li>Controlla la barra di ricerca, potrebbe esserci un filtro attivo</li>
               <li>Verifica di essere nella sezione corretta</li>
-              <li>Se hai ripristinato da un backup, assicurati di aver selezionato quello più recente</li>
+              <li>Ricarica la pagina per assicurarti di vedere i dati più aggiornati dal server</li>
             </ul>
           </div>
 
@@ -1149,25 +1036,17 @@ const UserManual: React.FC = () => {
               <li>Controlla che non ci siano filtri attivi</li>
               <li>Assicurati che l'appuntamento abbia data e orario validi</li>
               <li>Prova a cambiare vista (giorno/settimana/mese)</li>
+              <li>Ricarica la pagina per assicurarti di vedere i dati più recenti dal server</li>
             </ul>
           </div>
 
           <div>
-            <p className="font-semibold mb-1">Ho perso dei dati</p>
+            <p className="font-semibold mb-1">Non riesco a connettermi al server</p>
             <ul className="list-disc list-inside text-sm space-y-1 ml-4">
-              <li>Vai in Impostazioni → Backup e Ripristino</li>
-              <li>Controlla i backup automatici disponibili (ultimi 7 giorni)</li>
-              <li>Ripristina il backup più recente prima della perdita dati</li>
-              <li>Se hai backup manuali, puoi importarli</li>
-            </ul>
-          </div>
-
-          <div>
-            <p className="font-semibold mb-1">Il browser ha cancellato i dati automaticamente</p>
-            <ul className="list-disc list-inside text-sm space-y-1 ml-4">
-              <li>Vai in Impostazioni e clicca "Richiedi Persistenza Storage"</li>
-              <li>Questo impedirà al browser di cancellare i dati in futuro</li>
-              <li>Ripristina da un backup se disponibile</li>
+              <li>Verifica la connessione internet</li>
+              <li>Controlla che il server backend sia in esecuzione</li>
+              <li>Verifica che l'URL del server sia corretto</li>
+              <li>Consulta i logs per identificare eventuali errori di connessione</li>
             </ul>
           </div>
 
@@ -1197,9 +1076,10 @@ const UserManual: React.FC = () => {
               Se nessuna delle soluzioni sopra funziona:
             </p>
             <ol className="list-decimal list-inside text-sm space-y-1 ml-4 mt-2">
-              <li>Fai un backup manuale dei dati (se possibile)</li>
+              <li>Consulta i logs nella sezione Avanzate per identificare errori specifici</li>
               <li>Prova a usare l'app in una finestra in incognito</li>
               <li>Aggiorna il browser all'ultima versione</li>
+              <li>Verifica che il server backend sia accessibile e funzionante</li>
               <li>Come ultima risorsa, considera di reinstallare l'app</li>
             </ol>
           </div>
@@ -1215,7 +1095,14 @@ const UserManual: React.FC = () => {
           Ultima revisione: Dicembre 2025
         </p>
         <div className="text-sm text-gray-700 bg-white rounded p-3">
-          <p className="font-medium mb-2">Novità di questa versione:</p>
+          <p className="font-medium mb-2">Architettura attuale:</p>
+          <ul className="list-disc list-inside space-y-1 text-xs mb-3">
+            <li><strong>Database PostgreSQL:</strong> Migrazione completa da CouchDB/PouchDB a PostgreSQL con REST API</li>
+            <li><strong>Autenticazione JWT:</strong> Sistema di autenticazione sicuro con token</li>
+            <li><strong>Backend Node.js + Express:</strong> Server API con Prisma ORM</li>
+            <li><strong>Frontend React + TypeScript:</strong> Progressive Web App moderna e responsive</li>
+          </ul>
+          <p className="font-medium mb-2">Funzionalità principali:</p>
           <ul className="list-disc list-inside space-y-1 text-xs">
             <li>Sistema di autenticazione utenti con ruoli RESPONSABILE/UTENTE</li>
             <li>Gestione utenti completa nel tab Impostazioni</li>
