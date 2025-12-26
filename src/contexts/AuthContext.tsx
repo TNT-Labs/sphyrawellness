@@ -1,14 +1,12 @@
 /**
- * Authentication Context
- * Manages user authentication, login, logout, and permissions
+ * Authentication Context - PostgreSQL + REST API Version
+ * Manages user authentication with JWT tokens
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, UserRole } from '../types';
-import { getUserByUsername } from '../utils/db';
-import { verifyPassword, getStoredSession, storeSession, clearSession } from '../utils/auth';
+import { authApi } from '../api';
 import { logger } from '../utils/logger';
-import { useDB } from './DBContext';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -37,158 +35,99 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { isDBReady } = useDB();
 
-  // Restore session only after database is ready
+  // Verify existing token on mount
   useEffect(() => {
-    // Wait for database to be initialized
-    if (!isDBReady) {
-      return;
-    }
+    const verifyToken = async () => {
+      const token = localStorage.getItem('auth_token');
 
-    const restoreSession = async () => {
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const session = getStoredSession();
-        if (session) {
-          // Verify user still exists in database
-          const user = await getUserByUsername(session.username);
-          if (user && user.isActive) {
-            setCurrentUser(user);
-            logger.info('Session restored for user:', session.username);
-
-            // Check if we have a backend JWT token, if not, fetch one
-            const existingToken = localStorage.getItem('authToken');
-            if (!existingToken) {
-              logger.info('No backend token found, fetching new one...');
-              try {
-                const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-                const response = await fetch(`${API_BASE_URL}/auth/token`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify({
-                    userId: user.id,
-                    username: user.username,
-                    role: user.role
-                  }),
-                });
-
-                if (response.ok) {
-                  const result = await response.json();
-                  if (result.success && result.data?.token) {
-                    localStorage.setItem('authToken', result.data.token);
-                    logger.info('Backend JWT token obtained on session restore');
-                  }
-                }
-              } catch (tokenError) {
-                logger.warn('Failed to fetch backend token on restore:', tokenError);
-              }
-            }
-          } else {
-            // User doesn't exist or is inactive, clear session
-            clearSession();
-            localStorage.removeItem('authToken');
-            logger.warn('Session invalid, user not found or inactive');
-          }
-        }
+        const user = await authApi.verify();
+        setCurrentUser(user);
+        logger.info('Session restored for user:', user.username);
       } catch (error) {
-        logger.error('Failed to restore session:', error);
-        clearSession();
-        localStorage.removeItem('authToken');
+        logger.warn('Token verification failed:', error);
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user');
       } finally {
         setIsLoading(false);
       }
     };
 
-    restoreSession();
-  }, [isDBReady]);
+    verifyToken();
+  }, []);
 
-  const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  /**
+   * Login with username and password
+   */
+  const login = async (
+    username: string,
+    password: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Find user by username
-      const user = await getUserByUsername(username);
+      const { token, user } = await authApi.login(username, password);
 
-      if (!user) {
-        return { success: false, error: 'Username o password non corretti' };
-      }
+      // Store token and user
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('user', JSON.stringify(user));
 
-      if (!user.isActive) {
-        return { success: false, error: 'Utente disattivato. Contatta un responsabile.' };
-      }
-
-      // Verify password
-      const isPasswordValid = await verifyPassword(password, user.passwordHash);
-
-      if (!isPasswordValid) {
-        return { success: false, error: 'Username o password non corretti' };
-      }
-
-      // Set current user and store session
       setCurrentUser(user);
-      storeSession(user.id, user.username, user.role);
+      logger.info('User logged in:', username);
 
-      // Get JWT token from backend for API operations
-      try {
-        const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
-        const response = await fetch(`${API_BASE_URL}/auth/token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: user.id,
-            username: user.username,
-            role: user.role
-          }),
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success && result.data?.token) {
-            // Store JWT token for backend API calls
-            localStorage.setItem('authToken', result.data.token);
-            logger.info('Backend JWT token obtained successfully');
-          } else {
-            logger.warn('Failed to get JWT token from backend:', result.error);
-          }
-        } else {
-          logger.warn('Backend auth endpoint returned error:', response.status);
-        }
-      } catch (tokenError) {
-        // Don't fail login if backend token fetch fails
-        // User can still use the app with local data
-        logger.warn('Failed to fetch backend token, continuing with local-only mode:', tokenError);
-      }
-
-      logger.info('User logged in successfully:', user.username);
       return { success: true };
-    } catch (error) {
-      logger.error('Login error:', error);
-      return { success: false, error: 'Errore durante il login. Riprova.' };
+    } catch (error: any) {
+      logger.error('Login failed:', error);
+
+      const errorMessage =
+        error.response?.status === 401
+          ? 'Nome utente o password non corretti'
+          : 'Errore di connessione al server';
+
+      return { success: false, error: errorMessage };
     }
   };
 
+  /**
+   * Logout
+   */
   const logout = () => {
-    setCurrentUser(null);
-    clearSession();
-    // Clear backend JWT token
-    localStorage.removeItem('authToken');
-    logger.info('User logged out');
+    try {
+      // Call logout endpoint (optional - just clears server-side if needed)
+      authApi.logout().catch(() => {
+        // Ignore errors
+      });
+    } finally {
+      // Clear local storage
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('user');
+
+      setCurrentUser(null);
+      logger.info('User logged out');
+    }
   };
 
+  /**
+   * Check if user has specific role
+   */
   const hasRole = (role: UserRole): boolean => {
     return currentUser?.role === role;
   };
 
+  /**
+   * Check if user can modify settings
+   */
   const canModifySettings = (): boolean => {
-    // Only RESPONSABILE can modify settings
     return currentUser?.role === 'RESPONSABILE';
   };
 
   const value: AuthContextType = {
     currentUser,
-    isAuthenticated: currentUser !== null,
+    isAuthenticated: !!currentUser,
     isLoading,
     login,
     logout,
