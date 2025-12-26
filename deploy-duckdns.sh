@@ -56,7 +56,7 @@ if [ ! -f .env ]; then
         echo -e "${YELLOW}⚠️  File .env creato. Modifica i seguenti valori:${NC}"
         echo "   - DOMAIN=sphyrawellnesslab.duckdns.org"
         echo "   - EMAIL=tua-email@esempio.com"
-        echo "   - COUCHDB_PASSWORD=password-sicura"
+        echo "   - POSTGRES_PASSWORD=password-sicura"
         echo "   - JWT_SECRET=jwt-secret-sicuro"
         echo ""
         echo "Modifica .env con: nano .env"
@@ -95,7 +95,7 @@ if [ -z "$EMAIL" ] || [ "$EMAIL" = "tua@email.com" ] || [ "$EMAIL" = "admin@sphy
     fi
 fi
 
-if [ -z "$COUCHDB_PASSWORD" ] || [ "$COUCHDB_PASSWORD" = "your-secure-password-here" ]; then
+if [ -z "$POSTGRES_PASSWORD" ] || [ "$POSTGRES_PASSWORD" = "your-secure-password-here" ]; then
     echo -e "${YELLOW}⚠️  ATTENZIONE: Password database di default!${NC}"
     read -p "Vuoi continuare comunque? (y/N) " -n 1 -r
     echo

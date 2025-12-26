@@ -155,10 +155,11 @@ export interface Statistics {
 
 export interface AppSettings {
   idleTimeout: number; // in minutes (0 = disabled)
-  syncEnabled: boolean; // enable/disable CouchDB sync
-  couchdbUrl?: string; // CouchDB server URL
-  couchdbUsername?: string; // CouchDB username
-  couchdbPassword?: string; // CouchDB password
+  // Legacy fields kept for backward compatibility - will be removed in future version
+  syncEnabled?: boolean; // @deprecated - sync functionality removed
+  couchdbUrl?: string; // @deprecated - CouchDB no longer used
+  couchdbUsername?: string; // @deprecated - CouchDB no longer used
+  couchdbPassword?: string; // @deprecated - CouchDB no longer used
 }
 
 export interface SyncStatus {
