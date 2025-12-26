@@ -1,757 +1,365 @@
+/**
+ * App Context - PostgreSQL + REST API Version
+ * Manages global application state and data
+ *
+ * COMPLETAMENTE RISCRITTO - Nessuna dipendenza da PouchDB/IndexedDB
+ * Tutti i dati provengono da API REST
+ */
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   Customer,
   Service,
+  ServiceCategory,
   Staff,
+  StaffRole,
   Appointment,
   Payment,
-  Reminder,
-  StaffRole,
-  ServiceCategory,
-  User,
 } from '../types';
 import {
-  getAllCustomers,
-  addCustomer as dbAddCustomer,
-  updateCustomer as dbUpdateCustomer,
-  deleteCustomer as dbDeleteCustomer,
-  getAllServices,
-  addService as dbAddService,
-  updateService as dbUpdateService,
-  deleteService as dbDeleteService,
-  getAllStaff,
-  addStaff as dbAddStaff,
-  updateStaff as dbUpdateStaff,
-  deleteStaff as dbDeleteStaff,
-  getAllAppointments,
-  addAppointment as dbAddAppointment,
-  updateAppointment as dbUpdateAppointment,
-  deleteAppointment as dbDeleteAppointment,
-  getAllPayments,
-  addPayment as dbAddPayment,
-  getAllReminders,
-  addReminder as dbAddReminder,
-  getAllStaffRoles,
-  addStaffRole as dbAddStaffRole,
-  updateStaffRole as dbUpdateStaffRole,
-  deleteStaffRole as dbDeleteStaffRole,
-  getAllServiceCategories,
-  addServiceCategory as dbAddServiceCategory,
-  updateServiceCategory as dbUpdateServiceCategory,
-  deleteServiceCategory as dbDeleteServiceCategory,
-  getAllUsers,
-  addUser as dbAddUser,
-  updateUser as dbUpdateUser,
-  deleteUser as dbDeleteUser,
-  cleanOldDeletionRecords,
-} from '../utils/db';
-import { migrateFromLocalStorage } from '../utils/migration';
-import { initializeDemoData } from '../utils/storage';
+  customersApi,
+  servicesApi,
+  staffApi,
+  appointmentsApi,
+  paymentsApi,
+  settingsApi,
+} from '../api';
 import { logger } from '../utils/logger';
-import { initAutoBackup } from '../utils/autoBackup';
-import { initStoragePersistence } from '../utils/storagePersistence';
-import { initializeSync, onSyncStatusChange } from '../utils/pouchdbSync';
-import { hashPassword } from '../utils/auth';
-import { useDB } from './DBContext';
-import { appointmentsApi } from '../utils/api';
-import { startSyncQueueWorker, stopSyncQueueWorker } from '../utils/syncQueueWorker';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
+  // Data
+  customers: Customer[];
+  services: Service[];
+  serviceCategories: ServiceCategory[];
+  staff: Staff[];
+  staffRoles: StaffRole[];
+  appointments: Appointment[];
+  payments: Payment[];
+  settings: Record<string, any>;
+
   // Loading state
   isLoading: boolean;
+  error: string | null;
 
-  // Customers
-  customers: Customer[];
-  addCustomer: (_customer: Customer) => Promise<void>;
-  updateCustomer: (_customer: Customer) => Promise<void>;
-  deleteCustomer: (_id: string) => Promise<void>;
+  // Customer operations
+  addCustomer: (customer: Partial<Customer>) => Promise<Customer>;
+  updateCustomer: (id: string, customer: Partial<Customer>) => Promise<Customer>;
+  deleteCustomer: (id: string) => Promise<void>;
 
-  // Services
-  services: Service[];
-  addService: (_service: Service) => Promise<void>;
-  updateService: (_service: Service) => Promise<void>;
-  deleteService: (_id: string) => Promise<void>;
+  // Service operations
+  addService: (service: Partial<Service>) => Promise<Service>;
+  updateService: (id: string, service: Partial<Service>) => Promise<Service>;
+  deleteService: (id: string) => Promise<void>;
 
-  // Staff
-  staff: Staff[];
-  addStaff: (_member: Staff) => Promise<void>;
-  updateStaff: (_member: Staff) => Promise<void>;
-  deleteStaff: (_id: string) => Promise<void>;
+  // Service category operations
+  addServiceCategory: (category: Partial<ServiceCategory>) => Promise<ServiceCategory>;
+  updateServiceCategory: (id: string, category: Partial<ServiceCategory>) => Promise<ServiceCategory>;
+  deleteServiceCategory: (id: string) => Promise<void>;
 
-  // Appointments
-  appointments: Appointment[];
-  addAppointment: (_appointment: Appointment) => Promise<void>;
-  updateAppointment: (_appointment: Appointment) => Promise<void>;
-  deleteAppointment: (_id: string) => Promise<void>;
+  // Staff operations
+  addStaff: (staff: Partial<Staff>) => Promise<Staff>;
+  updateStaff: (id: string, staff: Partial<Staff>) => Promise<Staff>;
+  deleteStaff: (id: string) => Promise<void>;
 
-  // Payments
-  payments: Payment[];
-  addPayment: (_payment: Payment) => Promise<void>;
+  // Staff role operations
+  addStaffRole: (role: Partial<StaffRole>) => Promise<StaffRole>;
+  updateStaffRole: (id: string, role: Partial<StaffRole>) => Promise<StaffRole>;
+  deleteStaffRole: (id: string) => Promise<void>;
 
-  // Reminders
-  reminders: Reminder[];
-  addReminder: (_reminder: Reminder) => Promise<void>;
+  // Appointment operations
+  addAppointment: (appointment: Partial<Appointment>) => Promise<Appointment>;
+  updateAppointment: (id: string, appointment: Partial<Appointment>) => Promise<Appointment>;
+  deleteAppointment: (id: string) => Promise<void>;
 
-  // Staff Roles
-  staffRoles: StaffRole[];
-  addStaffRole: (_role: StaffRole) => Promise<void>;
-  updateStaffRole: (_role: StaffRole) => Promise<void>;
-  deleteStaffRole: (_id: string) => Promise<void>;
+  // Payment operations
+  addPayment: (payment: Partial<Payment>) => Promise<Payment>;
+  updatePayment: (id: string, payment: Partial<Payment>) => Promise<Payment>;
+  deletePayment: (id: string) => Promise<void>;
 
-  // Service Categories
-  serviceCategories: ServiceCategory[];
-  addServiceCategory: (_category: ServiceCategory) => Promise<void>;
-  updateServiceCategory: (_category: ServiceCategory) => Promise<void>;
-  deleteServiceCategory: (_id: string) => Promise<void>;
+  // Settings operations
+  updateSettings: (settings: Record<string, any>) => Promise<void>;
 
-  // Users
-  users: User[];
-  addUser: (_user: User) => Promise<void>;
-  updateUser: (_user: User) => Promise<void>;
-  deleteUser: (_id: string) => Promise<void>;
-
-  // Refresh methods
-  refreshAppointments: () => Promise<void>;
-  refreshReminders: () => Promise<void>;
+  // Refresh data
+  refreshData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: ReactNode | ((_isLoading: boolean) => ReactNode) }> = ({ children }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [staffRoles, setStaffRoles] = useState<StaffRole[]>([]);
-  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const { isDBReady } = useDB();
-
-  // Subscribe to sync status changes to reload data after initial sync
-  useEffect(() => {
-    // Subscribe to sync status changes
-    const unsubscribe = onSyncStatusChange((status) => {
-      // When initial sync is complete, reload all data from IndexedDB
-      if (status.initialSyncComplete) {
-        logger.info('[APP-CONTEXT] Initial sync complete, reloading all data from IndexedDB...');
-
-        // Reload all data from IndexedDB
-        Promise.all([
-          getAllCustomers(),
-          getAllServices(),
-          getAllStaff(),
-          getAllAppointments(),
-          getAllPayments(),
-          getAllReminders(),
-          getAllStaffRoles(),
-          getAllServiceCategories(),
-          getAllUsers(),
-        ]).then(([
-          loadedCustomers,
-          loadedServices,
-          loadedStaff,
-          loadedAppointments,
-          loadedPayments,
-          loadedReminders,
-          loadedStaffRoles,
-          loadedServiceCategories,
-          loadedUsers,
-        ]) => {
-          setCustomers(loadedCustomers);
-          setServices(loadedServices);
-          setStaff(loadedStaff);
-          setAppointments(loadedAppointments);
-          setPayments(loadedPayments);
-          setReminders(loadedReminders);
-          setStaffRoles(loadedStaffRoles);
-          setServiceCategories(loadedServiceCategories);
-          setUsers(loadedUsers);
-
-          logger.info(`[APP-CONTEXT] ✓ Data reloaded after initial sync:`);
-          logger.info(`  - Customers: ${loadedCustomers.length}`);
-          logger.info(`  - Services: ${loadedServices.length}`);
-          logger.info(`  - Staff: ${loadedStaff.length}`);
-          logger.info(`  - Appointments: ${loadedAppointments.length}`);
-          logger.info(`  - Payments: ${loadedPayments.length}`);
-          logger.info(`  - Reminders: ${loadedReminders.length}`);
-          logger.info(`  - Staff Roles: ${loadedStaffRoles.length}`);
-          logger.info(`  - Service Categories: ${loadedServiceCategories.length}`);
-          logger.info(`  - Users: ${loadedUsers.length}`);
-        }).catch((error) => {
-          logger.error('[APP-CONTEXT] Failed to reload data after initial sync:', error);
-        });
-      }
-    });
-
-    // Cleanup subscription on unmount
-    return unsubscribe;
-  }, []);
-
-  // Load data after database is ready
-  useEffect(() => {
-    // Wait for database to be initialized
-    if (!isDBReady) {
-      return;
-    }
-
-    let isMounted = true;
-
-    const initializeApp = async () => {
-      try {
-        setIsLoading(true);
-
-        // Database is already initialized by DBProvider
-        logger.log('✓ IndexedDB ready, loading data...');
-
-        // Step 2: Request storage persistence to prevent data loss
-        await initStoragePersistence();
-        if (!isMounted) return;
-
-        // Step 3: Migrate data from localStorage if needed (sequential to avoid race)
-        const migrationResult = await migrateFromLocalStorage();
-        if (!isMounted) return;
-        if (migrationResult.success && migrationResult.itemsMigrated > 0) {
-          logger.log(`✓ Migrated ${migrationResult.itemsMigrated} items from localStorage`);
-        }
-
-        // Step 4: Load all data from IndexedDB
-        const [
-          loadedCustomers,
-          loadedServices,
-          loadedStaff,
-          loadedAppointments,
-          loadedPayments,
-          loadedReminders,
-          loadedStaffRoles,
-          loadedServiceCategories,
-          loadedUsers,
-        ] = await Promise.all([
-          getAllCustomers(),
-          getAllServices(),
-          getAllStaff(),
-          getAllAppointments(),
-          getAllPayments(),
-          getAllReminders(),
-          getAllStaffRoles(),
-          getAllServiceCategories(),
-          getAllUsers(),
-        ]);
-
-        if (!isMounted) return;
-
-        // Step 5: Initialize demo data if database is empty
-        if (
-          loadedCustomers.length === 0 &&
-          loadedServices.length === 0 &&
-          loadedStaff.length === 0
-        ) {
-          logger.log('No data found, initializing demo data...');
-          initializeDemoData();
-
-          // Trigger migration again to load demo data into IndexedDB
-          await migrateFromLocalStorage();
-          if (!isMounted) return;
-
-          // Reload data after demo initialization
-          const [demoCustomers, demoServices, demoStaff, demoRoles, demoCategories] = await Promise.all([
-            getAllCustomers(),
-            getAllServices(),
-            getAllStaff(),
-            getAllStaffRoles(),
-            getAllServiceCategories(),
-          ]);
-
-          if (!isMounted) return;
-
-          setCustomers(demoCustomers);
-          setServices(demoServices);
-          setStaff(demoStaff);
-          setStaffRoles(demoRoles);
-          setServiceCategories(demoCategories);
-        } else {
-          setCustomers(loadedCustomers);
-          setServices(loadedServices);
-          setStaff(loadedStaff);
-          setStaffRoles(loadedStaffRoles);
-          setServiceCategories(loadedServiceCategories);
-        }
-
-        setAppointments(loadedAppointments);
-        setPayments(loadedPayments);
-        setReminders(loadedReminders);
-        setUsers(loadedUsers);
-
-        // Step 5.5: Initialize default admin user if no users exist
-        if (loadedUsers.length === 0) {
-          logger.log('No users found, creating default admin user...');
-
-          // Security check: ensure password is from environment variable and not default
-          const envPassword = import.meta.env.VITE_ADMIN_INITIAL_PASSWORD;
-          let initialPassword = envPassword;
-
-          // Generate random password if not set or if using insecure default
-          if (!envPassword || envPassword === 'admin123') {
-            // Generate a secure random password
-            const randomPassword = Math.random().toString(36).slice(-12) +
-                                   Math.random().toString(36).toUpperCase().slice(-4) +
-                                   Math.floor(Math.random() * 1000);
-            initialPassword = randomPassword;
-
-            // Log security warning
-            console.error('⚠️ SECURITY WARNING: VITE_ADMIN_INITIAL_PASSWORD not set or using default "admin123"!');
-            console.error('⚠️ Generated random password for admin user. SAVE THIS PASSWORD:');
-            console.error(`⚠️ Username: admin`);
-            console.error(`⚠️ Password: ${randomPassword}`);
-            console.error('⚠️ Set VITE_ADMIN_INITIAL_PASSWORD in .env file for production!');
-            logger.log('⚠️ SECURITY: Using generated random password - check console for details');
-          }
-
-          const defaultAdminPassword = await hashPassword(initialPassword);
-          const defaultAdmin: User = {
-            id: 'admin-default-' + Date.now(),
-            username: 'admin',
-            passwordHash: defaultAdminPassword,
-            role: 'RESPONSABILE',
-            firstName: 'Admin',
-            lastName: 'Default',
-            isActive: true,
-            createdAt: new Date().toISOString(),
-          };
-          await dbAddUser(defaultAdmin);
-          setUsers([defaultAdmin]);
-
-          if (envPassword && envPassword !== 'admin123') {
-            logger.log(`✓ Default admin user created (username: admin, password from env)`);
-          } else {
-            logger.log(`✓ Default admin user created (username: admin) - CHECK CONSOLE FOR PASSWORD`);
-          }
-        }
-
-        logger.log('✓ App data loaded successfully');
-
-        // Step 6: Initialize auto-backup system (non-blocking)
-        if (isMounted) {
-          initAutoBackup().catch((error) => {
-            logger.error('Failed to initialize auto-backup:', error);
-          });
-        }
-
-        // Step 7: Initialize CouchDB sync if enabled (non-blocking)
-        if (isMounted) {
-          initializeSync().catch((error) => {
-            logger.error('Failed to initialize sync:', error);
-          });
-        }
-      } catch (error) {
-        logger.error('Failed to initialize app:', error);
-        // Show error notification to user
-        alert('Errore durante l\'inizializzazione dell\'applicazione. Ricarica la pagina. Se il problema persiste, prova a svuotare la cache del browser.');
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    initializeApp();
-
-    // Cleanup function to prevent state updates on unmounted component
-    return () => {
-      isMounted = false;
-    };
-  }, [isDBReady]);
-
-  // FIX #7: Auto-cleanup old deletion records (ogni 7 giorni)
-  // Previene la crescita indefinita dello store deletedItems
-  useEffect(() => {
-    const CLEANUP_INTERVAL_MS = 7 * 24 * 60 * 60 * 1000; // 7 giorni
-    const RETENTION_DAYS = 90; // Mantieni solo ultimi 90 giorni
-
-    const cleanupInterval = setInterval(async () => {
-      try {
-        const deletedCount = await cleanOldDeletionRecords(RETENTION_DAYS);
-        if (deletedCount > 0) {
-          logger.info(`[AUTO-CLEANUP] Cleaned ${deletedCount} old deletion records (older than ${RETENTION_DAYS} days)`);
-        } else {
-          logger.debug(`[AUTO-CLEANUP] No old deletion records to clean`);
-        }
-      } catch (error) {
-        logger.error('[AUTO-CLEANUP] Failed to clean old deletion records:', error);
-      }
-    }, CLEANUP_INTERVAL_MS);
-
-    // Run cleanup immediately on mount (in background)
-    cleanOldDeletionRecords(RETENTION_DAYS).then(deletedCount => {
-      if (deletedCount > 0) {
-        logger.info(`[AUTO-CLEANUP] Initial cleanup: removed ${deletedCount} old deletion records`);
-      }
-    }).catch(error => {
-      logger.error('[AUTO-CLEANUP] Initial cleanup failed:', error);
-    });
-
-    return () => clearInterval(cleanupInterval);
-  }, []); // Empty deps - solo al mount
-
-  // FIX #2: Avvia background worker per pending sync operations
-  // Previene la perdita permanente di dati quando le operazioni sync falliscono
-  useEffect(() => {
-    if (!isDBReady) {
-      return; // Attendi che il database sia pronto
-    }
-
-    logger.info('[SYNC-QUEUE] Starting sync queue worker');
-    startSyncQueueWorker();
-
-    return () => {
-      logger.info('[SYNC-QUEUE] Stopping sync queue worker');
-      stopSyncQueueWorker();
-    };
-  }, [isDBReady]);
-
-  // Customers
-  const addCustomer = async (customer: Customer) => {
-    try {
-      await dbAddCustomer(customer);
-      setCustomers((prev) => [...prev, customer]);
-    } catch (error) {
-      logger.error('Failed to add customer:', error);
-      throw error;
-    }
-  };
-
-  const updateCustomer = async (customer: Customer) => {
-    try {
-      await dbUpdateCustomer(customer);
-      setCustomers((prev) => prev.map((c) => (c.id === customer.id ? customer : c)));
-    } catch (error) {
-      logger.error('Failed to update customer:', error);
-      throw error;
-    }
-  };
-
-  const deleteCustomer = async (id: string) => {
-    try {
-      await dbDeleteCustomer(id);
-      setCustomers((prev) => prev.filter((c) => c.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete customer:', error);
-      throw error;
-    }
-  };
-
-  // Services
-  const addService = async (service: Service) => {
-    try {
-      await dbAddService(service);
-      setServices((prev) => [...prev, service]);
-    } catch (error) {
-      logger.error('Failed to add service:', error);
-      throw error;
-    }
-  };
-
-  const updateService = async (service: Service) => {
-    try {
-      await dbUpdateService(service);
-      setServices((prev) => prev.map((s) => (s.id === service.id ? service : s)));
-    } catch (error) {
-      logger.error('Failed to update service:', error);
-      throw error;
-    }
-  };
-
-  const deleteService = async (id: string) => {
-    try {
-      await dbDeleteService(id);
-      setServices((prev) => prev.filter((s) => s.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete service:', error);
-      throw error;
-    }
-  };
-
-  // Staff
-  const addStaff = async (member: Staff) => {
-    try {
-      await dbAddStaff(member);
-      setStaff((prev) => [...prev, member]);
-    } catch (error) {
-      logger.error('Failed to add staff:', error);
-      throw error;
-    }
-  };
-
-  const updateStaff = async (member: Staff) => {
-    try {
-      await dbUpdateStaff(member);
-      setStaff((prev) => prev.map((s) => (s.id === member.id ? member : s)));
-    } catch (error) {
-      logger.error('Failed to update staff:', error);
-      throw error;
-    }
-  };
-
-  const deleteStaff = async (id: string) => {
-    try {
-      await dbDeleteStaff(id);
-      setStaff((prev) => prev.filter((s) => s.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete staff:', error);
-      throw error;
-    }
-  };
-
-  // Appointments
-  const addAppointment = async (appointment: Appointment) => {
-    try {
-      await dbAddAppointment(appointment);
-      setAppointments((prev) => [...prev, appointment]);
-    } catch (error) {
-      logger.error('Failed to add appointment:', error);
-      throw error;
-    }
-  };
-
-  const updateAppointment = async (appointment: Appointment) => {
-    try {
-      await dbUpdateAppointment(appointment);
-      setAppointments((prev) =>
-        prev.map((a) => (a.id === appointment.id ? appointment : a))
-      );
-    } catch (error) {
-      logger.error('Failed to update appointment:', error);
-      throw error;
-    }
-  };
-
-  const deleteAppointment = async (id: string) => {
-    try {
-      await dbDeleteAppointment(id);
-      setAppointments((prev) => prev.filter((a) => a.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete appointment:', error);
-      throw error;
-    }
-  };
-
-  // Payments
-  const addPayment = async (payment: Payment) => {
-    try {
-      await dbAddPayment(payment);
-      setPayments((prev) => [...prev, payment]);
-    } catch (error) {
-      logger.error('Failed to add payment:', error);
-      throw error;
-    }
-  };
-
-  // Reminders
-  const addReminder = async (reminder: Reminder) => {
-    try {
-      await dbAddReminder(reminder);
-      setReminders((prev) => [...prev, reminder]);
-    } catch (error) {
-      logger.error('Failed to add reminder:', error);
-      throw error;
-    }
-  };
-
-  // Staff Roles
-  const addStaffRole = async (role: StaffRole) => {
-    try {
-      await dbAddStaffRole(role);
-      setStaffRoles((prev) => [...prev, role]);
-    } catch (error) {
-      logger.error('Failed to add staff role:', error);
-      throw error;
-    }
-  };
-
-  const updateStaffRole = async (role: StaffRole) => {
-    try {
-      await dbUpdateStaffRole(role);
-      setStaffRoles((prev) => prev.map((r) => (r.id === role.id ? role : r)));
-    } catch (error) {
-      logger.error('Failed to update staff role:', error);
-      throw error;
-    }
-  };
-
-  const deleteStaffRole = async (id: string) => {
-    try {
-      await dbDeleteStaffRole(id);
-      setStaffRoles((prev) => prev.filter((r) => r.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete staff role:', error);
-      throw error;
-    }
-  };
-
-  // Service Categories
-  const addServiceCategory = async (category: ServiceCategory) => {
-    try {
-      await dbAddServiceCategory(category);
-      setServiceCategories((prev) => [...prev, category]);
-    } catch (error) {
-      logger.error('Failed to add service category:', error);
-      throw error;
-    }
-  };
-
-  const updateServiceCategory = async (category: ServiceCategory) => {
-    try {
-      await dbUpdateServiceCategory(category);
-      setServiceCategories((prev) => prev.map((c) => (c.id === category.id ? category : c)));
-    } catch (error) {
-      logger.error('Failed to update service category:', error);
-      throw error;
-    }
-  };
-
-  const deleteServiceCategory = async (id: string) => {
-    try {
-      await dbDeleteServiceCategory(id);
-      setServiceCategories((prev) => prev.filter((c) => c.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete service category:', error);
-      throw error;
-    }
-  };
-
-  // Users
-  const addUser = async (user: User) => {
-    try {
-      await dbAddUser(user);
-      setUsers((prev) => [...prev, user]);
-    } catch (error) {
-      logger.error('Failed to add user:', error);
-      throw error;
-    }
-  };
-
-  const updateUser = async (user: User) => {
-    try {
-      await dbUpdateUser(user);
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
-    } catch (error) {
-      logger.error('Failed to update user:', error);
-      throw error;
-    }
-  };
-
-  const deleteUser = async (id: string) => {
-    try {
-      await dbDeleteUser(id);
-      setUsers((prev) => prev.filter((u) => u.id !== id));
-    } catch (error) {
-      logger.error('Failed to delete user:', error);
-      throw error;
-    }
-  };
-
-  // Refresh methods
-  const refreshAppointments = async () => {
-    try {
-      // First, try to fetch from backend to sync latest data
-      try {
-        const backendAppointments = await appointmentsApi.getAll();
-
-        // Sync backend appointments to local IndexedDB
-        for (const appointment of backendAppointments) {
-          try {
-            // Check if appointment exists in IndexedDB
-            const existingAppointment = await getAllAppointments().then(apts =>
-              apts.find(a => a.id === appointment.id)
-            );
-
-            if (existingAppointment) {
-              // Update if exists
-              await dbUpdateAppointment(appointment);
-            } else {
-              // Add if doesn't exist
-              await dbAddAppointment(appointment);
-            }
-          } catch (syncError) {
-            logger.debug(`Skipped syncing appointment ${appointment.id}:`, syncError);
-          }
-        }
-
-        logger.debug('Synced appointments from backend');
-      } catch (backendError) {
-        logger.debug('Backend sync not available, using local data:', backendError);
-      }
-
-      // Load from IndexedDB (which now has the latest data)
-      const loadedAppointments = await getAllAppointments();
-      setAppointments(loadedAppointments);
-    } catch (error) {
-      logger.error('Failed to refresh appointments:', error);
-      throw error;
-    }
-  };
-
-  const refreshReminders = async () => {
-    try {
-      const loadedReminders = await getAllReminders();
-      setReminders(loadedReminders);
-    } catch (error) {
-      logger.error('Failed to refresh reminders:', error);
-      throw error;
-    }
-  };
-
-  const value: AppContextType = {
-    isLoading,
-    customers,
-    addCustomer,
-    updateCustomer,
-    deleteCustomer,
-    services,
-    addService,
-    updateService,
-    deleteService,
-    staff,
-    addStaff,
-    updateStaff,
-    deleteStaff,
-    appointments,
-    addAppointment,
-    updateAppointment,
-    deleteAppointment,
-    payments,
-    addPayment,
-    reminders,
-    addReminder,
-    staffRoles,
-    addStaffRole,
-    updateStaffRole,
-    deleteStaffRole,
-    serviceCategories,
-    addServiceCategory,
-    updateServiceCategory,
-    deleteServiceCategory,
-    users,
-    addUser,
-    updateUser,
-    deleteUser,
-    refreshAppointments,
-    refreshReminders,
-  };
-
-  return (
-    <AppContext.Provider value={value}>
-      {typeof children === 'function' ? children(isLoading) : children}
-    </AppContext.Provider>
-  );
-};
-
-export const useApp = (): AppContextType => {
+export function useApp(): AppContextType {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('useApp must be used within an AppProvider');
   }
   return context;
-};
+}
+
+interface AppProviderProps {
+  children: ReactNode;
+}
+
+export function AppProvider({ children }: AppProviderProps): JSX.Element {
+  const { isAuthenticated } = useAuth();
+
+  // State
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  const [staffRoles, setStaffRoles] = useState<StaffRole[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [settings, setSettings] = useState<Record<string, any>>({});
+
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Load all data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshData();
+    }
+  }, [isAuthenticated]);
+
+  /**
+   * Refresh all data from API
+   */
+  const refreshData = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [
+        customersData,
+        servicesData,
+        categoriesData,
+        staffData,
+        rolesData,
+        appointmentsData,
+        paymentsData,
+        settingsData,
+      ] = await Promise.all([
+        customersApi.getAll(),
+        servicesApi.getAll(),
+        servicesApi.getCategories(),
+        staffApi.getAll(),
+        staffApi.getRoles(),
+        appointmentsApi.getAll(),
+        paymentsApi.getAll(),
+        settingsApi.getAll(),
+      ]);
+
+      setCustomers(customersData);
+      setServices(servicesData);
+      setServiceCategories(categoriesData);
+      setStaff(staffData);
+      setStaffRoles(rolesData);
+      setAppointments(appointmentsData);
+      setPayments(paymentsData);
+      setSettings(settingsData);
+
+      logger.info('Data loaded successfully');
+    } catch (err: any) {
+      logger.error('Failed to load data:', err);
+      setError('Errore durante il caricamento dei dati');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ============================================================================
+  // CUSTOMER OPERATIONS
+  // ============================================================================
+
+  const addCustomer = async (customer: Partial<Customer>): Promise<Customer> => {
+    const newCustomer = await customersApi.create(customer);
+    setCustomers((prev) => [...prev, newCustomer]);
+    return newCustomer;
+  };
+
+  const updateCustomer = async (id: string, customer: Partial<Customer>): Promise<Customer> => {
+    const updated = await customersApi.update(id, customer);
+    setCustomers((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    return updated;
+  };
+
+  const deleteCustomer = async (id: string): Promise<void> => {
+    await customersApi.delete(id);
+    setCustomers((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // ============================================================================
+  // SERVICE OPERATIONS
+  // ============================================================================
+
+  const addService = async (service: Partial<Service>): Promise<Service> => {
+    const newService = await servicesApi.create(service);
+    setServices((prev) => [...prev, newService]);
+    return newService;
+  };
+
+  const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
+    const updated = await servicesApi.update(id, service);
+    setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    return updated;
+  };
+
+  const deleteService = async (id: string): Promise<void> => {
+    await servicesApi.delete(id);
+    setServices((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const addServiceCategory = async (category: Partial<ServiceCategory>): Promise<ServiceCategory> => {
+    const newCategory = await servicesApi.createCategory(category);
+    setServiceCategories((prev) => [...prev, newCategory]);
+    return newCategory;
+  };
+
+  const updateServiceCategory = async (
+    id: string,
+    category: Partial<ServiceCategory>
+  ): Promise<ServiceCategory> => {
+    const updated = await servicesApi.updateCategory(id, category);
+    setServiceCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+    return updated;
+  };
+
+  const deleteServiceCategory = async (id: string): Promise<void> => {
+    await servicesApi.deleteCategory(id);
+    setServiceCategories((prev) => prev.filter((c) => c.id !== id));
+  };
+
+  // ============================================================================
+  // STAFF OPERATIONS
+  // ============================================================================
+
+  const addStaff = async (staffMember: Partial<Staff>): Promise<Staff> => {
+    const newStaff = await staffApi.create(staffMember);
+    setStaff((prev) => [...prev, newStaff]);
+    return newStaff;
+  };
+
+  const updateStaff = async (id: string, staffMember: Partial<Staff>): Promise<Staff> => {
+    const updated = await staffApi.update(id, staffMember);
+    setStaff((prev) => prev.map((s) => (s.id === id ? updated : s)));
+    return updated;
+  };
+
+  const deleteStaff = async (id: string): Promise<void> => {
+    await staffApi.delete(id);
+    setStaff((prev) => prev.filter((s) => s.id !== id));
+  };
+
+  const addStaffRole = async (role: Partial<StaffRole>): Promise<StaffRole> => {
+    const newRole = await staffApi.createRole(role);
+    setStaffRoles((prev) => [...prev, newRole]);
+    return newRole;
+  };
+
+  const updateStaffRole = async (id: string, role: Partial<StaffRole>): Promise<StaffRole> => {
+    const updated = await staffApi.updateRole(id, role);
+    setStaffRoles((prev) => prev.map((r) => (r.id === id ? updated : r)));
+    return updated;
+  };
+
+  const deleteStaffRole = async (id: string): Promise<void> => {
+    await staffApi.deleteRole(id);
+    setStaffRoles((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  // ============================================================================
+  // APPOINTMENT OPERATIONS
+  // ============================================================================
+
+  const addAppointment = async (appointment: Partial<Appointment>): Promise<Appointment> => {
+    const newAppointment = await appointmentsApi.create(appointment);
+    setAppointments((prev) => [...prev, newAppointment]);
+    return newAppointment;
+  };
+
+  const updateAppointment = async (
+    id: string,
+    appointment: Partial<Appointment>
+  ): Promise<Appointment> => {
+    const updated = await appointmentsApi.update(id, appointment);
+    setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
+    return updated;
+  };
+
+  const deleteAppointment = async (id: string): Promise<void> => {
+    await appointmentsApi.delete(id);
+    setAppointments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  // ============================================================================
+  // PAYMENT OPERATIONS
+  // ============================================================================
+
+  const addPayment = async (payment: Partial<Payment>): Promise<Payment> => {
+    const newPayment = await paymentsApi.create(payment);
+    setPayments((prev) => [...prev, newPayment]);
+    return newPayment;
+  };
+
+  const updatePayment = async (id: string, payment: Partial<Payment>): Promise<Payment> => {
+    const updated = await paymentsApi.update(id, payment);
+    setPayments((prev) => prev.map((p) => (p.id === id ? updated : p)));
+    return updated;
+  };
+
+  const deletePayment = async (id: string): Promise<void> => {
+    await paymentsApi.delete(id);
+    setPayments((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // ============================================================================
+  // SETTINGS OPERATIONS
+  // ============================================================================
+
+  const updateSettings = async (newSettings: Record<string, any>): Promise<void> => {
+    const updated = await settingsApi.updateAll(newSettings);
+    setSettings(updated);
+  };
+
+  // ============================================================================
+  // CONTEXT VALUE
+  // ============================================================================
+
+  const value: AppContextType = {
+    customers,
+    services,
+    serviceCategories,
+    staff,
+    staffRoles,
+    appointments,
+    payments,
+    settings,
+    isLoading,
+    error,
+    addCustomer,
+    updateCustomer,
+    deleteCustomer,
+    addService,
+    updateService,
+    deleteService,
+    addServiceCategory,
+    updateServiceCategory,
+    deleteServiceCategory,
+    addStaff,
+    updateStaff,
+    deleteStaff,
+    addStaffRole,
+    updateStaffRole,
+    deleteStaffRole,
+    addAppointment,
+    updateAppointment,
+    deleteAppointment,
+    addPayment,
+    updatePayment,
+    deletePayment,
+    updateSettings,
+    refreshData,
+  };
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}

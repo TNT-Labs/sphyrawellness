@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { DBProvider } from './contexts/DBContext';
-import { AppProvider } from './contexts/AppContext';
+import { AppProvider, useApp } from './contexts/AppContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import Layout from './components/Layout';
@@ -44,6 +43,7 @@ const GlobalLoader: React.FC = () => (
 
 const AppContent: React.FC = () => {
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
+  const { isLoading } = useApp();
 
   useEffect(() => {
     const settings = loadSettings();
@@ -71,57 +71,53 @@ const AppContent: React.FC = () => {
   });
 
   return (
-    <AppProvider>
-      {(isLoading) => (
-        <>
-          {/* Update notification banner */}
-          <UpdateNotification />
+    <>
+      {/* Update notification banner */}
+      <UpdateNotification />
 
-          {isIdle && !isLoading && <IdleSplashScreen onDismiss={resetIdle} />}
-          {isLoading ? (
-            <GlobalLoader />
-          ) : (
-            <Router basename={import.meta.env.BASE_URL}>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/prenota" element={<PublicBooking />} />
-                <Route path="/booking" element={<PublicBooking />} />
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/admin-debug-panel" element={<AdminDebug />} />
+      {isIdle && !isLoading && <IdleSplashScreen onDismiss={resetIdle} />}
+      {isLoading ? (
+        <GlobalLoader />
+      ) : (
+        <Router basename={import.meta.env.BASE_URL}>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/prenota" element={<PublicBooking />} />
+            <Route path="/booking" element={<PublicBooking />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/admin-debug-panel" element={<AdminDebug />} />
 
-                {/* Protected routes */}
-                <Route
-                  path="/*"
-                  element={
-                    <PrivateRoute>
-                      <Layout>
-                        <Routes>
-                          <Route path="/" element={<Dashboard />} />
-                          <Route path="/calendario" element={<CalendarPage />} />
-                          <Route path="/clienti" element={<Customers />} />
-                          <Route path="/servizi" element={<Services />} />
-                          <Route path="/personale" element={<StaffPage />} />
-                          <Route path="/pagamenti" element={<Payments />} />
-                          <Route path="/reminder" element={<Reminders />} />
-                          <Route path="/statistiche" element={<Statistics />} />
-                          <Route path="/manuale" element={<UserManual />} />
-                          <Route path="/impostazioni" element={<Settings />} />
-                          <Route path="/privacy" element={<PrivacyPolicy />} />
-                          <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
-                          <Route path="/confirm-appointment/success" element={<ConfirmAppointment />} />
-                          <Route path="/confirm-appointment/error" element={<ConfirmAppointment />} />
-                        </Routes>
-                      </Layout>
-                    </PrivateRoute>
-                  }
-                />
-              </Routes>
-            </Router>
-          )}
-        </>
+            {/* Protected routes */}
+            <Route
+              path="/*"
+              element={
+                <PrivateRoute>
+                  <Layout>
+                    <Routes>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/calendario" element={<CalendarPage />} />
+                      <Route path="/clienti" element={<Customers />} />
+                      <Route path="/servizi" element={<Services />} />
+                      <Route path="/personale" element={<StaffPage />} />
+                      <Route path="/pagamenti" element={<Payments />} />
+                      <Route path="/reminder" element={<Reminders />} />
+                      <Route path="/statistiche" element={<Statistics />} />
+                      <Route path="/manuale" element={<UserManual />} />
+                      <Route path="/impostazioni" element={<Settings />} />
+                      <Route path="/privacy" element={<PrivacyPolicy />} />
+                      <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
+                      <Route path="/confirm-appointment/success" element={<ConfirmAppointment />} />
+                      <Route path="/confirm-appointment/error" element={<ConfirmAppointment />} />
+                    </Routes>
+                  </Layout>
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </Router>
       )}
-    </AppProvider>
+    </>
   );
 };
 
@@ -129,11 +125,11 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <ToastProvider>
-        <DBProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <AppProvider>
             <AppContent />
-          </AuthProvider>
-        </DBProvider>
+          </AppProvider>
+        </AuthProvider>
       </ToastProvider>
     </ErrorBoundary>
   );
