@@ -1,8 +1,6 @@
 # Docker Compose - Sphyra Wellness Lab - Full Stack
 # Frontend (React + Nginx) + Backend (Node.js + Prisma) + PostgreSQL + pgAdmin
 
-version: '3.8'
-
 services:
   # PostgreSQL Database
   postgres:
@@ -20,7 +18,7 @@ services:
     networks:
       - sphyra-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sphyra_user}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sphyra_user} -d ${POSTGRES_DB:-sphyra_wellness}"]
       interval: 10s
       timeout: 5s
       retries: 5
