@@ -1,9 +1,21 @@
 /**
  * Database utilities stub
- * This file provides compatibility functions for the migration from CouchDB/PouchDB to PostgreSQL.
- * These functions are deprecated and should be replaced with proper API calls.
  *
- * TODO: Remove this file once all pages are updated to use REST API directly.
+ * ⚠️ DEPRECATED - This file contains compatibility stubs only
+ *
+ * This file provides temporary compatibility functions for the migration from CouchDB/PouchDB to PostgreSQL.
+ * These functions are deprecated and return stub data or throw errors.
+ *
+ * ✅ PAGES UPDATED (no longer use this file):
+ * - Services.tsx
+ * - Customers.tsx
+ * - StaffPage.tsx
+ *
+ * ⚠️ PAGES STILL USING THIS FILE:
+ * - Settings.tsx (needs major refactoring)
+ *
+ * TODO: Refactor Settings.tsx to remove backup/export/import/sync functionality,
+ *       then DELETE this entire file.
  */
 
 import { logger } from './logger';

@@ -1,9 +1,16 @@
 /**
  * PouchDB Sync stub
- * This file provides compatibility stubs for the deprecated PouchDB sync functionality.
- * The application now uses PostgreSQL with REST API instead of CouchDB/PouchDB.
  *
- * TODO: Remove this file and all sync-related UI from Settings page.
+ * ⚠️ DEPRECATED - This file contains compatibility stubs only
+ *
+ * This file provides temporary compatibility stubs for the deprecated PouchDB sync functionality.
+ * The application now uses PostgreSQL with REST API instead of CouchDB/PouchDB.
+ * All functions here return stub data or throw errors.
+ *
+ * ⚠️ ONLY USED BY:
+ * - Settings.tsx (sync-related UI)
+ *
+ * TODO: Remove all sync-related UI from Settings.tsx, then DELETE this entire file.
  */
 
 import { logger } from './logger';
