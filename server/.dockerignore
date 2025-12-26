@@ -1,52 +1,55 @@
-# Node modules
+# Dependencies
 node_modules
-npm-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Build outputs
+# Build output
 dist
+build
 
-# Source files (saranno copiati esplicitamente)
-# Non mettiamo src/ qui perché serve per il build
-
-# Test files
-coverage
-test-results
-*.test.ts
-*.spec.ts
-__tests__
-__mocks__
-
-# Environment files
+# Environment variables
 .env
-.env.local
-.env.*.local
+.env.*
 
-# Git files
-.git
-.gitignore
-.gitattributes
-
-# IDE files
+# IDE
 .vscode
 .idea
 *.swp
 *.swo
 *~
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile
+.dockerignore
 
 # Documentation
 *.md
-LICENSE
 
-# CI/CD
-.gitlab-ci.yml
-.travis.yml
+# Tests
+coverage
+.nyc_output
+test
 
-# Docker files
-Dockerfile
-.dockerignore
+# Prisma migrations (will be copied separately)
+# Note: Don't ignore prisma directory completely, we need schema.prisma
+
+# Uploads (production data)
+uploads
 
 # Logs
 logs
 *.log
+
+# Development files
+src/**/*.test.ts
+src/**/*.spec.ts

@@ -8,15 +8,15 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Copia i file di configurazione delle dipendenze
-COPY server/package*.json ./
+COPY package*.json ./
 
 # Installa tutte le dipendenze (incluse devDependencies per il build)
 RUN npm ci
 
-# Copia tutto il codice sorgente del server
-COPY server/ .
+# Copia il codice sorgente e Prisma schema
+COPY . .
 
-# Build dell'applicazione TypeScript
+# Generate Prisma Client e build TypeScript
 RUN npm run build
 
 # Stage 2: Production
@@ -32,19 +32,23 @@ RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
 WORKDIR /app
 
 # Copia i file di configurazione delle dipendenze
-COPY server/package*.json ./
+COPY package*.json ./
 
 # Installa solo le dipendenze di produzione
 RUN npm ci --only=production
 
+# Copia Prisma schema per migrations
+COPY prisma ./prisma
+
 # Copia i file buildati dallo stage precedente
 COPY --from=builder /app/dist ./dist
 
-# Copia gli scripts dalla root del progetto
-COPY scripts ./scripts
+# Copia Prisma Client generato
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Crea la directory uploads con la struttura necessaria
-RUN mkdir -p /app/server/uploads/services /app/server/uploads/staff
+RUN mkdir -p uploads/services uploads/staff
 
 # Cambia ownership dei file all'utente nodejs
 RUN chown -R nodejs:nodejs /app
