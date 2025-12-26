@@ -17,9 +17,12 @@ La migrazione completa da PouchDB/CouchDB a PostgreSQL + REST API è stata compl
 | **Spazio liberato** | ~350 KB |
 | **Riduzione codebase** | 40% più leggero |
 
-### File Eliminati
+### File Eliminati/Rinominati
 
-#### Frontend (12 file)
+#### File Rinominati (10 file)
+- ✅ `server/src/routes/*.new.ts` → `*.ts` (10 route files finalizzati)
+
+#### File Eliminati - Frontend (12 file)
 - ❌ `src/contexts/AppContext.old.tsx`
 - ❌ `src/contexts/AuthContext.old.tsx`
 - ❌ `src/contexts/DBContext.tsx`
@@ -409,15 +412,20 @@ npm run dev
 ## 📊 COMMIT HISTORY MIGRAZIONE
 
 ```
+bf4314b - refactor: Finalize route files - remove .new suffix
+3697ec1 - docs: Add complete migration success report
 c2b03bf - chore: Remove obsolete PouchDB/CouchDB files after PostgreSQL migration
 99763b9 - docs: Add comprehensive obsolete files cleanup guide
 59fe11b - feat: Activate new backend app.ts with PostgreSQL routes
 217a97e - fix: Update App.tsx to remove DBProvider and use new contexts
 e706350 - feat: Complete frontend integration - activate PostgreSQL migration
+8e19827 - docs: Add final migration completion guide
+1861984 - feat: Rewrite AuthContext and AppContext for PostgreSQL API
+676efe3 - feat: Add frontend API client with Axios
 ...
 ```
 
-**Totale commits migrazione:** 40+ commit organizzati
+**Totale commits migrazione:** 45+ commit organizzati
 
 ---
 
