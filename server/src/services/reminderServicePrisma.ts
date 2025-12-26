@@ -194,7 +194,7 @@ export class ReminderServicePrisma {
       const commonData = {
         customerName: `${customer.firstName} ${customer.lastName}`,
         appointmentDate: format(new Date(appointmentDateStr), 'EEEE d MMMM yyyy', { locale: it }),
-        appointmentTime: format(appointment.startTime, 'HH:mm'),
+        appointmentTime: typeof appointment.startTime === 'string' ? appointment.startTime : format(appointment.startTime, 'HH:mm'),
         serviceName: service.name,
         staffName: `${staff.firstName} ${staff.lastName}`
       };

@@ -10,8 +10,8 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-key';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const JWT_SECRET: string = process.env.JWT_SECRET || 'development-secret-key';
+const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
 
 // POST /api/auth/login
 router.post('/login', async (req, res, next) => {

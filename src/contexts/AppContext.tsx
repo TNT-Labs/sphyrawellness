@@ -15,6 +15,8 @@ import {
   StaffRole,
   Appointment,
   Payment,
+  User,
+  Reminder,
 } from '../types';
 import {
   customersApi,
@@ -36,6 +38,8 @@ interface AppContextType {
   staffRoles: StaffRole[];
   appointments: Appointment[];
   payments: Payment[];
+  users: User[];
+  reminders: Reminder[];
   settings: Record<string, any>;
 
   // Loading state
@@ -44,44 +48,51 @@ interface AppContextType {
 
   // Customer operations
   addCustomer: (customer: Partial<Customer>) => Promise<Customer>;
-  updateCustomer: (id: string, customer: Partial<Customer>) => Promise<Customer>;
+  updateCustomer: (customer: Customer) => Promise<Customer>;
   deleteCustomer: (id: string) => Promise<void>;
 
   // Service operations
   addService: (service: Partial<Service>) => Promise<Service>;
-  updateService: (id: string, service: Partial<Service>) => Promise<Service>;
+  updateService: (service: Service) => Promise<Service>;
   deleteService: (id: string) => Promise<void>;
 
   // Service category operations
   addServiceCategory: (category: Partial<ServiceCategory>) => Promise<ServiceCategory>;
-  updateServiceCategory: (id: string, category: Partial<ServiceCategory>) => Promise<ServiceCategory>;
+  updateServiceCategory: (category: ServiceCategory) => Promise<ServiceCategory>;
   deleteServiceCategory: (id: string) => Promise<void>;
 
   // Staff operations
   addStaff: (staff: Partial<Staff>) => Promise<Staff>;
-  updateStaff: (id: string, staff: Partial<Staff>) => Promise<Staff>;
+  updateStaff: (staff: Staff) => Promise<Staff>;
   deleteStaff: (id: string) => Promise<void>;
 
   // Staff role operations
   addStaffRole: (role: Partial<StaffRole>) => Promise<StaffRole>;
-  updateStaffRole: (id: string, role: Partial<StaffRole>) => Promise<StaffRole>;
+  updateStaffRole: (role: StaffRole) => Promise<StaffRole>;
   deleteStaffRole: (id: string) => Promise<void>;
 
   // Appointment operations
   addAppointment: (appointment: Partial<Appointment>) => Promise<Appointment>;
-  updateAppointment: (id: string, appointment: Partial<Appointment>) => Promise<Appointment>;
+  updateAppointment: (appointment: Appointment) => Promise<Appointment>;
   deleteAppointment: (id: string) => Promise<void>;
 
   // Payment operations
   addPayment: (payment: Partial<Payment>) => Promise<Payment>;
-  updatePayment: (id: string, payment: Partial<Payment>) => Promise<Payment>;
+  updatePayment: (payment: Payment) => Promise<Payment>;
   deletePayment: (id: string) => Promise<void>;
+
+  // User operations
+  addUser: (user: Partial<User>) => Promise<User>;
+  updateUser: (user: User) => Promise<User>;
+  deleteUser: (id: string) => Promise<void>;
 
   // Settings operations
   updateSettings: (settings: Record<string, any>) => Promise<void>;
 
   // Refresh data
   refreshData: () => Promise<void>;
+  refreshAppointments: () => Promise<void>;
+  refreshReminders: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -109,6 +120,8 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   const [staffRoles, setStaffRoles] = useState<StaffRole[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>([]);
   const [settings, setSettings] = useState<Record<string, any>>({});
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -177,8 +190,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newCustomer;
   };
 
-  const updateCustomer = async (id: string, customer: Partial<Customer>): Promise<Customer> => {
-    const updated = await customersApi.update(id, customer);
+  const updateCustomer = async (customer: Customer): Promise<Customer> => {
+    const { id, ...data } = customer;
+    const updated = await customersApi.update(id, data);
     setCustomers((prev) => prev.map((c) => (c.id === id ? updated : c)));
     return updated;
   };
@@ -198,8 +212,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newService;
   };
 
-  const updateService = async (id: string, service: Partial<Service>): Promise<Service> => {
-    const updated = await servicesApi.update(id, service);
+  const updateService = async (service: Service): Promise<Service> => {
+    const { id, ...data } = service;
+    const updated = await servicesApi.update(id, data);
     setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
     return updated;
   };
@@ -215,11 +230,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newCategory;
   };
 
-  const updateServiceCategory = async (
-    id: string,
-    category: Partial<ServiceCategory>
-  ): Promise<ServiceCategory> => {
-    const updated = await servicesApi.updateCategory(id, category);
+  const updateServiceCategory = async (category: ServiceCategory): Promise<ServiceCategory> => {
+    const { id, ...data } = category;
+    const updated = await servicesApi.updateCategory(id, data);
     setServiceCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
     return updated;
   };
@@ -239,8 +252,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newStaff;
   };
 
-  const updateStaff = async (id: string, staffMember: Partial<Staff>): Promise<Staff> => {
-    const updated = await staffApi.update(id, staffMember);
+  const updateStaff = async (staffMember: Staff): Promise<Staff> => {
+    const { id, ...data } = staffMember;
+    const updated = await staffApi.update(id, data);
     setStaff((prev) => prev.map((s) => (s.id === id ? updated : s)));
     return updated;
   };
@@ -256,8 +270,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newRole;
   };
 
-  const updateStaffRole = async (id: string, role: Partial<StaffRole>): Promise<StaffRole> => {
-    const updated = await staffApi.updateRole(id, role);
+  const updateStaffRole = async (role: StaffRole): Promise<StaffRole> => {
+    const { id, ...data } = role;
+    const updated = await staffApi.updateRole(id, data);
     setStaffRoles((prev) => prev.map((r) => (r.id === id ? updated : r)));
     return updated;
   };
@@ -277,11 +292,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newAppointment;
   };
 
-  const updateAppointment = async (
-    id: string,
-    appointment: Partial<Appointment>
-  ): Promise<Appointment> => {
-    const updated = await appointmentsApi.update(id, appointment);
+  const updateAppointment = async (appointment: Appointment): Promise<Appointment> => {
+    const { id, ...data } = appointment;
+    const updated = await appointmentsApi.update(id, data);
     setAppointments((prev) => prev.map((a) => (a.id === id ? updated : a)));
     return updated;
   };
@@ -289,6 +302,25 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   const deleteAppointment = async (id: string): Promise<void> => {
     await appointmentsApi.delete(id);
     setAppointments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const refreshAppointments = async (): Promise<void> => {
+    try {
+      const appointmentsData = await appointmentsApi.getAll();
+      setAppointments(appointmentsData);
+    } catch (err: any) {
+      logger.error('Failed to refresh appointments:', err);
+    }
+  };
+
+  const refreshReminders = async (): Promise<void> => {
+    try {
+      // Stub implementation - reminders API not available yet
+      setReminders([]);
+      logger.info('Reminders refreshed (stub)');
+    } catch (err: any) {
+      logger.error('Failed to refresh reminders:', err);
+    }
   };
 
   // ============================================================================
@@ -301,8 +333,9 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     return newPayment;
   };
 
-  const updatePayment = async (id: string, payment: Partial<Payment>): Promise<Payment> => {
-    const updated = await paymentsApi.update(id, payment);
+  const updatePayment = async (payment: Payment): Promise<Payment> => {
+    const { id, ...data } = payment;
+    const updated = await paymentsApi.update(id, data);
     setPayments((prev) => prev.map((p) => (p.id === id ? updated : p)));
     return updated;
   };
@@ -310,6 +343,31 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   const deletePayment = async (id: string): Promise<void> => {
     await paymentsApi.delete(id);
     setPayments((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  // ============================================================================
+  // USER OPERATIONS
+  // ============================================================================
+
+  const addUser = async (user: Partial<User>): Promise<User> => {
+    // Stub implementation - users API not available yet
+    const newUser = { ...user, id: user.id || `user-${Date.now()}` } as User;
+    setUsers((prev) => [...prev, newUser]);
+    logger.info('User added (stub):', newUser);
+    return newUser;
+  };
+
+  const updateUser = async (user: User): Promise<User> => {
+    // Stub implementation - users API not available yet
+    setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
+    logger.info('User updated (stub):', user);
+    return user;
+  };
+
+  const deleteUser = async (id: string): Promise<void> => {
+    // Stub implementation - users API not available yet
+    setUsers((prev) => prev.filter((u) => u.id !== id));
+    logger.info('User deleted (stub):', id);
   };
 
   // ============================================================================
@@ -333,6 +391,8 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     staffRoles,
     appointments,
     payments,
+    users,
+    reminders,
     settings,
     isLoading,
     error,
@@ -357,8 +417,13 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     addPayment,
     updatePayment,
     deletePayment,
+    addUser,
+    updateUser,
+    deleteUser,
     updateSettings,
     refreshData,
+    refreshAppointments,
+    refreshReminders,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
