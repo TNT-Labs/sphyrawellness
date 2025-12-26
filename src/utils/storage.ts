@@ -13,7 +13,7 @@ const STORAGE_KEYS = {
   SETTINGS: 'sphyra_settings',
   STAFF_ROLES: 'sphyra_staff_roles',
   SERVICE_CATEGORIES: 'sphyra_service_categories',
-  COUCHDB_PASSWORD: 'sphyra_couchdb_password', // Encrypted storage
+  COUCHDB_PASSWORD: 'sphyra_couchdb_password', // @deprecated - CouchDB no longer used
 };
 
 // Generic storage functions
@@ -143,7 +143,6 @@ export const loadReminders = (): Reminder[] => {
 // Settings
 const DEFAULT_SETTINGS: AppSettings = {
   idleTimeout: 5, // 5 minutes by default
-  syncEnabled: false, // CouchDB sync disabled by default
 };
 
 /**
