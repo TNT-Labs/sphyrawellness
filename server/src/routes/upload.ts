@@ -1,10 +1,9 @@
 import express from 'express';
 import path from 'path';
-import db from '../config/database.js';
+import { prisma } from '../lib/prisma.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { uploadServiceImage, uploadStaffImage, deleteImageFile } from '../middleware/upload.js';
 import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
-import type { ApiResponse, Service, Staff } from '../types/index.js';
 
 const router = express.Router();
 
@@ -28,57 +27,30 @@ router.post('/service/:serviceId', (req, res) => {
 
       const { serviceId } = req.params;
 
-      // Get the service from database or create if doesn't exist
-      let serviceDoc: any;
-      try {
-        serviceDoc = await db.services.get(serviceId);
-      } catch (error: any) {
-        if (error.status === 404) {
-          // Service doesn't exist in backend DB, create a minimal record
-          serviceDoc = {
-            _id: serviceId,
-            name: 'Service',
-            description: '',
-            duration: 60,
-            price: 0,
-            category: '',
-            createdAt: new Date().toISOString()
-          };
-          await db.services.put(serviceDoc);
-          serviceDoc = await db.services.get(serviceId);
-        } else {
-          throw error;
-        }
+      // Get the service from database
+      const service = await prisma.service.findUnique({
+        where: { id: serviceId }
+      });
+
+      if (!service) {
+        return sendError(res, 'Service not found', 404);
       }
 
       // Delete old image if exists
-      if (serviceDoc.imageUrl) {
-        deleteImageFile(serviceDoc.imageUrl);
+      if (service.imageUrl) {
+        deleteImageFile(service.imageUrl);
       }
 
       // Update service with new image URL
       const imageUrl = `/uploads/services/${req.file.filename}`;
-      serviceDoc.imageUrl = imageUrl;
-      serviceDoc.updatedAt = new Date().toISOString();
+      const updatedService = await prisma.service.update({
+        where: { id: serviceId },
+        data: {
+          imageUrl
+        }
+      });
 
-      // Save to database
-      await db.services.put(serviceDoc);
-
-      // Convert to API format (remove _id and _rev)
-      const service: Service = {
-        id: serviceDoc._id,
-        name: serviceDoc.name,
-        description: serviceDoc.description,
-        duration: serviceDoc.duration,
-        price: serviceDoc.price,
-        category: serviceDoc.category,
-        color: serviceDoc.color,
-        imageUrl: serviceDoc.imageUrl,
-        createdAt: serviceDoc.createdAt,
-        updatedAt: serviceDoc.updatedAt
-      };
-
-      sendSuccess(res, { service, imageUrl }, 'Image uploaded successfully');
+      sendSuccess(res, { service: updatedService, imageUrl }, 'Image uploaded successfully');
     } catch (error: any) {
       handleRouteError(res, error, 'Failed to upload service image');
     }
@@ -94,33 +66,30 @@ router.delete('/service/:serviceId', async (req, res) => {
     const { serviceId } = req.params;
 
     // Get the service from database
-    const serviceDoc: any = await db.services.get(serviceId);
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId }
+    });
 
-    // Delete image file if exists
-    if (serviceDoc.imageUrl) {
-      deleteImageFile(serviceDoc.imageUrl);
-      serviceDoc.imageUrl = undefined;
-      serviceDoc.updatedAt = new Date().toISOString();
-
-      // Save to database
-      await db.services.put(serviceDoc);
+    if (!service) {
+      return sendError(res, 'Service not found', 404);
     }
 
-    // Convert to API format
-    const service: Service = {
-      id: serviceDoc._id,
-      name: serviceDoc.name,
-      description: serviceDoc.description,
-      duration: serviceDoc.duration,
-      price: serviceDoc.price,
-      category: serviceDoc.category,
-      color: serviceDoc.color,
-      imageUrl: serviceDoc.imageUrl,
-      createdAt: serviceDoc.createdAt,
-      updatedAt: serviceDoc.updatedAt
-    };
+    // Delete image file if exists
+    if (service.imageUrl) {
+      deleteImageFile(service.imageUrl);
 
-    sendSuccess(res, { service }, 'Image deleted successfully');
+      // Update service to remove image URL
+      const updatedService = await prisma.service.update({
+        where: { id: serviceId },
+        data: {
+          imageUrl: null
+        }
+      });
+
+      sendSuccess(res, { service: updatedService }, 'Image deleted successfully');
+    } else {
+      sendSuccess(res, { service }, 'No image to delete');
+    }
   } catch (error: any) {
     handleRouteError(res, error, 'Failed to delete service image');
   }
@@ -143,62 +112,30 @@ router.post('/staff/:staffId', (req, res) => {
 
       const { staffId } = req.params;
 
-      // Get the staff from database or create if doesn't exist
-      let staffDoc: any;
-      try {
-        staffDoc = await db.staff.get(staffId);
-      } catch (error: any) {
-        if (error.status === 404) {
-          // Staff doesn't exist in backend DB, create a minimal record
-          staffDoc = {
-            _id: staffId,
-            firstName: 'Staff',
-            lastName: 'Member',
-            email: 'staff@example.com',
-            phone: '+39 000 0000000',
-            role: '',
-            specializations: [],
-            color: '#ec4899',
-            isActive: true,
-            createdAt: new Date().toISOString()
-          };
-          await db.staff.put(staffDoc);
-          staffDoc = await db.staff.get(staffId);
-        } else {
-          throw error;
-        }
+      // Get the staff from database
+      const staff = await prisma.staff.findUnique({
+        where: { id: staffId }
+      });
+
+      if (!staff) {
+        return sendError(res, 'Staff member not found', 404);
       }
 
       // Delete old image if exists
-      if (staffDoc.profileImageUrl) {
-        deleteImageFile(staffDoc.profileImageUrl);
+      if (staff.profileImageUrl) {
+        deleteImageFile(staff.profileImageUrl);
       }
 
       // Update staff with new image URL
       const imageUrl = `/uploads/staff/${req.file.filename}`;
-      staffDoc.profileImageUrl = imageUrl;
-      staffDoc.updatedAt = new Date().toISOString();
+      const updatedStaff = await prisma.staff.update({
+        where: { id: staffId },
+        data: {
+          profileImageUrl: imageUrl
+        }
+      });
 
-      // Save to database
-      await db.staff.put(staffDoc);
-
-      // Convert to API format (remove _id and _rev)
-      const staff: Staff = {
-        id: staffDoc._id,
-        firstName: staffDoc.firstName,
-        lastName: staffDoc.lastName,
-        email: staffDoc.email,
-        phone: staffDoc.phone,
-        role: staffDoc.role,
-        specializations: staffDoc.specializations,
-        color: staffDoc.color,
-        isActive: staffDoc.isActive,
-        profileImageUrl: staffDoc.profileImageUrl,
-        createdAt: staffDoc.createdAt,
-        updatedAt: staffDoc.updatedAt
-      };
-
-      sendSuccess(res, { staff, imageUrl }, 'Profile image uploaded successfully');
+      sendSuccess(res, { staff: updatedStaff, imageUrl }, 'Profile image uploaded successfully');
     } catch (error: any) {
       handleRouteError(res, error, 'Failed to upload staff profile image');
     }
@@ -214,35 +151,30 @@ router.delete('/staff/:staffId', async (req, res) => {
     const { staffId } = req.params;
 
     // Get the staff from database
-    const staffDoc: any = await db.staff.get(staffId);
+    const staff = await prisma.staff.findUnique({
+      where: { id: staffId }
+    });
 
-    // Delete image file if exists
-    if (staffDoc.profileImageUrl) {
-      deleteImageFile(staffDoc.profileImageUrl);
-      staffDoc.profileImageUrl = undefined;
-      staffDoc.updatedAt = new Date().toISOString();
-
-      // Save to database
-      await db.staff.put(staffDoc);
+    if (!staff) {
+      return sendError(res, 'Staff member not found', 404);
     }
 
-    // Convert to API format
-    const staff: Staff = {
-      id: staffDoc._id,
-      firstName: staffDoc.firstName,
-      lastName: staffDoc.lastName,
-      email: staffDoc.email,
-      phone: staffDoc.phone,
-      role: staffDoc.role,
-      specializations: staffDoc.specializations,
-      color: staffDoc.color,
-      isActive: staffDoc.isActive,
-      profileImageUrl: staffDoc.profileImageUrl,
-      createdAt: staffDoc.createdAt,
-      updatedAt: staffDoc.updatedAt
-    };
+    // Delete image file if exists
+    if (staff.profileImageUrl) {
+      deleteImageFile(staff.profileImageUrl);
 
-    sendSuccess(res, { staff }, 'Profile image deleted successfully');
+      // Update staff to remove image URL
+      const updatedStaff = await prisma.staff.update({
+        where: { id: staffId },
+        data: {
+          profileImageUrl: null
+        }
+      });
+
+      sendSuccess(res, { staff: updatedStaff }, 'Profile image deleted successfully');
+    } else {
+      sendSuccess(res, { staff }, 'No image to delete');
+    }
   } catch (error: any) {
     handleRouteError(res, error, 'Failed to delete staff profile image');
   }
