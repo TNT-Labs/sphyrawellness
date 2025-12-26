@@ -11,19 +11,19 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { authenticate } from './middleware/auth.js';
 import { prismaErrorHandler } from './middleware/prismaErrorHandler.js';
 
-// New PostgreSQL routes
-import authRouter from './routes/auth.new.js';
-import customersRouter from './routes/customers.new.js';
-import servicesRouter from './routes/services.new.js';
-import staffRouter from './routes/staff.new.js';
-import appointmentsRouter from './routes/appointments.new.js';
-import paymentsRouter from './routes/payments.new.js';
-import remindersRouter from './routes/reminders.new.js';
-import usersRouter from './routes/users.new.js';
-import settingsRouter from './routes/settings.new.js';
-import publicRouter from './routes/public.new.js';
+// PostgreSQL REST API routes
+import authRouter from './routes/auth.js';
+import customersRouter from './routes/customers.js';
+import servicesRouter from './routes/services.js';
+import staffRouter from './routes/staff.js';
+import appointmentsRouter from './routes/appointments.js';
+import paymentsRouter from './routes/payments.js';
+import remindersRouter from './routes/reminders.js';
+import usersRouter from './routes/users.js';
+import settingsRouter from './routes/settings.js';
+import publicRouter from './routes/public.js';
 
-// Existing routes (keep for now - upload, etc.)
+// Upload route
 import uploadRouter from './routes/upload.js';
 
 import logger from './utils/logger.js';
