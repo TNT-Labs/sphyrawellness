@@ -107,9 +107,10 @@ services:
       # JWT Secret for authentication
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
-      # Email settings
+      # Email settings (SendGrid)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
-      - EMAIL_FROM=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
+      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness Lab}
       # SMS settings (optional)
       - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
       - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}

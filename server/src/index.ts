@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
 import app from './app.js';
-import { initializeIndexes } from './config/database.js';
-import { initializeDailyReminderCron } from './jobs/dailyReminderCron.js';
+import { initializeDailyReminderCron } from './jobs/dailyReminderCronPrisma.js';
 import logger from './utils/logger.js';
 
 // Load environment variables
@@ -9,15 +8,12 @@ dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 
-// Initialize database indexes and start server
+// Initialize and start server
 async function startServer() {
   try {
     logger.info('🚀 Starting Sphyra Wellness Lab Server...\n');
 
-    // Initialize database indexes
-    await initializeIndexes();
-
-    // Initialize cron job
+    // Initialize daily reminder cron job
     initializeDailyReminderCron();
 
     // Start Express server
