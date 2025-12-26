@@ -1,6 +1,7 @@
 # ========================================
 # Sphyra Wellness Lab - HTTPS con Let's Encrypt
 # Certificati SSL/TLS validi e fidati
+# Database: PostgreSQL (aggiornato)
 # ========================================
 
 services:
@@ -61,31 +62,30 @@ services:
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot --webroot-path=/var/www/certbot --quiet; sleep 12h & wait $${!}; done;'"
 
   # ========================================
-  # DATABASE - CouchDB (INTERNO)
+  # DATABASE - PostgreSQL
   # ========================================
-  couchdb:
-    image: apache/couchdb:latest
-    container_name: sphyra-couchdb
+  postgres:
+    image: postgres:16-alpine
+    container_name: sphyra-postgres
     restart: unless-stopped
-    ports:
-      # Expose CouchDB port for local development/configuration
-      - "5984:5984"
     environment:
-      - COUCHDB_USER=${COUCHDB_USER:-admin}
-      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-sphyra_wellness}
+      - POSTGRES_USER=${POSTGRES_USER:-sphyra_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sphyra_dev_password_2024}
     volumes:
-      - couchdb_data:/opt/couchdb/data
-      - couchdb_config:/opt/couchdb/etc/local.d
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - sphyra-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5984/_up"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sphyra_user}"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 40s
-    labels:
-      - "traefik.enable=false"
+      start_period: 20s
+    # Non esporre la porta pubblicamente in produzione
+    # Commenta questa linea per maggiore sicurezza
+    ports:
+      - "5432:5432"
 
   # ========================================
   # BACKEND - API Server (HTTPS)
@@ -98,30 +98,40 @@ services:
     restart: unless-stopped
     volumes:
       # Shared uploads directory
-      - uploads_data:/app/server/uploads
+      - uploads_data:/app/uploads
     environment:
       - NODE_ENV=production
       - PORT=3001
+      # PostgreSQL Database URL
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-sphyra_user}:${POSTGRES_PASSWORD:-sphyra_dev_password_2024}@postgres:5432/${POSTGRES_DB:-sphyra_wellness}?schema=public
       # JWT Secret for authentication
       - JWT_SECRET=${JWT_SECRET}
-      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
-      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
-      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness Lab}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      # Email settings
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
+      - EMAIL_FROM=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
+      # SMS settings (optional)
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
       # Frontend URL (HTTPS public domain)
       - FRONTEND_URL=https://${DOMAIN}
-      # CouchDB (internal)
-      - COUCHDB_URL=http://couchdb:5984
-      - COUCHDB_USERNAME=${COUCHDB_USER:-admin}
-      - COUCHDB_PASSWORD=${COUCHDB_PASSWORD}
-      - REMINDER_SEND_HOUR=${REMINDER_SEND_HOUR:-10}
-      - REMINDER_SEND_MINUTE=${REMINDER_SEND_MINUTE:-0}
       # CORS - Permetti il dominio pubblico
       - ALLOWED_ORIGINS=https://${DOMAIN}
     depends_on:
-      couchdb:
+      postgres:
         condition: service_healthy
     networks:
       - sphyra-network
+    command: >
+      sh -c "
+        echo '⏳ Waiting for database...';
+        npx prisma migrate deploy &&
+        echo '✅ Database migrations applied' &&
+        npx prisma db seed || echo '⚠️  Seed skipped (optional)' &&
+        echo '🚀 Starting backend server...' &&
+        npm start
+      "
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -135,7 +145,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.https
+      dockerfile: Dockerfile
       args:
         - VITE_API_URL=/api
     container_name: sphyra-frontend
@@ -165,9 +175,7 @@ networks:
 # VOLUMES
 # ========================================
 volumes:
-  couchdb_data:
-    driver: local
-  couchdb_config:
+  postgres_data:
     driver: local
   nginx_logs:
     driver: local
