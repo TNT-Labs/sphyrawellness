@@ -8,7 +8,6 @@ import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X, Upload, Image as ImageIcon } from 'lucide-react';
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { canDeleteService } from '../utils/db';
 import { logger } from '../utils/logger';
 import { isToday, parseISO } from 'date-fns';
 import AppointmentModal from '../components/calendar/AppointmentModal';
@@ -225,14 +224,6 @@ const Services: React.FC = () => {
   };
 
   const handleDelete = async (service: Service) => {
-    // Check if service has future appointments
-    const canDelete = await canDeleteService(service.id);
-
-    if (!canDelete.canDelete) {
-      showError(`Impossibile eliminare: ${canDelete.reason}. Cancella prima gli appuntamenti futuri.`);
-      return;
-    }
-
     const confirmed = await confirm({
       title: 'Elimina Servizio',
       message: `Sei sicuro di voler eliminare "${service.name}"? Questa azione non può essere annullata.`,
@@ -245,8 +236,10 @@ const Services: React.FC = () => {
         await deleteService(service.id);
         showSuccess('Servizio eliminato con successo!');
       } catch (error) {
-        showError('Errore durante l\'eliminazione del servizio');
-        logger.error('Error saving service:', error);
+        // Backend will return an error if service has future appointments
+        const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'eliminazione del servizio';
+        showError(errorMessage);
+        logger.error('Error deleting service:', error);
       }
     }
   };

@@ -7,7 +7,6 @@ import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../ut
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
-import { canDeleteStaff } from '../utils/db';
 import { logger } from '../utils/logger';
 import { isToday, parseISO } from 'date-fns';
 import { uploadStaffImage, deleteStaffImage, getImageUrl } from '../services/uploadService';
@@ -242,14 +241,6 @@ const StaffPage: React.FC = () => {
     const member = staff.find((s) => s.id === id);
     if (!member) return;
 
-    // Check if staff has future appointments
-    const canDelete = await canDeleteStaff(id);
-
-    if (!canDelete.canDelete) {
-      showError(`Impossibile eliminare: ${canDelete.reason}. Cancella prima gli appuntamenti futuri.`);
-      return;
-    }
-
     const confirmed = await confirm({
       title: 'Conferma Eliminazione',
       message: `Sei sicuro di voler eliminare ${member.firstName} ${member.lastName}? Questa azione non può essere annullata.`,
@@ -263,9 +254,31 @@ const StaffPage: React.FC = () => {
         await deleteStaff(id);
         showSuccess('Membro dello staff eliminato con successo');
       } catch (error) {
-        showError('Errore durante l\'eliminazione del membro dello staff');
-        logger.error('Error with staff operation:', error);
+        // Backend will return an error if staff has future appointments
+        const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'eliminazione dello staff';
+        showError(errorMessage);
+        logger.error('Error deleting staff:', error);
       }
+    }
+  };
+
+  const handleImageUpload = async (id: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) {
+      showError('Seleziona un\'immagine valida');
+      return;
+    }
+
+    try {
+      const imageUrl = await uploadStaffImage(id, file);
+      const member = staff.find((s) => s.id === id);
+      if (member) {
+        await updateStaff(id, { ...member, imageUrl });
+        showSuccess('Immagine caricata con successo');
+      }
+    } catch (error) {
+      showError('Errore durante il caricamento dell\'immagine');
+      logger.error('Error uploading staff image:', error);
     }
   };
 

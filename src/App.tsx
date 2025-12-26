@@ -26,7 +26,6 @@ import Settings from './pages/Settings';
 import ConfirmAppointment from './pages/ConfirmAppointment';
 import PublicBooking from './pages/PublicBooking';
 import PrivacyPolicy from './pages/PrivacyPolicy';
-import AdminDebug from './pages/AdminDebug';
 
 // Global loading screen
 const GlobalLoader: React.FC = () => (
@@ -86,7 +85,6 @@ const AppContent: React.FC = () => {
             <Route path="/prenota" element={<PublicBooking />} />
             <Route path="/booking" element={<PublicBooking />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/admin-debug-panel" element={<AdminDebug />} />
 
             {/* Protected routes */}
             <Route

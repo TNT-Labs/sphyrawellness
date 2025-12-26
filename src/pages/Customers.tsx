@@ -9,7 +9,6 @@ import { Plus, Search, Edit, Trash2, Phone, Mail, User, Calendar, X } from 'luci
 import { format, isToday, parseISO } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
-import { canDeleteCustomer } from '../utils/db';
 import { logger } from '../utils/logger';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 import ConsentManagement from '../components/ConsentManagement';
@@ -144,14 +143,6 @@ const Customers: React.FC = () => {
   };
 
   const handleDelete = async (customer: Customer) => {
-    // Check if customer has future appointments
-    const canDelete = await canDeleteCustomer(customer.id);
-
-    if (!canDelete.canDelete) {
-      showError(`Impossibile eliminare: ${canDelete.reason}. Cancella prima gli appuntamenti futuri.`);
-      return;
-    }
-
     const confirmed = await confirm({
       title: 'Elimina Cliente',
       message: `Sei sicuro di voler eliminare ${customer.firstName} ${customer.lastName}? Questa azione non può essere annullata.`,
@@ -164,7 +155,9 @@ const Customers: React.FC = () => {
         await deleteCustomer(customer.id);
         showSuccess('Cliente eliminato con successo!');
       } catch (error) {
-        showError('Errore durante l\'eliminazione del cliente');
+        // Backend will return an error if customer has future appointments
+        const errorMessage = error instanceof Error ? error.message : 'Errore durante l\'eliminazione del cliente';
+        showError(errorMessage);
         logger.error('Error deleting customer:', error);
       }
     }
