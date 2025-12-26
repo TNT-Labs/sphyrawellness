@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 // Middleware
 import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticateToken } from './middleware/auth.js';
 import { prismaErrorHandler } from './middleware/prismaErrorHandler.js';
 
 // PostgreSQL REST API routes
@@ -134,17 +134,17 @@ app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 
 // Protected routes (require authentication)
-app.use('/api/customers', authenticate, customersRouter);
-app.use('/api/services', authenticate, servicesRouter);
-app.use('/api/staff', authenticate, staffRouter);
-app.use('/api/appointments', authenticate, appointmentsRouter);
-app.use('/api/payments', authenticate, paymentsRouter);
-app.use('/api/reminders', authenticate, remindersRouter);
-app.use('/api/users', authenticate, usersRouter);
-app.use('/api/settings', authenticate, settingsRouter);
+app.use('/api/customers', authenticateToken, customersRouter);
+app.use('/api/services', authenticateToken, servicesRouter);
+app.use('/api/staff', authenticateToken, staffRouter);
+app.use('/api/appointments', authenticateToken, appointmentsRouter);
+app.use('/api/payments', authenticateToken, paymentsRouter);
+app.use('/api/reminders', authenticateToken, remindersRouter);
+app.use('/api/users', authenticateToken, usersRouter);
+app.use('/api/settings', authenticateToken, settingsRouter);
 
 // Upload (keep existing - may need auth)
-app.use('/api/upload', authenticate, uploadRouter);
+app.use('/api/upload', authenticateToken, uploadRouter);
 
 // Root route
 app.get('/', (req, res) => {
