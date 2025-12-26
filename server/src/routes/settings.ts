@@ -1,128 +1,98 @@
-import express from 'express';
-import db from '../config/database.js';
-import { strictLimiter } from '../middleware/rateLimiter.js';
-import { authenticateToken, type AuthRequest } from '../middleware/auth.js';
-import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
-import type { Settings, ApiResponse } from '../types/index.js';
+import { Router } from 'express';
+import { settingRepository } from '../repositories/settingRepository.js';
+import { z } from 'zod';
 
-const router = express.Router();
+const router = Router();
 
-const DEFAULT_SETTINGS_ID = 'app-settings';
+const updateSettingsSchema = z.record(z.any());
 
-/**
- * GET /api/settings/is-server
- * Access restrictions have been removed - all users can access reminder settings
- * This endpoint now always returns true to allow universal access
- */
-router.get('/is-server', async (req: AuthRequest, res) => {
+// GET /api/settings - Get all settings as object
+router.get('/', async (req, res, next) => {
   try {
-    console.log('✅ is-server check: Always returning true (restrictions removed)');
-    return sendSuccess(res, { isServer: true });
+    const settings = await settingRepository.getAllAsObject();
+    res.json(settings);
   } catch (error) {
-    console.error('Error in GET /settings/is-server:', error);
-    return handleRouteError(error, res, 'Failed to check server status');
+    next(error);
   }
 });
 
-/**
- * GET /api/settings
- * Get application settings
- */
-router.get('/', async (req, res) => {
+// PUT /api/settings - Bulk update settings
+router.put('/', async (req, res, next) => {
   try {
-    let settings: Settings;
+    const data = updateSettingsSchema.parse(req.body);
 
-    try {
-      settings = await db.settings.get(DEFAULT_SETTINGS_ID) as Settings;
-    } catch (settingsError) {
-      // If settings don't exist, create defaults
-      const error = settingsError as any;
-      if (error.status === 404) {
-        settings = {
-          _id: DEFAULT_SETTINGS_ID,
-          reminderSendHour: 10,
-          reminderSendMinute: 0,
-          enableAutoReminders: true,
-          reminderDaysBefore: 1,
-          updatedAt: new Date().toISOString()
-        };
+    const settingsArray = Object.entries(data).map(([key, value]) => ({
+      key,
+      value,
+    }));
 
-        await db.settings.put(settings);
-      } else {
-        throw error;
-      }
-    }
+    const userId = (req as any).user?.id; // From JWT middleware
 
-    return sendSuccess(res, settings);
+    await settingRepository.bulkUpdate(settingsArray, userId);
+
+    const updated = await settingRepository.getAllAsObject();
+
+    res.json(updated);
   } catch (error) {
-    console.error('Error in GET /settings:', error);
-    return handleRouteError(error, res, 'Failed to fetch settings');
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
   }
 });
 
-/**
- * PUT /api/settings
- * Update application settings
- */
-router.put('/', strictLimiter, async (req, res) => {
+// GET /api/settings/:key - Get single setting
+router.get('/:key', async (req, res, next) => {
   try {
-    const {
-      reminderSendHour,
-      reminderSendMinute,
-      enableAutoReminders,
-      reminderDaysBefore
-    } = req.body;
+    const { key } = req.params;
 
-    // Validation
-    if (reminderSendHour !== undefined && (reminderSendHour < 0 || reminderSendHour > 23)) {
-      return sendError(res, 'reminderSendHour must be between 0 and 23', 400);
+    const setting = await settingRepository.findByKey(key);
+
+    if (!setting) {
+      return res.status(404).json({ error: 'Setting not found' });
     }
 
-    if (reminderSendMinute !== undefined && (reminderSendMinute < 0 || reminderSendMinute > 59)) {
-      return sendError(res, 'reminderSendMinute must be between 0 and 59', 400);
-    }
-
-    if (reminderDaysBefore !== undefined && (reminderDaysBefore < 1 || reminderDaysBefore > 30)) {
-      return sendError(res, 'reminderDaysBefore must be between 1 and 30', 400);
-    }
-
-    // Get existing settings or create defaults
-    let settings: Settings;
-    try {
-      settings = await db.settings.get(DEFAULT_SETTINGS_ID) as Settings;
-    } catch (settingsError) {
-      const error = settingsError as any;
-      if (error.status === 404) {
-        settings = {
-          _id: DEFAULT_SETTINGS_ID,
-          reminderSendHour: 10,
-          reminderSendMinute: 0,
-          enableAutoReminders: true,
-          reminderDaysBefore: 1
-        };
-      } else {
-        throw error;
-      }
-    }
-
-    // Update settings
-    const updatedSettings: Settings = {
-      ...settings,
-      ...(reminderSendHour !== undefined && { reminderSendHour }),
-      ...(reminderSendMinute !== undefined && { reminderSendMinute }),
-      ...(enableAutoReminders !== undefined && { enableAutoReminders }),
-      ...(reminderDaysBefore !== undefined && { reminderDaysBefore }),
-      updatedAt: new Date().toISOString()
-    };
-
-    await db.settings.put(updatedSettings);
-
-    console.log('✅ Settings updated:', updatedSettings);
-
-    return sendSuccess(res, updatedSettings, 'Settings updated successfully');
+    res.json(setting);
   } catch (error) {
-    console.error('Error in PUT /settings:', error);
-    return handleRouteError(error, res, 'Failed to update settings');
+    next(error);
+  }
+});
+
+// PUT /api/settings/:key - Update single setting
+router.put('/:key', async (req, res, next) => {
+  try {
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (value === undefined) {
+      return res.status(400).json({ error: 'Value is required' });
+    }
+
+    const userId = (req as any).user?.id;
+
+    const setting = await settingRepository.upsert(key, value, userId);
+
+    res.json(setting);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/settings/:key - Delete setting
+router.delete('/:key', async (req, res, next) => {
+  try {
+    const { key } = req.params;
+
+    const existing = await settingRepository.findByKey(key);
+    if (!existing) {
+      return res.status(404).json({ error: 'Setting not found' });
+    }
+
+    await settingRepository.delete(key);
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
   }
 });
 

@@ -1,147 +1,217 @@
-import express from 'express';
-import reminderService from '../services/reminderService.js';
-import calendarService from '../services/calendarService.js';
-import db from '../config/database.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
-import type { ApiResponse, Appointment, Customer, Service, Staff } from '../types/index.js';
+import { Router } from 'express';
+import { appointmentRepository } from '../repositories/appointmentRepository.js';
+import { z } from 'zod';
 
-const router = express.Router();
+const router = Router();
 
-/**
- * GET /api/appointments
- * Get all appointments from the backend database
- * Protected: Requires authentication
- */
-router.get('/', authenticateToken, async (req, res) => {
+const createAppointmentSchema = z.object({
+  customerId: z.string().uuid(),
+  serviceId: z.string().uuid(),
+  staffId: z.string().uuid(),
+  date: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']).optional(),
+  notes: z.string().optional(),
+});
+
+const updateAppointmentSchema = createAppointmentSchema.partial();
+
+// GET /api/appointments
+router.get('/', async (req, res, next) => {
   try {
-    const result = await db.appointments.allDocs({
-      include_docs: true
-    });
+    const { startDate, endDate, status, customerId, staffId, serviceId } = req.query;
 
-    const appointments: Appointment[] = result.rows
-      .filter(row => row.doc && !row.id.startsWith('_design/') && !(row.doc as any)._deleted)
-      .map(row => ({
-        ...row.doc,
-        id: row.id
-      })) as Appointment[];
+    let appointments;
 
-    return sendSuccess(res, appointments);
+    if (startDate && endDate) {
+      appointments = await appointmentRepository.findByDateRange(
+        new Date(startDate as string),
+        new Date(endDate as string)
+      );
+    } else if (customerId) {
+      appointments = await appointmentRepository.findByCustomer(customerId as string);
+    } else if (staffId) {
+      appointments = await appointmentRepository.findByStaff(staffId as string);
+    } else if (serviceId) {
+      appointments = await appointmentRepository.findByService(serviceId as string);
+    } else if (status) {
+      appointments = await appointmentRepository.findByStatus(status as any);
+    } else {
+      appointments = await appointmentRepository.findAll();
+    }
+
+    res.json(appointments);
   } catch (error) {
-    console.error('Error fetching appointments:', error);
-    return handleRouteError(error, res, 'Failed to fetch appointments');
+    next(error);
   }
 });
 
-/**
- * POST /api/appointments/:appointmentId/confirm
- * Confirm appointment using token
- * Public: No authentication required (uses hashed token validation)
- */
-router.post('/:appointmentId/confirm', async (req, res) => {
+// GET /api/appointments/:id
+router.get('/:id', async (req, res, next) => {
   try {
-    const { appointmentId } = req.params;
+    const { id } = req.params;
+    const appointment = await appointmentRepository.findById(id);
+
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    res.json(appointment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/appointments
+router.post('/', async (req, res, next) => {
+  try {
+    const data = createAppointmentSchema.parse(req.body);
+
+    // Check for conflicts
+    const hasConflict = await appointmentRepository.hasConflict(
+      data.staffId,
+      new Date(data.date),
+      new Date(`2000-01-01T${data.startTime}`),
+      new Date(`2000-01-01T${data.endTime}`)
+    );
+
+    if (hasConflict) {
+      return res.status(409).json({
+        error: 'Time slot conflict with existing appointment',
+      });
+    }
+
+    const appointment = await appointmentRepository.create({
+      customer: { connect: { id: data.customerId } },
+      service: { connect: { id: data.serviceId } },
+      staff: { connect: { id: data.staffId } },
+      date: new Date(data.date),
+      startTime: new Date(`2000-01-01T${data.startTime}`),
+      endTime: new Date(`2000-01-01T${data.endTime}`),
+      status: data.status,
+      notes: data.notes,
+    });
+
+    res.status(201).json(appointment);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
+  }
+});
+
+// PUT /api/appointments/:id
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const data = updateAppointmentSchema.parse(req.body);
+
+    const existing = await appointmentRepository.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    // Check for conflicts if time changed
+    if (data.staffId || data.date || data.startTime || data.endTime) {
+      const hasConflict = await appointmentRepository.hasConflict(
+        data.staffId || existing.staffId,
+        new Date(data.date || existing.date),
+        new Date(`2000-01-01T${data.startTime || existing.startTime}`),
+        new Date(`2000-01-01T${data.endTime || existing.endTime}`),
+        id
+      );
+
+      if (hasConflict) {
+        return res.status(409).json({
+          error: 'Time slot conflict with existing appointment',
+        });
+      }
+    }
+
+    const appointment = await appointmentRepository.update(id, {
+      ...(data.customerId && { customer: { connect: { id: data.customerId } } }),
+      ...(data.serviceId && { service: { connect: { id: data.serviceId } } }),
+      ...(data.staffId && { staff: { connect: { id: data.staffId } } }),
+      ...(data.date && { date: new Date(data.date) }),
+      ...(data.startTime && { startTime: new Date(`2000-01-01T${data.startTime}`) }),
+      ...(data.endTime && { endTime: new Date(`2000-01-01T${data.endTime}`) }),
+      status: data.status,
+      notes: data.notes,
+    });
+
+    res.json(appointment);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
+  }
+});
+
+// PATCH /api/appointments/:id/status
+router.patch('/:id/status', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+
+    const appointment = await appointmentRepository.updateStatus(id, status);
+
+    res.json(appointment);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/appointments/:id/confirm (Public endpoint)
+router.post('/:id/confirm', async (req, res, next) => {
+  try {
+    const { id } = req.params;
     const { token } = req.body;
 
     if (!token) {
-      return sendError(res, 'Confirmation token is required', 400);
+      return res.status(400).json({ error: 'Token is required' });
     }
 
-    const result = await reminderService.confirmAppointment(appointmentId, token);
+    const appointment = await appointmentRepository.findByConfirmationToken(token);
 
-    if (!result.success) {
-      return sendError(res, result.error || 'Failed to confirm appointment', 400);
+    if (!appointment || appointment.id !== id) {
+      return res.status(404).json({ error: 'Invalid confirmation token' });
     }
 
-    return sendSuccess(res, result.appointment, 'Appointment confirmed successfully');
+    // Check token expiry
+    if (appointment.tokenExpiresAt && new Date() > appointment.tokenExpiresAt) {
+      return res.status(410).json({ error: 'Confirmation token expired' });
+    }
+
+    const confirmed = await appointmentRepository.confirm(id);
+
+    res.json(confirmed);
   } catch (error) {
-    console.error('Error in /confirm:', error);
-    return handleRouteError(error, res, 'Failed to confirm appointment');
+    next(error);
   }
 });
 
-/**
- * GET /api/appointments/:appointmentId/confirm/:token
- * Confirm appointment via GET (for direct link clicks)
- * This redirects to the frontend confirmation page
- * Public: No authentication required (uses hashed token validation)
- */
-router.get('/:appointmentId/confirm/:token', async (req, res) => {
+// DELETE /api/appointments/:id
+router.delete('/:id', async (req, res, next) => {
   try {
-    const { appointmentId, token } = req.params;
+    const { id } = req.params;
 
-    const result = await reminderService.confirmAppointment(appointmentId, token);
-
-    const frontendUrl = process.env.FRONTEND_URL || 'https://sphyra.local';
-
-    if (!result.success) {
-      // Redirect to error page
-      return res.redirect(`${frontendUrl}/confirm-appointment/error?message=${encodeURIComponent(result.error || 'Invalid token')}`);
+    const existing = await appointmentRepository.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Appointment not found' });
     }
 
-    // Redirect to success page with success flag
-    res.redirect(`${frontendUrl}/confirm-appointment/success?success=true&appointmentId=${appointmentId}`);
+    await appointmentRepository.delete(id);
+
+    res.status(204).send();
   } catch (error) {
-    console.error('Error in GET /confirm:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'https://sphyra.local';
-    res.redirect(`${frontendUrl}/confirm-appointment/error?message=${encodeURIComponent('An error occurred')}`);
-  }
-});
-
-/**
- * GET /api/appointments/:appointmentId/calendar.ics
- * Generate and download iCalendar (.ics) file for an appointment
- * Public: No authentication required (allows direct download from email)
- */
-router.get('/:appointmentId/calendar.ics', async (req, res) => {
-  try {
-    const { appointmentId } = req.params;
-
-    // Fetch appointment first to get foreign keys
-    const appointmentDoc = await db.appointments.get(appointmentId);
-    const appointment: Appointment = {
-      ...appointmentDoc,
-      id: appointmentDoc._id
-    } as any;
-
-    // OPTIMIZATION: Fetch all related data in parallel instead of sequentially
-    // This reduces latency from 4 × network_delay to 1 × network_delay
-    const [customerDoc, serviceDoc, staffDoc] = await Promise.all([
-      db.customers.get(appointment.customerId),
-      db.services.get(appointment.serviceId),
-      db.staff.get(appointment.staffId)
-    ]);
-
-    const customer: Customer = {
-      ...customerDoc,
-      id: customerDoc._id
-    } as any;
-
-    const service: Service = {
-      ...serviceDoc,
-      id: serviceDoc._id
-    } as any;
-
-    const staff: Staff = {
-      ...staffDoc,
-      id: staffDoc._id
-    } as any;
-
-    // Generate .ics file content
-    const icsContent = calendarService.generateICS({
-      appointment,
-      customer,
-      service,
-      staff
-    });
-
-    // Set headers for .ics file download
-    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="appuntamento-${appointmentId}.ics"`);
-    res.send(icsContent);
-  } catch (error) {
-    console.error('Error generating calendar file:', error);
-    return handleRouteError(error, res, 'Failed to generate calendar file');
+    next(error);
   }
 });
 

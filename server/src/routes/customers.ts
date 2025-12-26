@@ -1,152 +1,207 @@
 import { Router } from 'express';
+import { customerRepository } from '../repositories/customerRepository.js';
 import { z } from 'zod';
-import { db } from '../config/database.js';
-import logger from '../utils/logger.js';
-import { sendConsentNotificationEmail } from '../services/consentEmailService.js';
-import type { ApiResponse, Customer, CustomerConsents, ConsentHistoryEntry } from '../types/index.js';
 
 const router = Router();
 
-// Zod schema for consent update validation
-const consentUpdateSchema = z.object({
-  consents: z.object({
-    emailReminderConsent: z.boolean().optional(),
-    emailReminderConsentDate: z.string().optional(),
-    smsReminderConsent: z.boolean().optional(),
-    smsReminderConsentDate: z.string().optional(),
-    healthDataConsent: z.boolean().optional(),
-    healthDataConsentDate: z.string().optional(),
-    marketingConsent: z.boolean().optional(),
-    marketingConsentDate: z.string().optional(),
-    consentHistory: z.array(z.object({
-      type: z.enum(['privacy', 'emailReminder', 'smsReminder', 'healthData', 'marketing']),
-      action: z.enum(['granted', 'revoked', 'updated']),
-      timestamp: z.string(),
-      ipAddress: z.string().optional(),
-      userAgent: z.string().optional(),
-    })).optional(),
-  }),
+// Validation schemas
+const createCustomerSchema = z.object({
+  firstName: z.string().min(1).max(100),
+  lastName: z.string().min(1).max(100),
+  email: z.string().email().optional(),
+  phone: z.string().min(1).max(20).optional(),
+  dateOfBirth: z.string().optional(),
+  notes: z.string().optional(),
+  allergies: z.string().optional(),
+
+  // GDPR Consents
+  privacyConsent: z.boolean(),
+  privacyConsentVersion: z.string().optional(),
+  emailReminderConsent: z.boolean().optional(),
+  smsReminderConsent: z.boolean().optional(),
+  healthDataConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
 });
 
-/**
- * PUT /api/customers/:customerId/consents
- * Update customer consents and send email notifications for newly granted consents
- */
-router.put('/:customerId/consents', async (req, res) => {
+const updateCustomerSchema = createCustomerSchema.partial();
+
+const updateConsentsSchema = z.object({
+  privacyConsent: z.boolean().optional(),
+  emailReminderConsent: z.boolean().optional(),
+  smsReminderConsent: z.boolean().optional(),
+  healthDataConsent: z.boolean().optional(),
+  marketingConsent: z.boolean().optional(),
+});
+
+// GET /api/customers - Get all customers
+router.get('/', async (req, res, next) => {
   try {
-    const { customerId } = req.params;
+    const { search } = req.query;
 
-    // Validate request body
-    const validationResult = consentUpdateSchema.safeParse(req.body);
-    if (!validationResult.success) {
-      logger.warn(`Invalid consent update request: ${validationResult.error.message}`);
-      const response: ApiResponse = {
-        success: false,
-        error: 'Invalid consent data: ' + validationResult.error.issues.map((e: z.ZodIssue) => e.message).join(', '),
-      };
-      return res.status(400).json(response);
+    let customers;
+    if (search && typeof search === 'string') {
+      customers = await customerRepository.search(search);
+    } else {
+      customers = await customerRepository.findAll();
     }
 
-    const { consents } = validationResult.data;
+    res.json(customers);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    // Fetch customer from database
-    let customer: Customer;
-    try {
-      customer = await db.customers.get(customerId);
-    } catch (error) {
-      logger.error(`Customer not found: ${customerId}`);
-      const response: ApiResponse = {
-        success: false,
-        error: 'Customer not found',
-      };
-      return res.status(404).json(response);
+// GET /api/customers/:id - Get customer by ID
+router.get('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { include } = req.query;
+
+    let customer;
+    if (include === 'appointments') {
+      customer = await customerRepository.findByIdWithAppointments(id);
+    } else {
+      customer = await customerRepository.findById(id);
     }
 
-    // Track which consents were newly granted (changed from false to true)
-    const newlyGrantedConsents: Array<{
-      type: 'emailReminder' | 'smsReminder' | 'healthData' | 'marketing';
-      label: string;
-    }> = [];
-
-    const currentConsents = customer.consents || {} as CustomerConsents;
-
-    // Check for newly granted consents
-    if (consents.emailReminderConsent && !currentConsents.emailReminderConsent) {
-      newlyGrantedConsents.push({ type: 'emailReminder', label: 'Promemoria via Email' });
-    }
-    if (consents.smsReminderConsent && !currentConsents.smsReminderConsent) {
-      newlyGrantedConsents.push({ type: 'smsReminder', label: 'Promemoria via SMS' });
-    }
-    if (consents.healthDataConsent && !currentConsents.healthDataConsent) {
-      newlyGrantedConsents.push({ type: 'healthData', label: 'Trattamento Dati Sanitari' });
-    }
-    if (consents.marketingConsent && !currentConsents.marketingConsent) {
-      newlyGrantedConsents.push({ type: 'marketing', label: 'Comunicazioni Marketing' });
+    if (!customer) {
+      return res.status(404).json({ error: 'Customer not found' });
     }
 
-    // Merge consents
-    const updatedConsents: CustomerConsents = {
-      ...currentConsents,
-      ...consents,
-    };
+    res.json(customer);
+  } catch (error) {
+    next(error);
+  }
+});
 
-    // Update customer in database
-    const updatedCustomer: Customer = {
-      ...customer,
-      consents: updatedConsents,
-      updatedAt: new Date().toISOString(),
-    };
+// POST /api/customers - Create new customer
+router.post('/', async (req, res, next) => {
+  try {
+    const data = createCustomerSchema.parse(req.body);
 
-    try {
-      await db.customers.put(updatedCustomer);
-      logger.info(`✅ Customer consents updated successfully: ${customerId}`);
-    } catch (error: any) {
-      logger.error(`Failed to update customer consents in database:`, error);
-      const response: ApiResponse = {
-        success: false,
-        error: 'Failed to update customer consents in database',
-      };
-      return res.status(500).json(response);
-    }
-
-    // Send email notification for newly granted consents
-    if (newlyGrantedConsents.length > 0) {
-      try {
-        await sendConsentNotificationEmail(
-          customer.email,
-          customer.firstName,
-          customer.lastName,
-          newlyGrantedConsents,
-          updatedConsents.privacyConsentVersion || '1.0'
-        );
-        logger.info(`📧 Consent notification email sent to ${customer.email}`);
-      } catch (emailError: any) {
-        // Log error but don't fail the request - consent update was successful
-        logger.error(`Failed to send consent notification email to ${customer.email}:`, emailError);
-        logger.error(`Email error details: ${emailError.message}`);
-        // We continue - the consent was updated successfully even if email failed
+    // Check if email or phone already exists
+    if (data.email) {
+      const existingByEmail = await customerRepository.findByEmail(data.email);
+      if (existingByEmail) {
+        return res.status(409).json({ error: 'Email already exists' });
       }
     }
 
-    const response: ApiResponse = {
-      success: true,
-      message: 'Consents updated successfully',
-      data: {
-        customerId,
-        updatedConsents,
-        emailSent: newlyGrantedConsents.length > 0,
-        newlyGrantedConsents: newlyGrantedConsents.map(c => c.label),
-      },
-    };
+    if (data.phone) {
+      const existingByPhone = await customerRepository.findByPhone(data.phone);
+      if (existingByPhone) {
+        return res.status(409).json({ error: 'Phone already exists' });
+      }
+    }
 
-    res.json(response);
-  } catch (error: any) {
-    logger.error('Error updating customer consents:', error);
-    const response: ApiResponse = {
-      success: false,
-      error: error.message || 'Internal server error',
-    };
-    res.status(500).json(response);
+    const customer = await customerRepository.create({
+      ...data,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+      privacyConsentDate: data.privacyConsent ? new Date() : undefined,
+      privacyConsentVersion: data.privacyConsentVersion || '1.0',
+      emailReminderConsentDate: data.emailReminderConsent ? new Date() : undefined,
+      smsReminderConsentDate: data.smsReminderConsent ? new Date() : undefined,
+      healthDataConsentDate: data.healthDataConsent ? new Date() : undefined,
+    });
+
+    res.status(201).json(customer);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
+  }
+});
+
+// PUT /api/customers/:id - Update customer
+router.put('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const data = updateCustomerSchema.parse(req.body);
+
+    // Check if customer exists
+    const existing = await customerRepository.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Check email uniqueness
+    if (data.email && data.email !== existing.email) {
+      const existingByEmail = await customerRepository.findByEmail(data.email);
+      if (existingByEmail) {
+        return res.status(409).json({ error: 'Email already exists' });
+      }
+    }
+
+    // Check phone uniqueness
+    if (data.phone && data.phone !== existing.phone) {
+      const existingByPhone = await customerRepository.findByPhone(data.phone);
+      if (existingByPhone) {
+        return res.status(409).json({ error: 'Phone already exists' });
+      }
+    }
+
+    const customer = await customerRepository.update(id, {
+      ...data,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+    });
+
+    res.json(customer);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
+  }
+});
+
+// PATCH /api/customers/:id/consents - Update customer consents
+router.patch('/:id/consents', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const consents = updateConsentsSchema.parse(req.body);
+
+    // Check if customer exists
+    const existing = await customerRepository.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    const customer = await customerRepository.updateConsents(id, consents);
+
+    res.json(customer);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
+  }
+});
+
+// DELETE /api/customers/:id - Delete customer
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Check if customer exists
+    const existing = await customerRepository.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Check if customer can be deleted
+    const canDelete = await customerRepository.canDelete(id);
+    if (!canDelete) {
+      return res.status(409).json({
+        error: 'Cannot delete customer with future appointments',
+      });
+    }
+
+    await customerRepository.delete(id);
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
   }
 });
 

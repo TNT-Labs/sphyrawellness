@@ -1,57 +1,93 @@
-import express from 'express';
+import { Router } from 'express';
+import { userRepository } from '../repositories/userRepository.js';
 import jwt from 'jsonwebtoken';
-import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
-import type { ApiResponse } from '../types/index.js';
+import { z } from 'zod';
 
-const router = express.Router();
+const router = Router();
 
-// Use the same JWT_SECRET as auth middleware
-const isDevelopment = process.env.NODE_ENV !== 'production';
-let JWT_SECRET = process.env.JWT_SECRET;
+const loginSchema = z.object({
+  username: z.string().min(1),
+  password: z.string().min(1),
+});
 
-if (!JWT_SECRET) {
-  if (isDevelopment) {
-    JWT_SECRET = 'dev-secret-' + Date.now() + '-' + Math.random().toString(36);
-  } else {
-    console.error('❌ FATAL: JWT_SECRET environment variable is not set!');
-    process.exit(1);
-  }
-}
+const JWT_SECRET = process.env.JWT_SECRET || 'development-secret-key';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
-/**
- * POST /api/auth/token
- * Generate JWT token for authenticated frontend users
- *
- * This endpoint is for self-hosted deployments where users have already
- * authenticated on the frontend (IndexedDB user system) and need a backend
- * JWT token for API operations like image uploads and syncing.
- *
- * Body: { userId: string, username: string, role: string }
- */
-router.post('/token', async (req, res) => {
+// POST /api/auth/login
+router.post('/login', async (req, res, next) => {
   try {
-    const { userId, username, role } = req.body;
+    const { username, password } = loginSchema.parse(req.body);
 
-    if (!userId || !username || !role) {
-      return sendError(res, 'userId, username, and role are required', 400);
+    const user = await userRepository.authenticate(username, password);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Generate JWT token valid for 30 days
+    // Generate JWT token
     const token = jwt.sign(
       {
-        id: userId,
-        username,
-        role
+        id: user.id,
+        username: user.username,
+        role: user.role,
       },
-      JWT_SECRET!,
-      { expiresIn: '30d' }
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
     );
 
-    return sendSuccess(res, { token, expiresIn: '30d' }, 'Token generated successfully');
+    // Return token and user info (without password)
+    const { passwordHash, ...userWithoutPassword } = user;
+
+    res.json({
+      token,
+      user: userWithoutPassword,
+    });
   } catch (error) {
-    console.error('Error generating token:', error);
-    return handleRouteError(error, res, 'Failed to generate token');
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
   }
+});
+
+// POST /api/auth/verify
+router.post('/verify', async (req, res, next) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid token' });
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any;
+
+      // Get fresh user data
+      const user = await userRepository.findById(decoded.id);
+
+      if (!user || !user.isActive) {
+        return res.status(401).json({ error: 'User not found or inactive' });
+      }
+
+      const { passwordHash, ...userWithoutPassword } = user;
+
+      res.json({
+        valid: true,
+        user: userWithoutPassword,
+      });
+    } catch (jwtError) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+  } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/auth/logout (Client-side only, just invalidate token)
+router.post('/logout', (req, res) => {
+  res.json({ message: 'Logged out successfully' });
 });
 
 export default router;

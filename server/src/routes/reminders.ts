@@ -1,66 +1,118 @@
-import express from 'express';
-import reminderService from '../services/reminderService.js';
-import { emailLimiter, strictLimiter } from '../middleware/rateLimiter.js';
-import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
-import type { ApiResponse } from '../types/index.js';
+import { Router } from 'express';
+import { reminderRepository } from '../repositories/reminderRepository.js';
+import { z } from 'zod';
 
-const router = express.Router();
+const router = Router();
 
-/**
- * POST /api/reminders/send/:appointmentId
- * Send reminder for a specific appointment
- * Body: { type?: 'email' | 'sms' } (default: 'email')
- */
-router.post('/send/:appointmentId', emailLimiter, async (req, res) => {
+const createReminderSchema = z.object({
+  appointmentId: z.string().uuid(),
+  type: z.enum(['email', 'sms', 'whatsapp', 'notification']),
+  scheduledFor: z.string(),
+});
+
+// GET /api/reminders - Get all reminders
+router.get('/', async (req, res, next) => {
   try {
-    const { appointmentId } = req.params;
-    const { type = 'email' } = req.body;
+    const { appointmentId } = req.query;
 
-    // Validate type
-    if (type !== 'email' && type !== 'sms') {
-      return sendError(res, 'Invalid reminder type. Must be "email" or "sms"', 400);
+    let reminders;
+    if (appointmentId) {
+      reminders = await reminderRepository.findByAppointment(appointmentId as string);
+    } else {
+      reminders = await reminderRepository.findAll();
     }
 
-    const result = await reminderService.sendReminderForAppointment(appointmentId, type);
-
-    if (!result.success) {
-      return sendError(res, result.error || 'Failed to send reminder', 400);
-    }
-
-    return sendSuccess(res, { reminderId: result.reminderId }, `Reminder ${type} sent successfully`);
+    res.json(reminders);
   } catch (error) {
-    console.error('Error in /send/:appointmentId:', error);
-    return handleRouteError(error, res, 'Failed to send reminder');
+    next(error);
   }
 });
 
-/**
- * POST /api/reminders/send-all
- * Send reminders for all appointments that need them
- */
-router.post('/send-all', emailLimiter, async (req, res) => {
+// GET /api/reminders/pending - Get pending reminders
+router.get('/pending', async (req, res, next) => {
   try {
-    const result = await reminderService.sendAllDueReminders();
-
-    return sendSuccess(res, result, `Sent ${result.sent} reminders (${result.failed} failed)`);
+    const reminders = await reminderRepository.findPending();
+    res.json(reminders);
   } catch (error) {
-    console.error('Error in /send-all:', error);
-    return handleRouteError(error, res, 'Failed to send reminders');
+    next(error);
   }
 });
 
-/**
- * GET /api/reminders/appointments-needing-reminders
- * Get list of appointments that need reminders
- */
-router.get('/appointments-needing-reminders', strictLimiter, async (req, res) => {
+// GET /api/reminders/:id - Get reminder by ID
+router.get('/:id', async (req, res, next) => {
   try {
-    const appointments = await reminderService.getAppointmentsNeedingReminders();
+    const { id } = req.params;
+    const reminder = await reminderRepository.findById(id);
 
-    return sendSuccess(res, appointments, `Found ${appointments.length} appointments needing reminders`);
+    if (!reminder) {
+      return res.status(404).json({ error: 'Reminder not found' });
+    }
+
+    res.json(reminder);
   } catch (error) {
-    console.error('Error in /appointments-needing-reminders:', error);
-    return handleRouteError(error, res, 'Failed to fetch appointments needing reminders');
+    next(error);
+  }
+});
+
+// POST /api/reminders - Create new reminder
+router.post('/', async (req, res, next) => {
+  try {
+    const data = createReminderSchema.parse(req.body);
+
+    const reminder = await reminderRepository.create({
+      appointment: { connect: { id: data.appointmentId } },
+      type: data.type,
+      scheduledFor: new Date(data.scheduledFor),
+    });
+
+    res.status(201).json(reminder);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: 'Validation error', details: error.errors });
+    }
+    next(error);
+  }
+});
+
+// POST /api/reminders/:id/send - Send reminder manually
+router.post('/:id/send', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const reminder = await reminderRepository.findById(id);
+    if (!reminder) {
+      return res.status(404).json({ error: 'Reminder not found' });
+    }
+
+    if (reminder.sent) {
+      return res.status(409).json({ error: 'Reminder already sent' });
+    }
+
+    // TODO: Implement actual sending logic with emailService/smsService
+    // For now, just mark as sent
+    const updated = await reminderRepository.markAsSent(id);
+
+    res.json(updated);
+  } catch (error) {
+    next(error);
+  }
+});
+
+// DELETE /api/reminders/:id - Delete reminder
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await reminderRepository.findById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Reminder not found' });
+    }
+
+    await reminderRepository.delete(id);
+
+    res.status(204).send();
+  } catch (error) {
+    next(error);
   }
 });
 
