@@ -178,14 +178,22 @@ router.get('/available-slots', async (req, res, next) => {
       }
     }
 
-    // Convert Map to sorted array
-    const slots = Array.from(allSlots.values()).sort((a, b) =>
-      a.startTime.localeCompare(b.startTime)
-    );
+    // Convert Map to sorted array and format for frontend
+    const slots = Array.from(allSlots.values())
+      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+      .map(slot => ({
+        time: slot.startTime, // Frontend expects "time" not "startTime"
+        available: true, // If in the list, it's available
+        staffId: slot.availableStaff[0]?.id, // Use first available staff
+        // Include all available staff for reference
+        availableStaff: slot.availableStaff
+      }));
 
     res.json({
       success: true,
-      availableSlots: slots
+      data: {
+        slots
+      }
     });
   } catch (error) {
     console.error('Error getting available slots:', error);
