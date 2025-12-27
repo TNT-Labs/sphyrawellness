@@ -70,12 +70,19 @@ const Customers: React.FC = () => {
   const handleOpenModal = (customer?: Customer) => {
     if (customer) {
       setEditingCustomer(customer);
+
+      // Extract yyyy-MM-dd from dateOfBirth (in case backend returns ISO timestamp)
+      let dateOfBirth = customer.dateOfBirth || '';
+      if (dateOfBirth && dateOfBirth.includes('T')) {
+        dateOfBirth = dateOfBirth.split('T')[0];
+      }
+
       setFormData({
         firstName: customer.firstName,
         lastName: customer.lastName,
         email: customer.email,
         phone: customer.phone,
-        dateOfBirth: customer.dateOfBirth || '',
+        dateOfBirth: dateOfBirth,
         notes: customer.notes || '',
         allergies: customer.allergies || '',
       });

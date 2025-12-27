@@ -15,7 +15,7 @@ const createServiceSchema = z.object({
   price: z.number().positive(),
   categoryId: z.string().uuid().optional(),
   color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: z.string().min(1).optional().nullable(),
 });
 
 const updateServiceSchema = createServiceSchema.partial();
