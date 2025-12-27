@@ -10,7 +10,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { User, UserRole } from '../../types';
-import { hashPassword } from '../../utils/auth';
 import { logger } from '../../utils/logger';
 import { validatePassword } from '../../utils/validation';
 
@@ -109,29 +108,46 @@ export default function UserManagementCard(): JSX.Element {
           updatedAt: new Date().toISOString(),
         };
 
-        // Only update password if provided
+        await updateUser(updatedUser);
+
+        // Handle password change separately if provided
+        // DO NOT hash password here - backend API will handle it
         if (formData.password) {
-          updatedUser.passwordHash = await hashPassword(formData.password);
+          try {
+            // Call the password change API endpoint
+            const response = await fetch(`/api/users/${editingId}/password`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                currentPassword: '', // Admin can change without current password
+                newPassword: formData.password,
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error('Password update failed');
+            }
+          } catch (error) {
+            logger.error('Error updating password:', error);
+            showError('Utente aggiornato ma errore nel cambio password');
+            return;
+          }
         }
 
-        await updateUser(updatedUser);
         showSuccess('Utente aggiornato con successo');
       } else {
-        // Add new user
-        const passwordHash = await hashPassword(formData.password);
-        const newUser: User = {
-          id: 'user-' + Date.now(),
+        // Add new user - send password in plain text, backend will hash it
+        const newUserData = {
           username: formData.username.trim(),
-          passwordHash,
+          password: formData.password, // Backend will hash this
           role: formData.role,
           firstName: formData.firstName.trim(),
           lastName: formData.lastName.trim(),
           email: formData.email.trim() || undefined,
           isActive: true,
-          createdAt: new Date().toISOString(),
         };
 
-        await addUser(newUser);
+        await addUser(newUserData);
         showSuccess('Utente creato con successo');
       }
 

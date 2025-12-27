@@ -23,7 +23,7 @@ const updateUserSchema = z.object({
 });
 
 const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1),
+  currentPassword: z.string().min(1).optional(), // Optional for admin password reset
   newPassword: z.string().min(6),
 });
 
@@ -125,10 +125,12 @@ router.patch('/:id/password', async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify current password
-    const isValid = await userRepository.verifyPassword(user, currentPassword);
-    if (!isValid) {
-      return res.status(401).json({ error: 'Current password is incorrect' });
+    // Verify current password only if provided (admin reset doesn't require it)
+    if (currentPassword) {
+      const isValid = await userRepository.verifyPassword(user, currentPassword);
+      if (!isValid) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
     }
 
     await userRepository.updatePassword(id, newPassword);
