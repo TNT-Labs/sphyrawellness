@@ -83,11 +83,18 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
         }
       }
 
+      // Extract yyyy-MM-dd from date (in case backend returns ISO timestamp)
+      let date = editingAppointment.date;
+      if (date && date.includes('T')) {
+        // If it's an ISO timestamp, extract just the date portion
+        date = date.split('T')[0];
+      }
+
       setFormData({
         customerId: editingAppointment.customerId,
         serviceId: editingAppointment.serviceId,
         staffId: editingAppointment.staffId,
-        date: editingAppointment.date,
+        date: date,
         startTime: startTime,
         notes: editingAppointment.notes || '',
         status: editingAppointment.status,
