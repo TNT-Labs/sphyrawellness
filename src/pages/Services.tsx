@@ -180,6 +180,8 @@ const Services: React.FC = () => {
     const serviceData: Service = {
       id: editingService?.id || generateId(),
       ...formData,
+      // Ensure price is a number, not a string
+      price: typeof formData.price === 'string' ? parseFloat(formData.price) : formData.price,
       // Preserve existing image URL if not uploading a new image
       imageUrl: editingService?.imageUrl,
     };
