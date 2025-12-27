@@ -68,7 +68,7 @@ services:
     networks:
       - sphyra-network
     # Rinnovo automatico ogni 12 ore
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do python -m certbot renew --manual --preferred-challenges dns --manual-auth-hook /usr/local/bin/duckdns-auth.sh --manual-cleanup-hook /usr/local/bin/duckdns-cleanup.sh --quiet; sleep 12h & wait $${!}; done;'"
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do python3 -m certbot renew --manual --preferred-challenges dns --manual-auth-hook /usr/local/bin/duckdns-auth.sh --manual-cleanup-hook /usr/local/bin/duckdns-cleanup.sh --quiet; sleep 12h & wait $${!}; done;'"
 
   # ========================================
   # DATABASE - PostgreSQL
