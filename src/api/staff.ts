@@ -10,9 +10,12 @@ export const staffApi = {
       params: { active: activeOnly ? 'true' : undefined },
     });
     // Transform backend response: role object → roleId string
+    // Filter specializations to only include valid UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return data.map((staff) => ({
       ...staff,
       role: staff.role?.id || staff.roleId || staff.role,
+      specializations: (staff.specializations || []).filter((s: string) => uuidRegex.test(s)),
     }));
   },
 
@@ -24,9 +27,12 @@ export const staffApi = {
       params: { include: includeAppointments ? 'appointments' : undefined },
     });
     // Transform backend response: role object → roleId string
+    // Filter specializations to only include valid UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     return {
       ...data,
       role: data.role?.id || data.roleId || data.role,
+      specializations: (data.specializations || []).filter((s: string) => uuidRegex.test(s)),
     };
   },
 

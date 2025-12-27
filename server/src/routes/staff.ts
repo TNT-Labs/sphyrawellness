@@ -11,7 +11,7 @@ const createStaffSchema = z.object({
   email: z.string().email(),
   phone: z.string().optional(),
   roleId: z.string().uuid().optional(),
-  specializations: z.array(z.string()).optional(),
+  specializations: z.array(z.string().uuid()).optional(), // Must be UUIDs (category IDs)
   color: z.string().regex(/^#[0-9A-F]{6}$/i),
   isActive: z.boolean().optional(),
   profileImageUrl: z.string().url().optional(),
