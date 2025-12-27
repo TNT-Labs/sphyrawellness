@@ -39,6 +39,7 @@ const Customers: React.FC = () => {
     dateOfBirth: '',
     notes: '',
     allergies: '',
+    emailReminderConsent: false,
   });
 
   // Get customer IDs with appointments today
@@ -85,6 +86,7 @@ const Customers: React.FC = () => {
         dateOfBirth: dateOfBirth,
         notes: customer.notes || '',
         allergies: customer.allergies || '',
+        emailReminderConsent: customer.emailReminderConsent || false,
       });
     } else {
       setEditingCustomer(null);
@@ -96,6 +98,7 @@ const Customers: React.FC = () => {
         dateOfBirth: '',
         notes: '',
         allergies: '',
+        emailReminderConsent: false,
       });
     }
     setIsModalOpen(true);
@@ -420,9 +423,15 @@ const Customers: React.FC = () => {
                       type="email"
                       required
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const email = e.target.value;
+                        // Auto-enable email reminder consent when email is provided
+                        setFormData({
+                          ...formData,
+                          email,
+                          emailReminderConsent: email.trim() !== '' ? true : formData.emailReminderConsent
+                        });
+                      }}
                       className="input"
                     />
                   </div>
@@ -477,6 +486,41 @@ const Customers: React.FC = () => {
                     rows={3}
                     placeholder="Note aggiuntive sul cliente..."
                   />
+                </div>
+
+                {/* Email Reminder Consent */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="emailReminderConsent"
+                      checked={formData.emailReminderConsent}
+                      onChange={(e) =>
+                        setFormData({ ...formData, emailReminderConsent: e.target.checked })
+                      }
+                      className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    />
+                    <div className="flex-1">
+                      <label
+                        htmlFor="emailReminderConsent"
+                        className="text-sm font-semibold text-gray-900 cursor-pointer"
+                      >
+                        Consenso invio promemoria via email
+                      </label>
+                      <p className="text-xs text-gray-600 mt-1">
+                        Il cliente acconsente a ricevere promemoria degli appuntamenti via email.
+                        {formData.email ? (
+                          <span className="block mt-1 text-green-600 font-medium">
+                            ✓ Email fornita: {formData.email}
+                          </span>
+                        ) : (
+                          <span className="block mt-1 text-orange-600 font-medium">
+                            ⚠ Inserisci un'email per abilitare i promemoria
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 pt-4">
