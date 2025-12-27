@@ -138,15 +138,25 @@ router.get('/available-slots', async (req, res, next) => {
 
           // Check if slot conflicts with existing appointments for this staff
           const hasConflict = appointments.some((apt) => {
-            const aptStart = new Date(`2000-01-01T${apt.startTime}`);
-            const aptEnd = new Date(`2000-01-01T${apt.endTime}`);
-            const checkStart = new Date(`2000-01-01T${slotStart.toTimeString().substring(0, 5)}`);
-            const checkEnd = new Date(`2000-01-01T${slotEnd.toTimeString().substring(0, 5)}`);
+            // Extract HH:mm from ISO datetime strings (e.g., "1970-01-01T09:00:00.000Z" -> "09:00")
+            const aptStartDate = new Date(apt.startTime);
+            const aptEndDate = new Date(apt.endTime);
+            const aptStartHours = aptStartDate.getUTCHours();
+            const aptStartMinutes = aptStartDate.getUTCMinutes();
+            const aptEndHours = aptEndDate.getUTCHours();
+            const aptEndMinutes = aptEndDate.getUTCMinutes();
 
+            // Convert to minutes from midnight for easier comparison
+            const aptStartMins = aptStartHours * 60 + aptStartMinutes;
+            const aptEndMins = aptEndHours * 60 + aptEndMinutes;
+            const slotStartMins = slotStart.getHours() * 60 + slotStart.getMinutes();
+            const slotEndMins = slotEnd.getHours() * 60 + slotEnd.getMinutes();
+
+            // Check for overlap: slots overlap if one starts before the other ends
             return (
-              (checkStart >= aptStart && checkStart < aptEnd) ||
-              (checkEnd > aptStart && checkEnd <= aptEnd) ||
-              (checkStart <= aptStart && checkEnd >= aptEnd)
+              (slotStartMins >= aptStartMins && slotStartMins < aptEndMins) ||
+              (slotEndMins > aptStartMins && slotEndMins <= aptEndMins) ||
+              (slotStartMins <= aptStartMins && slotEndMins >= aptEndMins)
             );
           });
 
