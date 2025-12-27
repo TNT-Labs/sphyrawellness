@@ -75,14 +75,14 @@ echo ""
 # Ottieni il certificato usando certbot in modalità manuale con DNS-01
 docker run --rm \
     -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
-    -v "$(pwd)/scripts:/usr/local/bin:ro" \
+    -v "$(pwd)/scripts:/opt/certbot-hooks:ro" \
     -e "DUCKDNS_TOKEN=$DUCKDNS_TOKEN" \
     sphyra-certbot-duckdns \
     certonly \
     --manual \
     --preferred-challenges dns \
-    --manual-auth-hook /usr/local/bin/duckdns-auth.sh \
-    --manual-cleanup-hook /usr/local/bin/duckdns-cleanup.sh \
+    --manual-auth-hook /opt/certbot-hooks/duckdns-auth.sh \
+    --manual-cleanup-hook /opt/certbot-hooks/duckdns-cleanup.sh \
     --email "$EMAIL" \
     --agree-tos \
     --no-eff-email \
