@@ -14,7 +14,7 @@ const createStaffSchema = z.object({
   specializations: z.array(z.string().uuid()).optional(), // Must be UUIDs (category IDs)
   color: z.string().regex(/^#[0-9A-F]{6}$/i),
   isActive: z.boolean().optional(),
-  profileImageUrl: z.string().url().optional(),
+  profileImageUrl: z.string().min(1).optional().nullable(),
 });
 
 const updateStaffSchema = createStaffSchema.partial();
