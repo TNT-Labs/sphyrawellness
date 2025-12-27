@@ -13,10 +13,5 @@ RUN mkdir -p /usr/local/bin
 # - duckdns-auth.sh: Autenticazione DNS-01
 # - duckdns-cleanup.sh: Pulizia record TXT
 
-# Crea wrapper script che trova e chiama certbot
-RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'exec python3 -m certbot "$@"' >> /entrypoint.sh && \
-    chmod +x /entrypoint.sh
-
-# Usa il wrapper come entrypoint
-ENTRYPOINT ["/entrypoint.sh"]
+# NON specificare ENTRYPOINT - usa quello dell'immagine base certbot/certbot
+# L'immagine base ha già configurato correttamente l'entrypoint per certbot
