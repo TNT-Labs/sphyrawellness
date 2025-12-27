@@ -221,7 +221,12 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
 
   const updateService = async (service: Service): Promise<Service> => {
     const { id, ...data } = service;
-    const updated = await servicesApi.update(id, data);
+    // Ensure price is a number (Prisma Decimal is serialized as string in JSON)
+    const serviceData = {
+      ...data,
+      price: typeof data.price === 'string' ? parseFloat(data.price) : data.price,
+    };
+    const updated = await servicesApi.update(id, serviceData);
     setServices((prev) => prev.map((s) => (s.id === id ? updated : s)));
     return updated;
   };

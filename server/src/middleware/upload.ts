@@ -8,8 +8,8 @@ const __dirname = path.dirname(__filename);
 
 // Ensure upload directories exist
 // Use path relative to compiled code location: /app/dist/middleware/
-// ../../server/uploads resolves to /app/server/uploads (Docker volume mount)
-const uploadsDir = path.join(__dirname, '../../server/uploads');
+// ../../uploads resolves to /app/uploads (Docker volume mount)
+const uploadsDir = path.join(__dirname, '../../uploads');
 const servicesDir = path.join(uploadsDir, 'services');
 const staffDir = path.join(uploadsDir, 'staff');
 

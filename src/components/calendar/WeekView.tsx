@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
+import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
@@ -102,7 +102,7 @@ const WeekView: React.FC<WeekViewProps> = ({ onOpenModal }) => {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-gray-900">
-                          {apt.startTime}
+                          {format(parseISO(apt.startTime), 'HH:mm')}
                         </span>
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(apt.status)}`}
