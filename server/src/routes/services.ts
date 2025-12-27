@@ -72,9 +72,12 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createServiceSchema.parse(req.body);
 
+    // Exclude categoryId from data spread (Prisma doesn't accept it)
+    const { categoryId, ...restData } = data;
+
     const service = await serviceRepository.create({
-      ...data,
-      category: data.categoryId ? { connect: { id: data.categoryId } } : undefined,
+      ...restData,
+      category: categoryId ? { connect: { id: categoryId } } : undefined,
     });
 
     res.status(201).json(service);
@@ -97,11 +100,14 @@ router.put('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Service not found' });
     }
 
+    // Exclude categoryId from data spread (Prisma doesn't accept it)
+    const { categoryId, ...restData } = data;
+
     const service = await serviceRepository.update(id, {
-      ...data,
-      category: data.categoryId
-        ? { connect: { id: data.categoryId } }
-        : data.categoryId === null
+      ...restData,
+      category: categoryId
+        ? { connect: { id: categoryId } }
+        : categoryId === null
           ? { disconnect: true }
           : undefined,
     });
