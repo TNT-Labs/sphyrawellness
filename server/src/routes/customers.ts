@@ -1,8 +1,61 @@
 import { Router } from 'express';
 import { customerRepository } from '../repositories/customerRepository.js';
 import { z } from 'zod';
+import type { Customer } from '@prisma/client';
 
 const router = Router();
+
+/**
+ * Transform Prisma Customer to include consents object for frontend compatibility
+ * Frontend expects both direct fields (emailReminderConsent) and consents object
+ */
+function transformCustomerWithConsents(customer: Customer): any {
+  const {
+    privacyConsent,
+    privacyConsentDate,
+    privacyConsentVersion,
+    emailReminderConsent,
+    emailReminderConsentDate,
+    smsReminderConsent,
+    smsReminderConsentDate,
+    healthDataConsent,
+    healthDataConsentDate,
+    marketingConsent,
+    consentHistory,
+    ...baseCustomer
+  } = customer;
+
+  // Only create consents object if at least one consent field has a value
+  const hasConsents =
+    privacyConsent ||
+    emailReminderConsent ||
+    smsReminderConsent ||
+    healthDataConsent ||
+    marketingConsent;
+
+  return {
+    ...baseCustomer,
+    // Keep direct fields for backward compatibility
+    emailReminderConsent,
+    // Add consents object if any consent exists
+    ...(hasConsents && {
+      consents: {
+        privacyConsent,
+        privacyConsentDate: privacyConsentDate?.toISOString(),
+        privacyConsentVersion: privacyConsentVersion || '1.0',
+        emailReminderConsent,
+        emailReminderConsentDate: emailReminderConsentDate?.toISOString(),
+        smsReminderConsent,
+        smsReminderConsentDate: smsReminderConsentDate?.toISOString(),
+        healthDataConsent,
+        healthDataConsentDate: healthDataConsentDate?.toISOString(),
+        marketingConsent,
+        marketingConsentDate: undefined, // Not in schema yet
+        consentHistory: consentHistory ? JSON.parse(JSON.stringify(consentHistory)) : [],
+      }
+    })
+  };
+}
 
 // Validation schemas
 const createCustomerSchema = z.object({
@@ -45,7 +98,9 @@ router.get('/', async (req, res, next) => {
       customers = await customerRepository.findAll();
     }
 
-    res.json(customers);
+    // Transform customers to include consents object
+    const transformedCustomers = customers.map(transformCustomerWithConsents);
+    res.json(transformedCustomers);
   } catch (error) {
     next(error);
   }
@@ -68,7 +123,9 @@ router.get('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Customer not found' });
     }
 
-    res.json(customer);
+    // Transform customer to include consents object
+    const transformedCustomer = transformCustomerWithConsents(customer);
+    res.json(transformedCustomer);
   } catch (error) {
     next(error);
   }
@@ -104,7 +161,9 @@ router.post('/', async (req, res, next) => {
       healthDataConsentDate: data.healthDataConsent ? new Date() : undefined,
     });
 
-    res.status(201).json(customer);
+    // Transform customer to include consents object
+    const transformedCustomer = transformCustomerWithConsents(customer);
+    res.status(201).json(transformedCustomer);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -141,12 +200,37 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
-    const customer = await customerRepository.update(id, {
+    // Prepare update data with consent dates
+    // IMPORTANT: Set consent dates when consent is granted (GDPR compliance)
+    const now = new Date();
+    const updateData: any = {
       ...data,
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
-    });
+    };
 
-    res.json(customer);
+    // Update consent dates only when consent is being granted (true) and was previously false/undefined
+    if (data.privacyConsent !== undefined && data.privacyConsent && !existing.privacyConsent) {
+      updateData.privacyConsentDate = now;
+      updateData.privacyConsentVersion = data.privacyConsentVersion || '1.0';
+    }
+
+    if (data.emailReminderConsent !== undefined && data.emailReminderConsent && !existing.emailReminderConsent) {
+      updateData.emailReminderConsentDate = now;
+    }
+
+    if (data.smsReminderConsent !== undefined && data.smsReminderConsent && !existing.smsReminderConsent) {
+      updateData.smsReminderConsentDate = now;
+    }
+
+    if (data.healthDataConsent !== undefined && data.healthDataConsent && !existing.healthDataConsent) {
+      updateData.healthDataConsentDate = now;
+    }
+
+    const customer = await customerRepository.update(id, updateData);
+
+    // Transform customer to include consents object
+    const transformedCustomer = transformCustomerWithConsents(customer);
+    res.json(transformedCustomer);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -169,7 +253,9 @@ router.patch('/:id/consents', async (req, res, next) => {
 
     const customer = await customerRepository.updateConsents(id, consents);
 
-    res.json(customer);
+    // Transform customer to include consents object
+    const transformedCustomer = transformCustomerWithConsents(customer);
+    res.json(transformedCustomer);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
