@@ -357,24 +357,50 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   // ============================================================================
 
   const addUser = async (user: Partial<User>): Promise<User> => {
-    // Stub implementation - users API not available yet
-    const newUser = { ...user, id: user.id || `user-${Date.now()}` } as User;
+    const response = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create user: ${response.statusText}`);
+    }
+
+    const newUser = await response.json();
     setUsers((prev) => [...prev, newUser]);
-    logger.info('User added (stub):', newUser);
+    logger.info('User added:', newUser);
     return newUser;
   };
 
   const updateUser = async (user: User): Promise<User> => {
-    // Stub implementation - users API not available yet
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
-    logger.info('User updated (stub):', user);
-    return user;
+    const response = await fetch(`/api/users/${user.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update user: ${response.statusText}`);
+    }
+
+    const updatedUser = await response.json();
+    setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
+    logger.info('User updated:', updatedUser);
+    return updatedUser;
   };
 
   const deleteUser = async (id: string): Promise<void> => {
-    // Stub implementation - users API not available yet
+    const response = await fetch(`/api/users/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete user: ${response.statusText}`);
+    }
+
     setUsers((prev) => prev.filter((u) => u.id !== id));
-    logger.info('User deleted (stub):', id);
+    logger.info('User deleted:', id);
   };
 
   // ============================================================================
