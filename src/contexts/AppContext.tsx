@@ -25,6 +25,7 @@ import {
   appointmentsApi,
   paymentsApi,
   settingsApi,
+  usersApi,
 } from '../api';
 import { logger } from '../utils/logger';
 import { useAuth } from './AuthContext';
@@ -154,6 +155,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
         appointmentsData,
         paymentsData,
         settingsData,
+        usersData,
       ] = await Promise.all([
         customersApi.getAll(),
         servicesApi.getAll(),
@@ -163,6 +165,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
         appointmentsApi.getAll(),
         paymentsApi.getAll(),
         settingsApi.getAll(),
+        usersApi.getAll(),
       ]);
 
       setCustomers(customersData);
@@ -173,6 +176,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       setAppointments(appointmentsData);
       setPayments(paymentsData);
       setSettings(settingsData);
+      setUsers(usersData);
 
       logger.info('Data loaded successfully');
     } catch (err: any) {
