@@ -59,8 +59,8 @@ services:
       # Let's Encrypt configuration e certificati
       - ./certbot/conf:/etc/letsencrypt
       # Script di autenticazione DuckDNS
-      - ./scripts/duckdns-auth.sh:/usr/local/bin/duckdns-auth.sh:ro
-      - ./scripts/duckdns-cleanup.sh:/usr/local/bin/duckdns-cleanup.sh:ro
+      - ./scripts/duckdns-auth.sh:/opt/certbot-hooks/duckdns-auth.sh:ro
+      - ./scripts/duckdns-cleanup.sh:/opt/certbot-hooks/duckdns-cleanup.sh:ro
     environment:
       - DOMAIN=${DOMAIN}
       - EMAIL=${EMAIL}
@@ -68,7 +68,7 @@ services:
     networks:
       - sphyra-network
     # Rinnovo automatico ogni 12 ore
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --manual --preferred-challenges dns --manual-auth-hook /usr/local/bin/duckdns-auth.sh --manual-cleanup-hook /usr/local/bin/duckdns-cleanup.sh --quiet; sleep 12h & wait $${!}; done;'"
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --manual --preferred-challenges dns --manual-auth-hook /opt/certbot-hooks/duckdns-auth.sh --manual-cleanup-hook /opt/certbot-hooks/duckdns-cleanup.sh --quiet; sleep 12h & wait $${!}; done;'"
 
   # ========================================
   # DATABASE - PostgreSQL
