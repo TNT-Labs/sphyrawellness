@@ -3,19 +3,26 @@
 ## Problemi Identificati e Risolti
 
 ### 1. **Nginx in continuo restart**
-**Causa**: L'healthcheck tentava di fare una richiesta HTTPS a `localhost/health`, ma:
-- I certificati SSL sono validi solo per il dominio DuckDNS (non per localhost)
-- Se i certificati non esistevano, nginx non poteva nemmeno partire
+**Cause**:
+- L'healthcheck tentava di fare richiesta HTTPS a `localhost/health`, ma i certificati SSL sono validi solo per il dominio DuckDNS
+- Il file di configurazione nginx era bind-mounted e non poteva essere modificato per sostituire `${DOMAIN}`
+- Se i certificati non esistevano, nginx non poteva partire
 
-**Soluzione applicata**:
+**Soluzioni applicate**:
 - Healthcheck modificato per verificare solo che il processo nginx sia attivo e la porta 443 in ascolto
-- Aggiunto controllo all'avvio: nginx aspetta che i certificati esistano prima di partire
+- Nginx config montato come template in `/etc/nginx/templates/` invece di bind mount diretto
+- `envsubst` sostituisce `${DOMAIN}` all'avvio e scrive in `/etc/nginx/conf.d/default.conf`
+- Aggiunto wait loop: nginx aspetta che i certificati esistano prima di partire
+- Disabilitato OCSP stapling (non supportato da Let's Encrypt per DuckDNS)
 
 ### 2. **Frontend unhealthy**
-**Causa**: L'healthcheck cercava l'endpoint `/health` che non esiste nel frontend
+**Cause**:
+- L'healthcheck cercava l'endpoint `/health` che non esiste nel frontend
+- L'healthcheck usava `localhost` che si risolveva in IPv6, ma nginx ascolta solo su IPv4
 
-**Soluzione applicata**:
+**Soluzioni applicate**:
 - Healthcheck modificato per controllare `/` invece di `/health`
+- Usato indirizzo IPv4 esplicito (`127.0.0.1`) invece di `localhost`
 
 ## Passi per Sistemare l'Applicazione
 
@@ -90,28 +97,58 @@ curl -k https://localhost
 
 ### `docker-compose.duckdns.yml`
 
-1. **Nginx healthcheck** (riga 36-41):
+1. **Nginx volumes** (riga 26):
+   ```yaml
+   # Prima (NON funzionava - bind mount non modificabile):
+   - ./nginx/conf.d/sphyra-duckdns.conf:/etc/nginx/conf.d/default.conf:ro
+
+   # Dopo (funziona - template):
+   - ./nginx/conf.d/sphyra-duckdns.conf:/etc/nginx/templates/default.conf.template:ro
+   ```
+
+2. **Nginx healthcheck** (riga 37-41):
    ```yaml
    healthcheck:
      test: ["CMD-SHELL", "pgrep nginx && nc -z localhost 443 || exit 1"]
      interval: 30s
      timeout: 10s
      retries: 3
-     start_period: 40s
+     start_period: 40s  # Aumentato a 40s per dare tempo ai certificati
    ```
 
-2. **Nginx command** (riga 44-56):
-   - Aggiunto loop che aspetta l'esistenza dei certificati
+3. **Nginx command** (riga 44-57):
+   - Aggiunto wait loop che aspetta l'esistenza dei certificati
+   - `envsubst` legge da `/etc/nginx/templates/` e scrive in `/etc/nginx/conf.d/`
    - Aggiunto test della configurazione con `nginx -t`
 
-3. **Frontend healthcheck** (riga 170-175):
+4. **Frontend healthcheck** (riga 181):
    ```yaml
    healthcheck:
-     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+     test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/"]
+     # Cambiato da localhost a 127.0.0.1 per forzare IPv4
      interval: 30s
      timeout: 10s
      retries: 3
      start_period: 10s
+   ```
+
+### `nginx/conf.d/sphyra-duckdns.conf`
+
+1. **HTTP/2 configuration** (riga 21-23):
+   ```nginx
+   # Prima (sintassi deprecata):
+   listen 443 ssl http2;
+
+   # Dopo (sintassi moderna):
+   listen 443 ssl;
+   http2 on;
+   ```
+
+2. **OCSP Stapling** (riga 40-45):
+   ```nginx
+   # Disabilitato perché non supportato da Let's Encrypt per DuckDNS
+   # ssl_stapling on;
+   # ssl_stapling_verify on;
    ```
 
 ## Troubleshooting
