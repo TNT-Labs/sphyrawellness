@@ -12,6 +12,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { User, UserRole } from '../../types';
 import { logger } from '../../utils/logger';
 import { validatePassword } from '../../utils/validation';
+import { usersApi } from '../../api';
 
 export default function UserManagementCard(): JSX.Element {
   const { users, addUser, updateUser, deleteUser } = useApp();
@@ -114,19 +115,8 @@ export default function UserManagementCard(): JSX.Element {
         // DO NOT hash password here - backend API will handle it
         if (formData.password) {
           try {
-            // Call the password change API endpoint
-            const response = await fetch(`/api/users/${editingId}/password`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                currentPassword: '', // Admin can change without current password
-                newPassword: formData.password,
-              }),
-            });
-
-            if (!response.ok) {
-              throw new Error('Password update failed');
-            }
+            // Call the password change API endpoint with authentication
+            await usersApi.changePassword(editingId, undefined, formData.password);
           } catch (error) {
             logger.error('Error updating password:', error);
             showError('Utente aggiornato ma errore nel cambio password');
