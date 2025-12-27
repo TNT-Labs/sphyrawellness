@@ -49,8 +49,8 @@ services:
         sleep 10;
       done;
       echo 'Certificates found! Starting nginx...';
-      envsubst '$${DOMAIN}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/sphyra.conf
-      && rm /etc/nginx/conf.d/default.conf
+      envsubst '$${DOMAIN}' < /etc/nginx/conf.d/default.conf > /tmp/sphyra.conf
+      && mv /tmp/sphyra.conf /etc/nginx/conf.d/default.conf
       && nginx -t
       && while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'
       "
