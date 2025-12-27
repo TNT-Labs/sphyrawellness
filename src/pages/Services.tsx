@@ -9,6 +9,7 @@ import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X, Upload,
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { logger } from '../utils/logger';
+import { formatPrice } from '../utils/currency';
 import { isToday, parseISO } from 'date-fns';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 import { uploadServiceImage, deleteServiceImage, getImageUrl } from '../services/uploadService';
@@ -390,7 +391,7 @@ const Services: React.FC = () => {
                 </div>
                 <div className="flex items-center text-lg font-bold text-gray-900">
                   <Euro size={18} className="mr-1" />
-                  {service.price != null ? service.price.toFixed(2) : 'N/A'}
+                  {formatPrice(service.price)}
                 </div>
               </div>
 
