@@ -10,6 +10,7 @@ import {
   isSameMonth,
   isSameDay,
   addMonths,
+  parseISO,
 } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
@@ -141,7 +142,7 @@ const MonthView: React.FC<MonthViewProps> = ({ onOpenModal }) => {
                             className="w-1.5 h-1.5 rounded-full touch-manipulation"
                             style={{ backgroundColor: getStaffColor(apt.staffId) }}
                             onClick={() => onOpenModal(apt)}
-                            title={`${apt.startTime} - ${getCustomerName(apt.customerId)}`}
+                            title={`${format(parseISO(apt.startTime), 'HH:mm')} - ${getCustomerName(apt.customerId)}`}
                           />
                         ))}
                         {dayAppointments.length > 6 && (
@@ -157,10 +158,10 @@ const MonthView: React.FC<MonthViewProps> = ({ onOpenModal }) => {
                             className="text-xs p-1 rounded border-l-2 bg-gray-50 hover:bg-gray-100 cursor-pointer truncate"
                             style={{ borderLeftColor: getStaffColor(apt.staffId) }}
                             onClick={() => onOpenModal(apt)}
-                            title={`${apt.startTime} - ${getCustomerName(apt.customerId)}`}
+                            title={`${format(parseISO(apt.startTime), 'HH:mm')} - ${getCustomerName(apt.customerId)}`}
                           >
                             <div className="font-semibold text-gray-900">
-                              {apt.startTime}
+                              {format(parseISO(apt.startTime), 'HH:mm')}
                             </div>
                             <div className="text-gray-600 truncate">
                               {getCustomerName(apt.customerId)}

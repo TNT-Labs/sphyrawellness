@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addDays, isSameDay } from 'date-fns';
+import { format, addDays, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
@@ -34,9 +34,14 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
 
   const getAppointmentsForTimeSlot = (time: string) => {
     return dayAppointments.filter((apt) => {
-      const aptHour = parseInt(apt.startTime.split(':')[0]);
-      const slotHour = parseInt(time.split(':')[0]);
-      return aptHour === slotHour;
+      try {
+        const aptDate = parseISO(apt.startTime);
+        const aptHour = aptDate.getUTCHours();
+        const slotHour = parseInt(time.split(':')[0]);
+        return aptHour === slotHour;
+      } catch {
+        return false;
+      }
     });
   };
 
@@ -148,7 +153,7 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="text-xs sm:text-sm font-bold text-gray-900">
-                                  {apt.startTime} - {apt.endTime}
+                                  {format(parseISO(apt.startTime), 'HH:mm')} - {format(parseISO(apt.endTime), 'HH:mm')}
                                 </span>
                                 <span
                                   className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${getStatusColor(apt.status)}`}
