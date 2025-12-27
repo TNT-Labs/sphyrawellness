@@ -74,7 +74,6 @@ echo ""
 
 # Ottieni il certificato usando certbot in modalità manuale con DNS-01
 docker run --rm \
-    --entrypoint certbot \
     -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
     -v "$(pwd)/scripts:/usr/local/bin:ro" \
     -e "DUCKDNS_TOKEN=$DUCKDNS_TOKEN" \
