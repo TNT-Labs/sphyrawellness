@@ -51,6 +51,10 @@ coverage
 # Backend directory (when building frontend)
 server
 
+# Certificate and nginx config directories
+certbot
+nginx
+
 # Logs
 logs
 *.log
