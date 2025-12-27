@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Customer, CustomerConsents, ConsentHistoryEntry } from '../types';
-import { Shield, CheckCircle2, XCircle, Edit2, X } from 'lucide-react';
+import { Shield, CheckCircle2, XCircle, Edit2, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -21,15 +21,15 @@ const ConsentManagement: React.FC<ConsentManagementProps> = ({
 
   const consents = customer.consents;
 
-  // Se il cliente non ha ancora consensi, mostriamo un messaggio
+  // Se il cliente non ha ancora consensi, mostriamo un messaggio compatto
   if (!consents) {
     return (
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-gray-600 mb-2">
-          <Shield size={18} />
-          <span className="font-semibold text-sm">Consensi GDPR</span>
+      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+        <div className="flex items-center gap-2 text-gray-600">
+          <Shield size={16} />
+          <span className="font-medium text-sm">Consensi GDPR</span>
+          <span className="text-xs text-gray-500 ml-auto">Nessun consenso registrato</span>
         </div>
-        <p className="text-xs text-gray-500">Nessun consenso registrato</p>
       </div>
     );
   }
@@ -185,31 +185,51 @@ const ConsentManagement: React.FC<ConsentManagementProps> = ({
     }
   };
 
+  // Conteggio consensi attivi
+  const activeConsents = consentItems.filter(item => item.value).length;
+  const totalConsents = consentItems.length;
+
+  // Versione compatta (default) - mostra solo riassunto
+  if (!isEditing) {
+    return (
+      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 hover:border-blue-300 transition-colors">
+        <div className="flex items-center gap-3">
+          <Shield size={16} className="text-gray-600 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="font-medium text-sm text-gray-900">Consensi GDPR</span>
+            <span className="text-xs text-gray-500 ml-2">
+              {activeConsents}/{totalConsents} attivi
+            </span>
+          </div>
+          {!readOnly && (
+            <button
+              onClick={handleStartEdit}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1.5 rounded transition-colors flex-shrink-0"
+              title="Modifica consensi"
+            >
+              <Edit2 size={14} />
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Versione espansa (quando si modifica)
   return (
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-blue-900">
           <Shield size={18} />
-          <span className="font-semibold text-sm">Consensi GDPR</span>
+          <span className="font-semibold text-sm">Modifica Consensi GDPR</span>
         </div>
-        {!readOnly && !isEditing && (
-          <button
-            onClick={handleStartEdit}
-            className="text-blue-600 hover:text-blue-700 p-1 rounded hover:bg-blue-100 transition-colors"
-            title="Modifica consensi"
-          >
-            <Edit2 size={16} />
-          </button>
-        )}
-        {isEditing && (
-          <button
-            onClick={handleCancelEdit}
-            className="text-gray-600 hover:text-gray-700 p-1 rounded hover:bg-gray-100 transition-colors"
-            title="Annulla"
-          >
-            <X size={16} />
-          </button>
-        )}
+        <button
+          onClick={handleCancelEdit}
+          className="text-gray-600 hover:text-gray-700 p-1 rounded hover:bg-gray-100 transition-colors"
+          title="Chiudi"
+        >
+          <X size={16} />
+        </button>
       </div>
 
       <div className="space-y-2">
@@ -261,24 +281,22 @@ const ConsentManagement: React.FC<ConsentManagementProps> = ({
         })}
       </div>
 
-      {isEditing && (
-        <div className="flex gap-2 mt-4 pt-3 border-t border-blue-200">
-          <button
-            onClick={handleSaveConsents}
-            disabled={isSubmitting}
-            className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
-          </button>
-          <button
-            onClick={handleCancelEdit}
-            disabled={isSubmitting}
-            className="flex-1 px-3 py-2 bg-white text-gray-700 rounded-md hover:bg-gray-100 transition-colors text-sm font-semibold border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Annulla
-          </button>
-        </div>
-      )}
+      <div className="flex gap-2 mt-4 pt-3 border-t border-blue-200">
+        <button
+          onClick={handleSaveConsents}
+          disabled={isSubmitting}
+          className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? 'Salvataggio...' : 'Salva Modifiche'}
+        </button>
+        <button
+          onClick={handleCancelEdit}
+          disabled={isSubmitting}
+          className="flex-1 px-3 py-2 bg-white text-gray-700 rounded-md hover:bg-gray-100 transition-colors text-sm font-semibold border border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Annulla
+        </button>
+      </div>
 
       {consents.privacyConsentVersion && (
         <div className="mt-2 pt-2 border-t border-blue-200">

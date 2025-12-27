@@ -12,7 +12,7 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import { logger } from '../utils/logger';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 import ConsentManagement from '../components/ConsentManagement';
-import { updateCustomerConsents } from '../utils/api';
+import { customersApi } from '../api/customers';
 
 const Customers: React.FC = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer, appointments } = useApp();
@@ -185,23 +185,12 @@ const Customers: React.FC = () => {
 
   const handleUpdateConsents = async (customerId: string, consents: Partial<CustomerConsents>) => {
     try {
-      // Chiama l'API per aggiornare i consensi
-      await updateCustomerConsents(customerId, consents);
+      // Chiama l'API per aggiornare i consensi (usa apiClient con JWT)
+      const updatedCustomer = await customersApi.updateConsents(customerId, consents);
 
       // Aggiorna il cliente localmente
-      const customer = customers.find(c => c.id === customerId);
-      if (customer) {
-        const updatedCustomer: Customer = {
-          ...customer,
-          consents: {
-            ...customer.consents!,
-            ...consents,
-          },
-          updatedAt: new Date().toISOString(),
-        };
-        await updateCustomer(updatedCustomer);
-        showSuccess('Consensi aggiornati con successo!');
-      }
+      await updateCustomer(updatedCustomer);
+      showSuccess('Consensi aggiornati con successo!');
     } catch (error) {
       logger.error('Error updating consents:', error);
       showError('Errore durante l\'aggiornamento dei consensi');
