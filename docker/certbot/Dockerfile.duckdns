@@ -1,0 +1,16 @@
+# ========================================
+# Certbot con supporto DuckDNS DNS-01
+# ========================================
+FROM certbot/certbot:latest
+
+# Installa curl per le chiamate API DuckDNS
+RUN apk add --no-cache curl bash
+
+# Crea directory per gli script
+RUN mkdir -p /usr/local/bin
+
+# Il container userà gli script montati come volume
+# - duckdns-auth.sh: Autenticazione DNS-01
+# - duckdns-cleanup.sh: Pulizia record TXT
+
+ENTRYPOINT ["/bin/sh"]
