@@ -10,7 +10,7 @@ const updateSettingsSchema = z.record(z.any());
 router.get('/', async (req, res, next) => {
   try {
     const settings = await settingRepository.getAllAsObject();
-    res.json(settings);
+    res.json({ success: true, data: settings });
   } catch (error) {
     next(error);
   }
@@ -32,7 +32,7 @@ router.put('/', async (req, res, next) => {
 
     const updated = await settingRepository.getAllAsObject();
 
-    res.json(updated);
+    res.json({ success: true, data: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
