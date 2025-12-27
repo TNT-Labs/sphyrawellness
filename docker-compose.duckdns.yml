@@ -34,7 +34,7 @@ services:
       - frontend
       - backend
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost/health" || "exit 0"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider https://localhost/health || exit 0"]
       interval: 30s
       timeout: 10s
       retries: 3
