@@ -40,7 +40,23 @@ router.get('/services', async (req, res, next) => {
       (s) => !s.categoryId || (s.category && s.category.isActive)
     );
 
-    res.json(activeServices);
+    // Get unique categories from active services
+    const categoryMap = new Map();
+    activeServices.forEach((service) => {
+      if (service.category && !categoryMap.has(service.category.id)) {
+        categoryMap.set(service.category.id, service.category);
+      }
+    });
+    const categories = Array.from(categoryMap.values());
+
+    // Return in expected format
+    res.json({
+      success: true,
+      data: {
+        services: activeServices,
+        categories: categories,
+      },
+    });
   } catch (error) {
     next(error);
   }
