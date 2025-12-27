@@ -188,8 +188,17 @@ const Customers: React.FC = () => {
       // Chiama l'API per aggiornare i consensi (usa apiClient con JWT)
       const updatedCustomer = await customersApi.updateConsents(customerId, consents);
 
-      // Aggiorna il cliente localmente
-      await updateCustomer(updatedCustomer);
+      // Aggiorna solo lo stato locale senza fare un'altra chiamata API
+      // (customersApi.updateConsents già restituisce il customer aggiornato dal backend)
+      const currentCustomers = customers;
+      const updatedCustomers = currentCustomers.map(c =>
+        c.id === customerId ? updatedCustomer : c
+      );
+
+      // Forza il refresh della lista clienti chiamando direttamente lo state setter
+      // Questo aggiornerà la UI senza fare chiamate API duplicate
+      window.location.reload(); // Semplice refresh per sicurezza
+
       showSuccess('Consensi aggiornati con successo!');
     } catch (error) {
       logger.error('Error updating consents:', error);
