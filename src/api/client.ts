@@ -58,6 +58,16 @@ apiClient.interceptors.response.use(
       console.error('Network error - check if backend is running');
     }
 
+    // Extract error message from backend response
+    if (error.response?.data?.error) {
+      // Create a new Error with the backend message
+      const backendError: any = new Error(error.response.data.error);
+      backendError.name = error.name;
+      backendError.response = error.response;
+      backendError.config = error.config;
+      return Promise.reject(backendError);
+    }
+
     return Promise.reject(error);
   }
 );
