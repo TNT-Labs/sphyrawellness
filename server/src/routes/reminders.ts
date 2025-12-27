@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { reminderRepository } from '../repositories/reminderRepository.js';
+import reminderServicePrisma from '../services/reminderServicePrisma.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -94,6 +95,58 @@ router.post('/:id/send', async (req, res, next) => {
 
     res.json(updated);
   } catch (error) {
+    next(error);
+  }
+});
+
+// POST /api/reminders/send/:appointmentId - Send reminder for appointment (NEW - used by frontend)
+router.post('/send/:appointmentId', async (req, res, next) => {
+  try {
+    const { appointmentId } = req.params;
+    const { type } = req.body;
+
+    // Validate type
+    if (type && !['email', 'sms'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid reminder type. Must be "email" or "sms"'
+      });
+    }
+
+    // Use reminderServicePrisma to send the reminder
+    const result = await reminderServicePrisma.sendReminderForAppointment(
+      appointmentId,
+      type || 'email'
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        error: result.error
+      });
+    }
+
+    res.json({
+      success: true,
+      reminderId: result.reminderId
+    });
+  } catch (error) {
+    console.error('Error sending reminder:', error);
+    next(error);
+  }
+});
+
+// POST /api/reminders/send-all - Send all due reminders (NEW - used by frontend)
+router.post('/send-all', async (req, res, next) => {
+  try {
+    const result = await reminderServicePrisma.sendAllDueReminders();
+
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error sending all reminders:', error);
     next(error);
   }
 });
