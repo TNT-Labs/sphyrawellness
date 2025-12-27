@@ -15,7 +15,7 @@ RUN mkdir -p /usr/local/bin
 
 # Crea wrapper script che trova e chiama certbot
 RUN echo '#!/bin/bash' > /entrypoint.sh && \
-    echo 'exec python -m certbot "$@"' >> /entrypoint.sh && \
+    echo 'exec python3 -m certbot "$@"' >> /entrypoint.sh && \
     chmod +x /entrypoint.sh
 
 # Usa il wrapper come entrypoint
