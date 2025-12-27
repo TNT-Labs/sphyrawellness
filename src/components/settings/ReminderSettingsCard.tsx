@@ -87,8 +87,10 @@ export const ReminderSettingsCard: React.FC = () => {
     }
   };
 
-  const formatTime = (hour: number, minute: number) => {
-    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  const formatTime = (hour: number | undefined, minute: number | undefined) => {
+    const h = hour ?? 10; // default 10:00 if undefined
+    const m = minute ?? 0;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   };
 
   return (
