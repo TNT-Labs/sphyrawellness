@@ -58,6 +58,16 @@ mkdir -p certbot/www
 chmod +x scripts/duckdns-auth.sh
 chmod +x scripts/duckdns-cleanup.sh
 
+echo -e "${YELLOW}📦 Costruzione immagine certbot con supporto DuckDNS...${NC}"
+docker build -t sphyra-certbot-duckdns -f docker/certbot/Dockerfile.duckdns .
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}ERROR: Impossibile costruire l'immagine certbot${NC}"
+    exit 1
+fi
+
+echo -e "${GREEN}✅ Immagine costruita${NC}"
+echo ""
 echo -e "${YELLOW}📝 Ottenimento certificato SSL...${NC}"
 echo "Questo processo può richiedere alcuni minuti."
 echo ""
@@ -67,7 +77,7 @@ docker run --rm \
     -v "$(pwd)/certbot/conf:/etc/letsencrypt" \
     -v "$(pwd)/scripts:/usr/local/bin:ro" \
     -e "DUCKDNS_TOKEN=$DUCKDNS_TOKEN" \
-    certbot/certbot:latest certonly \
+    sphyra-certbot-duckdns certonly \
     --manual \
     --preferred-challenges dns \
     --manual-auth-hook /usr/local/bin/duckdns-auth.sh \
