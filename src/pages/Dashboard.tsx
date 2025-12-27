@@ -6,6 +6,7 @@ import { Calendar, Users, TrendingUp, Clock, Bell, BellOff, UserCheck } from 'lu
 import { format, isToday, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import AppointmentModal from '../components/calendar/AppointmentModal';
+import { extractTimeString } from '../utils/helpers';
 
 const Dashboard: React.FC = () => {
   const { customers, appointments, services, staff, refreshAppointments } = useApp();
@@ -225,7 +226,7 @@ const Dashboard: React.FC = () => {
                     <p className="font-semibold text-gray-900">
                       {format(parseISO(apt.date), 'dd MMM', { locale: it })}
                     </p>
-                    <p className="text-sm text-gray-600 mt-1">{apt.startTime}</p>
+                    <p className="text-sm text-gray-600 mt-1">{extractTimeString(apt.startTime)}</p>
                   </div>
                   <div className="flex items-center" title={apt.reminderSent ? 'Reminder inviato' : 'Reminder non inviato'}>
                     {apt.reminderSent ? (
