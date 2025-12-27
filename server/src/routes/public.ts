@@ -30,6 +30,24 @@ const createPublicAppointmentSchema = z.object({
   startTime: z.string(), // HH:mm format
 });
 
+// Schema for new public booking (flat structure from frontend)
+const createPublicBookingSchema = z.object({
+  serviceId: z.string().uuid(),
+  date: z.string(), // YYYY-MM-DD
+  startTime: z.string(), // HH:mm
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().min(1),
+  notes: z.string().optional(),
+  privacyConsent: z.boolean().refine((val) => val === true, {
+    message: 'Privacy consent is required',
+  }),
+  emailReminderConsent: z.boolean().optional(),
+  smsReminderConsent: z.boolean().optional(),
+  healthDataConsent: z.boolean().optional(),
+});
+
 // GET /api/public/services - Get available services
 router.get('/services', async (req, res, next) => {
   try {
@@ -346,6 +364,174 @@ router.post('/appointments', async (req, res, next) => {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
     }
+    next(error);
+  }
+});
+
+// POST /api/public/bookings - Create public booking (new format from frontend)
+router.post('/bookings', async (req, res, next) => {
+  try {
+    const data = createPublicBookingSchema.parse(req.body);
+
+    // 1. Get service for duration
+    const service = await serviceRepository.findById(data.serviceId);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    // 2. Find available staff for the selected time slot
+    const allStaff = await staffRepository.findAll();
+    const activeStaff = allStaff.filter(s => s.isActive);
+
+    if (activeStaff.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: 'No staff available'
+      });
+    }
+
+    // Calculate time slot details
+    const appointmentDate = new Date(data.date);
+    const [hours, minutes] = data.startTime.split(':').map(Number);
+    const slotStart = setMinutes(setHours(new Date(), hours), minutes);
+    const slotEnd = addMinutes(slotStart, service.duration);
+
+    // Find first available staff member for this time slot
+    let availableStaffId: string | null = null;
+
+    for (const staff of activeStaff) {
+      // Get staff appointments for the day
+      const appointments = await appointmentRepository.findByStaff(
+        staff.id,
+        startOfDay(appointmentDate),
+        endOfDay(appointmentDate)
+      );
+
+      // Check if this time slot conflicts with any appointment
+      const hasConflict = appointments.some((apt) => {
+        const aptStartDate = new Date(apt.startTime);
+        const aptEndDate = new Date(apt.endTime);
+        const aptStartHours = aptStartDate.getUTCHours();
+        const aptStartMinutes = aptStartDate.getUTCMinutes();
+        const aptEndHours = aptEndDate.getUTCHours();
+        const aptEndMinutes = aptEndDate.getUTCMinutes();
+
+        const aptStartMins = aptStartHours * 60 + aptStartMinutes;
+        const aptEndMins = aptEndHours * 60 + aptEndMinutes;
+        const slotStartMins = hours * 60 + minutes;
+        const slotEndMins = slotEnd.getHours() * 60 + slotEnd.getMinutes();
+
+        return (
+          (slotStartMins >= aptStartMins && slotStartMins < aptEndMins) ||
+          (slotEndMins > aptStartMins && slotEndMins <= aptEndMins) ||
+          (slotStartMins <= aptStartMins && slotEndMins >= aptEndMins)
+        );
+      });
+
+      if (!hasConflict) {
+        availableStaffId = staff.id;
+        break; // Found available staff
+      }
+    }
+
+    if (!availableStaffId) {
+      return res.status(409).json({
+        success: false,
+        error: 'Time slot is no longer available. Please choose another time.'
+      });
+    }
+
+    // 3. Check if customer exists by email or phone
+    let customer = await customerRepository.findByEmail(data.email);
+
+    if (!customer) {
+      customer = await customerRepository.findByPhone(data.phone);
+    }
+
+    // 4. Create or update customer with GDPR consents
+    const now = new Date();
+    if (!customer) {
+      customer = await customerRepository.create({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        phone: data.phone,
+        privacyConsent: data.privacyConsent,
+        privacyConsentDate: now,
+        privacyConsentVersion: '1.0',
+        emailReminderConsent: data.emailReminderConsent || false,
+        emailReminderConsentDate: data.emailReminderConsent ? now : undefined,
+        smsReminderConsent: data.smsReminderConsent || false,
+        smsReminderConsentDate: data.smsReminderConsent ? now : undefined,
+        healthDataConsent: data.healthDataConsent || false,
+        healthDataConsentDate: data.healthDataConsent ? now : undefined,
+      });
+    } else {
+      // Update existing customer consents if needed
+      const updates: any = {};
+
+      if (data.emailReminderConsent && !customer.emailReminderConsent) {
+        updates.emailReminderConsent = true;
+        updates.emailReminderConsentDate = now;
+      }
+
+      if (data.smsReminderConsent && !customer.smsReminderConsent) {
+        updates.smsReminderConsent = true;
+        updates.smsReminderConsentDate = now;
+      }
+
+      if (data.healthDataConsent && !customer.healthDataConsent) {
+        updates.healthDataConsent = true;
+        updates.healthDataConsentDate = now;
+      }
+
+      if (Object.keys(updates).length > 0) {
+        customer = await customerRepository.update(customer.id, updates);
+      }
+    }
+
+    // 5. Create appointment with ISO datetime strings
+    const startTimeISO = new Date(`1970-01-01T${data.startTime}:00.000Z`);
+    const endTimeStr = `${String(slotEnd.getHours()).padStart(2, '0')}:${String(slotEnd.getMinutes()).padStart(2, '0')}`;
+    const endTimeISO = new Date(`1970-01-01T${endTimeStr}:00.000Z`);
+
+    const appointment = await appointmentRepository.create({
+      customer: { connect: { id: customer.id } },
+      service: { connect: { id: data.serviceId } },
+      staff: { connect: { id: availableStaffId } },
+      date: appointmentDate,
+      startTime: startTimeISO,
+      endTime: endTimeISO,
+      status: 'scheduled',
+      notes: data.notes || undefined,
+    });
+
+    console.log(`✅ Public booking created: ${customer.firstName} ${customer.lastName} - ${service.name} on ${data.date} at ${data.startTime}`);
+
+    // 6. Return success response
+    res.status(201).json({
+      success: true,
+      message: 'Appointment booked successfully',
+      data: {
+        appointmentId: appointment.id,
+        customerName: `${customer.firstName} ${customer.lastName}`,
+        serviceName: service.name,
+        date: data.date,
+        time: data.startTime,
+      }
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation error',
+        details: error.errors
+      });
+    }
+    console.error('Error creating public booking:', error);
     next(error);
   }
 });
