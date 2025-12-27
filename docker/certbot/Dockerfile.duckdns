@@ -13,5 +13,6 @@ RUN mkdir -p /usr/local/bin
 # - duckdns-auth.sh: Autenticazione DNS-01
 # - duckdns-cleanup.sh: Pulizia record TXT
 
-# NON specificare ENTRYPOINT - usa quello dell'immagine base certbot/certbot
-# L'immagine base ha già configurato correttamente l'entrypoint per certbot
+# Specifica esplicitamente l'entrypoint con il percorso completo a certbot
+# Questo è necessario perché il build non preserva l'entrypoint dell'immagine base
+ENTRYPOINT ["/usr/bin/certbot"]
