@@ -13,6 +13,7 @@ RUN mkdir -p /usr/local/bin
 # - duckdns-auth.sh: Autenticazione DNS-01
 # - duckdns-cleanup.sh: Pulizia record TXT
 
-# Specifica esplicitamente l'entrypoint (uguale all'immagine base)
-# Verificato con: docker inspect certbot/certbot:latest --format='{{.Config.Entrypoint}}'
-ENTRYPOINT ["certbot"]
+# Usa il percorso completo per eseguire certbot con il suo shebang Python
+# Verificato con: docker run --rm --entrypoint sh certbot/certbot:latest -c "which certbot"
+# Il file /usr/local/bin/certbot è uno script Python che richiede il percorso completo
+ENTRYPOINT ["/usr/local/bin/certbot"]
