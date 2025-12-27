@@ -73,12 +73,22 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   useEffect(() => {
     if (editingAppointment) {
+      // Extract HH:mm from startTime (in case backend returns ISO timestamp)
+      let startTime = editingAppointment.startTime;
+      if (startTime && startTime.includes('T')) {
+        // If it's an ISO timestamp, extract the time portion
+        const timeMatch = startTime.match(/T(\d{2}:\d{2})/);
+        if (timeMatch) {
+          startTime = timeMatch[1];
+        }
+      }
+
       setFormData({
         customerId: editingAppointment.customerId,
         serviceId: editingAppointment.serviceId,
         staffId: editingAppointment.staffId,
         date: editingAppointment.date,
-        startTime: editingAppointment.startTime,
+        startTime: startTime,
         notes: editingAppointment.notes || '',
         status: editingAppointment.status,
       });
