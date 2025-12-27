@@ -357,47 +357,22 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   // ============================================================================
 
   const addUser = async (user: Partial<User>): Promise<User> => {
-    const response = await fetch('/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to create user: ${response.statusText}`);
-    }
-
-    const newUser = await response.json();
+    const newUser = await usersApi.create(user);
     setUsers((prev) => [...prev, newUser]);
     logger.info('User added:', newUser);
     return newUser;
   };
 
   const updateUser = async (user: User): Promise<User> => {
-    const response = await fetch(`/api/users/${user.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to update user: ${response.statusText}`);
-    }
-
-    const updatedUser = await response.json();
+    const { id, ...data } = user;
+    const updatedUser = await usersApi.update(id, data);
     setUsers((prev) => prev.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
     logger.info('User updated:', updatedUser);
     return updatedUser;
   };
 
   const deleteUser = async (id: string): Promise<void> => {
-    const response = await fetch(`/api/users/${id}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to delete user: ${response.statusText}`);
-    }
+    await usersApi.delete(id);
 
     setUsers((prev) => prev.filter((u) => u.id !== id));
     logger.info('User deleted:', id);
