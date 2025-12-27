@@ -182,7 +182,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
     const confirmed = await confirm({
       title: 'Conferma Eliminazione',
-      message: `Sei sicuro di voler eliminare l'appuntamento di ${customerName} del ${format(parseISO(appointment.date), 'dd/MM/yyyy')} alle ${appointment.startTime}? Questa azione non può essere annullata.`,
+      message: `Sei sicuro di voler eliminare l'appuntamento di ${customerName} del ${format(parseISO(appointment.date), 'dd/MM/yyyy')} alle ${format(parseISO(appointment.startTime), 'HH:mm')}? Questa azione non può essere annullata.`,
       confirmText: 'Elimina',
       cancelText: 'Annulla',
       variant: 'danger',

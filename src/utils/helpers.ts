@@ -205,3 +205,40 @@ export const validateDuration = (
   // Round to nearest step
   return Math.round(duration / step) * step;
 };
+
+/**
+ * Extract date string (yyyy-MM-dd) from a DateTime string or Date object
+ * Handles both ISO strings and Date objects from backend
+ * @param dateTime DateTime string (ISO format) or Date object
+ * @returns Date string in yyyy-MM-dd format
+ */
+export const extractDateString = (dateTime: string | Date): string => {
+  if (!dateTime) return '';
+  try {
+    const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * Extract time string (HH:mm) from a DateTime string or Date object
+ * Handles epoch-based times (1970-01-01) from backend @db.Time fields
+ * @param dateTime DateTime string (ISO format) or Date object
+ * @returns Time string in HH:mm format
+ */
+export const extractTimeString = (dateTime: string | Date): string => {
+  if (!dateTime) return '';
+  try {
+    const date = typeof dateTime === 'string' ? new Date(dateTime) : dateTime;
+    const hours = String(date.getUTCHours()).padStart(2, '0');
+    const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  } catch {
+    return '';
+  }
+};
