@@ -17,13 +17,25 @@ const Reminders: React.FC = () => {
 
   const upcomingAppointments = appointments
     .filter((apt) => {
-      const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
-      return aptDateTime > new Date() && apt.status === 'scheduled';
+      try {
+        const dateStr = format(parseISO(apt.date), 'yyyy-MM-dd');
+        const timeStr = format(parseISO(apt.startTime), 'HH:mm');
+        const aptDateTime = parseISO(`${dateStr}T${timeStr}`);
+        return aptDateTime > new Date() && apt.status === 'scheduled';
+      } catch {
+        return false;
+      }
     })
     .sort((a, b) => {
-      const dateA = parseISO(`${a.date}T${a.startTime}`);
-      const dateB = parseISO(`${b.date}T${b.startTime}`);
-      return dateA.getTime() - dateB.getTime();
+      try {
+        const dateA = format(parseISO(a.date), 'yyyy-MM-dd');
+        const timeA = format(parseISO(a.startTime), 'HH:mm');
+        const dateB = format(parseISO(b.date), 'yyyy-MM-dd');
+        const timeB = format(parseISO(b.startTime), 'HH:mm');
+        return parseISO(`${dateA}T${timeA}`).getTime() - parseISO(`${dateB}T${timeB}`).getTime();
+      } catch {
+        return 0;
+      }
     });
 
   const getCustomerName = (customerId: string) => {
@@ -49,9 +61,15 @@ const Reminders: React.FC = () => {
   };
 
   const needsReminder = (apt: typeof appointments[0]) => {
-    const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
-    const reminderTime = addHours(new Date(), 24);
-    return aptDateTime <= reminderTime && aptDateTime > new Date();
+    try {
+      const dateStr = format(parseISO(apt.date), 'yyyy-MM-dd');
+      const timeStr = format(parseISO(apt.startTime), 'HH:mm');
+      const aptDateTime = parseISO(`${dateStr}T${timeStr}`);
+      const reminderTime = addHours(new Date(), 24);
+      return aptDateTime <= reminderTime && aptDateTime > new Date();
+    } catch {
+      return false;
+    }
   };
 
   const appointmentsNeedingReminders = upcomingAppointments.filter(needsReminder);

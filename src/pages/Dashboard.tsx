@@ -36,16 +36,25 @@ const Dashboard: React.FC = () => {
     .filter((apt) => {
       if (!apt.date || !apt.startTime) return false;
       try {
-        const aptDateTime = parseISO(`${apt.date}T${apt.startTime}`);
+        // Estrai solo la data da apt.date e l'ora da apt.startTime
+        const dateStr = format(parseISO(apt.date), 'yyyy-MM-dd');
+        const timeStr = format(parseISO(apt.startTime), 'HH:mm');
+        const aptDateTime = parseISO(`${dateStr}T${timeStr}`);
         return aptDateTime >= new Date() && (apt.status === 'scheduled' || apt.status === 'confirmed');
       } catch {
         return false;
       }
     })
     .sort((a, b) => {
-      const dateA = parseISO(`${a.date}T${a.startTime}`);
-      const dateB = parseISO(`${b.date}T${b.startTime}`);
-      return dateA.getTime() - dateB.getTime();
+      try {
+        const dateA = format(parseISO(a.date), 'yyyy-MM-dd');
+        const timeA = format(parseISO(a.startTime), 'HH:mm');
+        const dateB = format(parseISO(b.date), 'yyyy-MM-dd');
+        const timeB = format(parseISO(b.startTime), 'HH:mm');
+        return parseISO(`${dateA}T${timeA}`).getTime() - parseISO(`${dateB}T${timeB}`).getTime();
+      } catch {
+        return 0;
+      }
     })
     .slice(0, 5);
 
