@@ -14,7 +14,23 @@ export interface ApiResponse<T = any> {
  */
 export const settingsApi = {
   async get(): Promise<Settings> {
-    const response = await fetch(`${API_BASE_URL}/settings`);
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/settings`, { headers });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication required');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     const result: ApiResponse<Settings> = await response.json();
 
     if (!result.success || !result.data) {
@@ -25,13 +41,26 @@ export const settingsApi = {
   },
 
   async update(settings: Partial<Settings>): Promise<Settings> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch(`${API_BASE_URL}/settings`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(settings),
     });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication required');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
     const result: ApiResponse<Settings> = await response.json();
 
@@ -178,7 +207,7 @@ export const remindersApi = {
  * Get authentication token from localStorage
  */
 function getAuthToken(): string | null {
-  return localStorage.getItem('authToken');
+  return localStorage.getItem('auth_token');  // Fixed: was 'authToken', should be 'auth_token'
 }
 
 /**
