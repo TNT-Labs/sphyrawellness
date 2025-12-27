@@ -78,6 +78,114 @@ router.get('/staff', async (req, res, next) => {
   }
 });
 
+// GET /api/public/available-slots - Get available time slots for a service on a specific date
+router.get('/available-slots', async (req, res, next) => {
+  try {
+    const { serviceId, date } = req.query;
+
+    if (!serviceId || !date) {
+      return res.status(400).json({
+        success: false,
+        error: 'serviceId and date are required'
+      });
+    }
+
+    // Get service to know duration
+    const service = await serviceRepository.findById(serviceId as string);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        error: 'Service not found'
+      });
+    }
+
+    // Get all active staff
+    const allStaff = await staffRepository.findAll();
+    const activeStaff = allStaff.filter(s => s.isActive);
+
+    if (activeStaff.length === 0) {
+      return res.json({
+        success: true,
+        availableSlots: []
+      });
+    }
+
+    const appointmentDate = new Date(date as string);
+    const allSlots = new Map(); // Use Map to track unique time slots
+
+    // For each staff member, get their available slots
+    for (const staff of activeStaff) {
+      const appointments = await appointmentRepository.findByStaff(
+        staff.id,
+        startOfDay(appointmentDate),
+        endOfDay(appointmentDate)
+      );
+
+      // Generate time slots (9:00 - 18:00, every 30 minutes)
+      const workStart = 9; // 9 AM
+      const workEnd = 18; // 6 PM
+      const slotInterval = 30; // minutes
+
+      for (let hour = workStart; hour < workEnd; hour++) {
+        for (let minute = 0; minute < 60; minute += slotInterval) {
+          const slotStart = setMinutes(setHours(appointmentDate, hour), minute);
+          const slotEnd = addMinutes(slotStart, service.duration);
+
+          // Check if slot end is within working hours
+          if (slotEnd.getHours() > workEnd) {
+            break;
+          }
+
+          // Check if slot conflicts with existing appointments for this staff
+          const hasConflict = appointments.some((apt) => {
+            const aptStart = new Date(`2000-01-01T${apt.startTime}`);
+            const aptEnd = new Date(`2000-01-01T${apt.endTime}`);
+            const checkStart = new Date(`2000-01-01T${slotStart.toTimeString().substring(0, 5)}`);
+            const checkEnd = new Date(`2000-01-01T${slotEnd.toTimeString().substring(0, 5)}`);
+
+            return (
+              (checkStart >= aptStart && checkStart < aptEnd) ||
+              (checkEnd > aptStart && checkEnd <= aptEnd) ||
+              (checkStart <= aptStart && checkEnd >= aptEnd)
+            );
+          });
+
+          if (!hasConflict) {
+            const timeKey = slotStart.toTimeString().substring(0, 5);
+            if (!allSlots.has(timeKey)) {
+              allSlots.set(timeKey, {
+                startTime: timeKey,
+                endTime: slotEnd.toTimeString().substring(0, 5),
+                availableStaff: []
+              });
+            }
+            allSlots.get(timeKey).availableStaff.push({
+              id: staff.id,
+              name: `${staff.firstName} ${staff.lastName}`
+            });
+          }
+        }
+      }
+    }
+
+    // Convert Map to sorted array
+    const slots = Array.from(allSlots.values()).sort((a, b) =>
+      a.startTime.localeCompare(b.startTime)
+    );
+
+    res.json({
+      success: true,
+      availableSlots: slots
+    });
+  } catch (error) {
+    console.error('Error getting available slots:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error'
+    });
+  }
+});
+
 // POST /api/public/appointments/availability - Check availability
 router.post('/appointments/availability', async (req, res, next) => {
   try {
