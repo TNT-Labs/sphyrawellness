@@ -63,9 +63,9 @@ const createCustomerSchema = z.object({
   lastName: z.string().min(1).max(100),
   email: z.string().email().optional(),
   phone: z.string().min(1).max(20).optional(),
-  dateOfBirth: z.string().optional(),
-  notes: z.string().optional(),
-  allergies: z.string().optional(),
+  dateOfBirth: z.string().nullish(),
+  notes: z.string().nullish(),
+  allergies: z.string().nullish(),
 
   // GDPR Consents
   privacyConsent: z.boolean(),
@@ -76,7 +76,9 @@ const createCustomerSchema = z.object({
   marketingConsent: z.boolean().optional(),
 });
 
-const updateCustomerSchema = createCustomerSchema.partial();
+const updateCustomerSchema = createCustomerSchema
+  .partial()
+  .passthrough(); // Allow extra fields (like consents) but ignore them
 
 const updateConsentsSchema = z.object({
   privacyConsent: z.boolean().optional(),

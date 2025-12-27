@@ -5,7 +5,7 @@ import { format, parseISO, addHours } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
-import { remindersApi } from '../utils/api';
+import { remindersApi } from '../api/reminders';
 import { logger } from '../utils/logger';
 import { extractTimeString } from '../utils/helpers';
 
