@@ -7,6 +7,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { remindersApi } from '../utils/api';
 import { logger } from '../utils/logger';
+import { extractTimeString } from '../utils/helpers';
 
 const Reminders: React.FC = () => {
   const { appointments, customers, services, staff, reminders, refreshAppointments, refreshReminders } = useApp();
@@ -307,7 +308,7 @@ const Reminders: React.FC = () => {
                           {format(parseISO(apt.date), 'dd MMMM yyyy', {
                             locale: it,
                           })}{' '}
-                          alle {apt.startTime}
+                          alle {extractTimeString(apt.startTime)}
                         </p>
                         <p>
                           <strong>Email:</strong> {contact.email}
@@ -409,7 +410,7 @@ const Reminders: React.FC = () => {
                       <div className="font-semibold text-gray-900">
                         {format(parseISO(apt.date), 'dd MMM', { locale: it })}
                       </div>
-                      <div className="text-sm text-gray-600">{apt.startTime}</div>
+                      <div className="text-sm text-gray-600">{extractTimeString(apt.startTime)}</div>
                     </div>
                   </div>
                 </div>

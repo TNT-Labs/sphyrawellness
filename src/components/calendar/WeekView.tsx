@@ -4,6 +4,7 @@ import { format, addDays, startOfWeek, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
+import { extractTimeString } from '../../utils/helpers';
 
 interface WeekViewProps {
   onOpenModal: (_appointment?: Appointment, _selectedDate?: Date) => void;
@@ -102,7 +103,7 @@ const WeekView: React.FC<WeekViewProps> = ({ onOpenModal }) => {
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-gray-900">
-                          {format(parseISO(apt.startTime), 'HH:mm')}
+                          {extractTimeString(apt.startTime)}
                         </span>
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(apt.status)}`}

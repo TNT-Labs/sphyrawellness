@@ -4,6 +4,7 @@ import { format, addDays, isSameDay, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
+import { extractTimeString } from '../../utils/helpers';
 
 interface DayViewProps {
   onOpenModal: (_appointment?: Appointment, _selectedDate?: Date) => void;
@@ -153,7 +154,7 @@ const DayView: React.FC<DayViewProps> = ({ onOpenModal }) => {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="text-xs sm:text-sm font-bold text-gray-900">
-                                  {format(parseISO(apt.startTime), 'HH:mm')} - {format(parseISO(apt.endTime), 'HH:mm')}
+                                  {extractTimeString(apt.startTime)} - {extractTimeString(apt.endTime)}
                                 </span>
                                 <span
                                   className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${getStatusColor(apt.status)}`}

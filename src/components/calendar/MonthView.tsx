@@ -15,6 +15,7 @@ import {
 import { it } from 'date-fns/locale';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
 import { Appointment } from '../../types';
+import { extractTimeString } from '../../utils/helpers';
 
 interface MonthViewProps {
   onOpenModal: (_appointment?: Appointment, _selectedDate?: Date) => void;
@@ -142,7 +143,7 @@ const MonthView: React.FC<MonthViewProps> = ({ onOpenModal }) => {
                             className="w-1.5 h-1.5 rounded-full touch-manipulation"
                             style={{ backgroundColor: getStaffColor(apt.staffId) }}
                             onClick={() => onOpenModal(apt)}
-                            title={`${format(parseISO(apt.startTime), 'HH:mm')} - ${getCustomerName(apt.customerId)}`}
+                            title={`${extractTimeString(apt.startTime)} - ${getCustomerName(apt.customerId)}`}
                           />
                         ))}
                         {dayAppointments.length > 6 && (
@@ -158,10 +159,10 @@ const MonthView: React.FC<MonthViewProps> = ({ onOpenModal }) => {
                             className="text-xs p-1 rounded border-l-2 bg-gray-50 hover:bg-gray-100 cursor-pointer truncate"
                             style={{ borderLeftColor: getStaffColor(apt.staffId) }}
                             onClick={() => onOpenModal(apt)}
-                            title={`${format(parseISO(apt.startTime), 'HH:mm')} - ${getCustomerName(apt.customerId)}`}
+                            title={`${extractTimeString(apt.startTime)} - ${getCustomerName(apt.customerId)}`}
                           >
                             <div className="font-semibold text-gray-900">
-                              {format(parseISO(apt.startTime), 'HH:mm')}
+                              {extractTimeString(apt.startTime)}
                             </div>
                             <div className="text-gray-600 truncate">
                               {getCustomerName(apt.customerId)}
