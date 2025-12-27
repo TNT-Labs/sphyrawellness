@@ -25,14 +25,16 @@ export const servicesApi = {
    */
   create: async (service: Partial<Service>): Promise<Service> => {
     // Transform frontend data to backend format
-    const { category, ...rest } = service;
-    const apiData = {
-      ...rest,
-      // Backend expects 'categoryId' instead of 'category'
-      categoryId: category,
-      // Convert null imageUrl to undefined
-      imageUrl: service.imageUrl || undefined,
-    };
+    // Only send fields that backend validation accepts
+    const apiData: any = {};
+
+    if (service.name !== undefined) apiData.name = service.name;
+    if (service.description !== undefined) apiData.description = service.description;
+    if (service.duration !== undefined) apiData.duration = service.duration;
+    if (service.price !== undefined) apiData.price = service.price;
+    if (service.category !== undefined) apiData.categoryId = service.category; // Map category → categoryId
+    if (service.color !== undefined) apiData.color = service.color;
+    if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
 
     const { data } = await apiClient.post<Service>('/services', apiData);
     return data;
@@ -43,14 +45,16 @@ export const servicesApi = {
    */
   update: async (id: string, service: Partial<Service>): Promise<Service> => {
     // Transform frontend data to backend format
-    const { category, ...rest } = service;
-    const apiData = {
-      ...rest,
-      // Backend expects 'categoryId' instead of 'category'
-      categoryId: category,
-      // Convert null imageUrl to undefined
-      imageUrl: service.imageUrl || undefined,
-    };
+    // Only send fields that backend validation accepts
+    const apiData: any = {};
+
+    if (service.name !== undefined) apiData.name = service.name;
+    if (service.description !== undefined) apiData.description = service.description;
+    if (service.duration !== undefined) apiData.duration = service.duration;
+    if (service.price !== undefined) apiData.price = service.price;
+    if (service.category !== undefined) apiData.categoryId = service.category; // Map category → categoryId
+    if (service.color !== undefined) apiData.color = service.color;
+    if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
 
     const { data } = await apiClient.put<Service>(`/services/${id}`, apiData);
     return data;
