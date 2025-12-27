@@ -24,7 +24,17 @@ export const servicesApi = {
    * Create new service
    */
   create: async (service: Partial<Service>): Promise<Service> => {
-    const { data } = await apiClient.post<Service>('/services', service);
+    // Transform frontend data to backend format
+    const { category, ...rest } = service;
+    const apiData = {
+      ...rest,
+      // Backend expects 'categoryId' instead of 'category'
+      categoryId: category,
+      // Convert null imageUrl to undefined
+      imageUrl: service.imageUrl || undefined,
+    };
+
+    const { data } = await apiClient.post<Service>('/services', apiData);
     return data;
   },
 
@@ -32,7 +42,17 @@ export const servicesApi = {
    * Update service
    */
   update: async (id: string, service: Partial<Service>): Promise<Service> => {
-    const { data } = await apiClient.put<Service>(`/services/${id}`, service);
+    // Transform frontend data to backend format
+    const { category, ...rest } = service;
+    const apiData = {
+      ...rest,
+      // Backend expects 'categoryId' instead of 'category'
+      categoryId: category,
+      // Convert null imageUrl to undefined
+      imageUrl: service.imageUrl || undefined,
+    };
+
+    const { data } = await apiClient.put<Service>(`/services/${id}`, apiData);
     return data;
   },
 
