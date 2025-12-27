@@ -23,7 +23,8 @@ dist-ssr
 
 # HTTPS/SSL
 certificates/
-certbot/
+/certbot/
+!docker/certbot/
 traefik/logs/
 *.pem
 *.crt

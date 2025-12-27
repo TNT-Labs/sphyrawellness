@@ -1,0 +1,193 @@
+# ========================================
+# Sphyra Wellness Lab - HTTPS con DuckDNS
+# Certificati SSL/TLS validi senza porta 80
+# Metodo: DNS-01 Challenge con DuckDNS
+# ========================================
+# REQUISITI:
+# - Porta 443 instradata verso questo server
+# - Account DuckDNS con token API
+# - Dominio DuckDNS configurato (es: sphyrawellnesslab.duckdns.org)
+# ========================================
+
+services:
+  # ========================================
+  # NGINX - Reverse Proxy (Solo HTTPS)
+  # ========================================
+  nginx:
+    image: nginx:alpine
+    container_name: sphyra-nginx
+    restart: unless-stopped
+    ports:
+      # Solo HTTPS - La porta 80 NON è necessaria
+      - "443:443"
+    volumes:
+      # Nginx configuration
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/sphyra-duckdns.conf:/etc/nginx/conf.d/default.conf:ro
+      # Let's Encrypt certificates
+      - ./certbot/conf:/etc/letsencrypt:ro
+      # Logs
+      - nginx_logs:/var/log/nginx
+    networks:
+      - sphyra-network
+    depends_on:
+      - frontend
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost/health" || "exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    environment:
+      - DOMAIN=${DOMAIN}
+    command: >
+      /bin/sh -c "envsubst '$${DOMAIN}' < /etc/nginx/conf.d/default.conf > /etc/nginx/conf.d/sphyra.conf
+      && rm /etc/nginx/conf.d/default.conf
+      && while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+
+  # ========================================
+  # CERTBOT - Let's Encrypt con DuckDNS
+  # ========================================
+  certbot:
+    build:
+      context: ./docker/certbot
+      dockerfile: Dockerfile.duckdns
+    container_name: sphyra-certbot
+    restart: unless-stopped
+    volumes:
+      # Let's Encrypt configuration e certificati
+      - ./certbot/conf:/etc/letsencrypt
+      # Script di autenticazione DuckDNS
+      - ./scripts/duckdns-auth.sh:/usr/local/bin/duckdns-auth.sh:ro
+      - ./scripts/duckdns-cleanup.sh:/usr/local/bin/duckdns-cleanup.sh:ro
+    environment:
+      - DOMAIN=${DOMAIN}
+      - EMAIL=${EMAIL}
+      - DUCKDNS_TOKEN=${DUCKDNS_TOKEN}
+    networks:
+      - sphyra-network
+    # Rinnovo automatico ogni 12 ore
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --manual --preferred-challenges dns --manual-auth-hook /usr/local/bin/duckdns-auth.sh --manual-cleanup-hook /usr/local/bin/duckdns-cleanup.sh --quiet; sleep 12h & wait $${!}; done;'"
+
+  # ========================================
+  # DATABASE - PostgreSQL
+  # ========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: sphyra-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-sphyra_wellness}
+      - POSTGRES_USER=${POSTGRES_USER:-sphyra_user}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sphyra_dev_password_2024}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - sphyra-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sphyra_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Non esporre la porta pubblicamente in produzione
+    # Commenta questa linea se non serve accesso esterno
+    ports:
+      - "5432:5432"
+
+  # ========================================
+  # BACKEND - API Server (HTTPS)
+  # ========================================
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: sphyra-backend
+    restart: unless-stopped
+    volumes:
+      # Shared uploads directory
+      - uploads_data:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      # PostgreSQL Database URL
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-sphyra_user}:${POSTGRES_PASSWORD:-sphyra_dev_password_2024}@postgres:5432/${POSTGRES_DB:-sphyra_wellness}?schema=public
+      # JWT Secret for authentication
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      # Email settings (SendGrid)
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
+      - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}
+      - SENDGRID_FROM_NAME=${SENDGRID_FROM_NAME:-Sphyra Wellness Lab}
+      # SMS settings (optional)
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
+      # Frontend URL (HTTPS public domain)
+      - FRONTEND_URL=https://${DOMAIN}
+      # CORS - Permetti il dominio pubblico
+      - ALLOWED_ORIGINS=https://${DOMAIN}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - sphyra-network
+    command: >
+      sh -c "
+        echo '⏳ Waiting for database...';
+        npx prisma migrate deploy &&
+        echo '✅ Database migrations applied' &&
+        npx prisma db seed || echo '⚠️  Seed skipped (optional)' &&
+        echo '🚀 Starting backend server...' &&
+        npm start
+      "
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ========================================
+  # FRONTEND - PWA (HTTPS)
+  # ========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=/api
+    container_name: sphyra-frontend
+    restart: unless-stopped
+    volumes:
+      # Shared uploads directory (read-only for frontend)
+      - uploads_data:/usr/share/nginx/html/uploads:ro
+    depends_on:
+      - backend
+    networks:
+      - sphyra-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# ========================================
+# NETWORKS
+# ========================================
+networks:
+  sphyra-network:
+    driver: bridge
+
+# ========================================
+# VOLUMES
+# ========================================
+volumes:
+  postgres_data:
+    driver: local
+  nginx_logs:
+    driver: local
+  uploads_data:
+    driver: local
