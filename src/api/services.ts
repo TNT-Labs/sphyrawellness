@@ -6,18 +6,26 @@ export const servicesApi = {
    * Get all services
    */
   getAll: async (categoryId?: string): Promise<Service[]> => {
-    const { data } = await apiClient.get<Service[]>('/services', {
+    const { data } = await apiClient.get<any[]>('/services', {
       params: { categoryId },
     });
-    return data;
+    // Transform backend response: category object → categoryId string
+    return data.map((service) => ({
+      ...service,
+      category: service.category?.id || service.categoryId || service.category,
+    }));
   },
 
   /**
    * Get service by ID
    */
   getById: async (id: string): Promise<Service> => {
-    const { data} = await apiClient.get<Service>(`/services/${id}`);
-    return data;
+    const { data } = await apiClient.get<any>(`/services/${id}`);
+    // Transform backend response: category object → categoryId string
+    return {
+      ...data,
+      category: data.category?.id || data.categoryId || data.category,
+    };
   },
 
   /**
@@ -36,8 +44,12 @@ export const servicesApi = {
     if (service.color !== undefined) apiData.color = service.color;
     if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
 
-    const { data } = await apiClient.post<Service>('/services', apiData);
-    return data;
+    const { data } = await apiClient.post<any>('/services', apiData);
+    // Transform backend response: category object → categoryId string
+    return {
+      ...data,
+      category: data.category?.id || data.categoryId || data.category,
+    };
   },
 
   /**
@@ -56,8 +68,12 @@ export const servicesApi = {
     if (service.color !== undefined) apiData.color = service.color;
     if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
 
-    const { data } = await apiClient.put<Service>(`/services/${id}`, apiData);
-    return data;
+    const { data } = await apiClient.put<any>(`/services/${id}`, apiData);
+    // Transform backend response: category object → categoryId string
+    return {
+      ...data,
+      category: data.category?.id || data.categoryId || data.category,
+    };
   },
 
   /**
