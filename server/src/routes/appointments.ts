@@ -71,9 +71,9 @@ router.post('/', async (req, res, next) => {
     // Check for conflicts
     const hasConflict = await appointmentRepository.hasConflict(
       data.staffId,
-      new Date(data.date),
-      new Date(`2000-01-01T${data.startTime}`),
-      new Date(`2000-01-01T${data.endTime}`)
+      new Date(`${data.date}T12:00:00Z`),
+      new Date(`1970-01-01T${data.startTime}:00Z`),
+      new Date(`1970-01-01T${data.endTime}:00Z`)
     );
 
     if (hasConflict) {
@@ -86,9 +86,9 @@ router.post('/', async (req, res, next) => {
       customer: { connect: { id: data.customerId } },
       service: { connect: { id: data.serviceId } },
       staff: { connect: { id: data.staffId } },
-      date: new Date(data.date),
-      startTime: new Date(`2000-01-01T${data.startTime}`),
-      endTime: new Date(`2000-01-01T${data.endTime}`),
+      date: new Date(`${data.date}T12:00:00Z`), // Noon UTC per evitare problemi timezone
+      startTime: new Date(`1970-01-01T${data.startTime}:00Z`), // Epoch per @db.Time
+      endTime: new Date(`1970-01-01T${data.endTime}:00Z`),
       status: data.status,
       notes: data.notes,
     });
@@ -115,11 +115,21 @@ router.put('/:id', async (req, res, next) => {
 
     // Check for conflicts if time changed
     if (data.staffId || data.date || data.startTime || data.endTime) {
+      const dateForCheck = data.date
+        ? new Date(`${data.date}T12:00:00Z`)
+        : existing.date;
+      const startForCheck = data.startTime
+        ? new Date(`1970-01-01T${data.startTime}:00Z`)
+        : existing.startTime;
+      const endForCheck = data.endTime
+        ? new Date(`1970-01-01T${data.endTime}:00Z`)
+        : existing.endTime;
+
       const hasConflict = await appointmentRepository.hasConflict(
         data.staffId || existing.staffId,
-        new Date(data.date || existing.date),
-        new Date(`2000-01-01T${data.startTime || existing.startTime}`),
-        new Date(`2000-01-01T${data.endTime || existing.endTime}`),
+        dateForCheck,
+        startForCheck,
+        endForCheck,
         id
       );
 
@@ -134,9 +144,9 @@ router.put('/:id', async (req, res, next) => {
       ...(data.customerId && { customer: { connect: { id: data.customerId } } }),
       ...(data.serviceId && { service: { connect: { id: data.serviceId } } }),
       ...(data.staffId && { staff: { connect: { id: data.staffId } } }),
-      ...(data.date && { date: new Date(data.date) }),
-      ...(data.startTime && { startTime: new Date(`2000-01-01T${data.startTime}`) }),
-      ...(data.endTime && { endTime: new Date(`2000-01-01T${data.endTime}`) }),
+      ...(data.date && { date: new Date(`${data.date}T12:00:00Z`) }),
+      ...(data.startTime && { startTime: new Date(`1970-01-01T${data.startTime}:00Z`) }),
+      ...(data.endTime && { endTime: new Date(`1970-01-01T${data.endTime}:00Z`) }),
       status: data.status,
       notes: data.notes,
     });
