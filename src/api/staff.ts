@@ -6,36 +6,78 @@ export const staffApi = {
    * Get all staff
    */
   getAll: async (activeOnly = false): Promise<Staff[]> => {
-    const { data } = await apiClient.get<Staff[]>('/staff', {
+    const { data } = await apiClient.get<any[]>('/staff', {
       params: { active: activeOnly ? 'true' : undefined },
     });
-    return data;
+    // Transform backend response: role object → roleId string
+    return data.map((staff) => ({
+      ...staff,
+      role: staff.role?.id || staff.roleId || staff.role,
+    }));
   },
 
   /**
    * Get staff by ID
    */
   getById: async (id: string, includeAppointments = false): Promise<Staff> => {
-    const { data } = await apiClient.get<Staff>(`/staff/${id}`, {
+    const { data } = await apiClient.get<any>(`/staff/${id}`, {
       params: { include: includeAppointments ? 'appointments' : undefined },
     });
-    return data;
+    // Transform backend response: role object → roleId string
+    return {
+      ...data,
+      role: data.role?.id || data.roleId || data.role,
+    };
   },
 
   /**
    * Create new staff
    */
   create: async (staff: Partial<Staff>): Promise<Staff> => {
-    const { data } = await apiClient.post<Staff>('/staff', staff);
-    return data;
+    // Transform frontend data to backend format
+    const apiData: any = {};
+
+    if (staff.firstName !== undefined) apiData.firstName = staff.firstName;
+    if (staff.lastName !== undefined) apiData.lastName = staff.lastName;
+    if (staff.email !== undefined) apiData.email = staff.email;
+    if (staff.phone !== undefined) apiData.phone = staff.phone;
+    if (staff.role !== undefined) apiData.roleId = staff.role; // Map role → roleId
+    if (staff.specializations !== undefined) apiData.specializations = staff.specializations;
+    if (staff.color !== undefined) apiData.color = staff.color;
+    if (staff.isActive !== undefined) apiData.isActive = staff.isActive;
+    if (staff.profileImageUrl !== undefined) apiData.profileImageUrl = staff.profileImageUrl;
+
+    const { data } = await apiClient.post<any>('/staff', apiData);
+    // Transform backend response: role object → roleId string
+    return {
+      ...data,
+      role: data.role?.id || data.roleId || data.role,
+    };
   },
 
   /**
    * Update staff
    */
   update: async (id: string, staff: Partial<Staff>): Promise<Staff> => {
-    const { data } = await apiClient.put<Staff>(`/staff/${id}`, staff);
-    return data;
+    // Transform frontend data to backend format
+    const apiData: any = {};
+
+    if (staff.firstName !== undefined) apiData.firstName = staff.firstName;
+    if (staff.lastName !== undefined) apiData.lastName = staff.lastName;
+    if (staff.email !== undefined) apiData.email = staff.email;
+    if (staff.phone !== undefined) apiData.phone = staff.phone;
+    if (staff.role !== undefined) apiData.roleId = staff.role; // Map role → roleId
+    if (staff.specializations !== undefined) apiData.specializations = staff.specializations;
+    if (staff.color !== undefined) apiData.color = staff.color;
+    if (staff.isActive !== undefined) apiData.isActive = staff.isActive;
+    if (staff.profileImageUrl !== undefined) apiData.profileImageUrl = staff.profileImageUrl;
+
+    const { data } = await apiClient.put<any>(`/staff/${id}`, apiData);
+    // Transform backend response: role object → roleId string
+    return {
+      ...data,
+      role: data.role?.id || data.roleId || data.role,
+    };
   },
 
   /**

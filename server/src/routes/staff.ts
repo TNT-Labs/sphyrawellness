@@ -82,9 +82,12 @@ router.post('/', async (req, res, next) => {
       return res.status(409).json({ error: 'Email already exists' });
     }
 
+    // Exclude roleId from data spread (Prisma doesn't accept it)
+    const { roleId, ...restData } = data;
+
     const staff = await staffRepository.create({
-      ...data,
-      role: data.roleId ? { connect: { id: data.roleId } } : undefined,
+      ...restData,
+      role: roleId ? { connect: { id: roleId } } : undefined,
     });
 
     res.status(201).json(staff);
@@ -115,11 +118,14 @@ router.put('/:id', async (req, res, next) => {
       }
     }
 
+    // Exclude roleId from data spread (Prisma doesn't accept it)
+    const { roleId, ...restData } = data;
+
     const staff = await staffRepository.update(id, {
-      ...data,
-      role: data.roleId
-        ? { connect: { id: data.roleId } }
-        : data.roleId === null
+      ...restData,
+      role: roleId
+        ? { connect: { id: roleId } }
+        : roleId === null
           ? { disconnect: true }
           : undefined,
     });
