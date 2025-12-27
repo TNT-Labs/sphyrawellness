@@ -26,6 +26,8 @@ services:
       - ./nginx/conf.d/sphyra-duckdns.conf:/etc/nginx/templates/default.conf.template:ro
       # Let's Encrypt certificates
       - ./certbot/conf:/etc/letsencrypt:ro
+      # Uploads directory (shared with backend and frontend)
+      - uploads_data:/usr/share/nginx/html/uploads:ro
       # Logs
       - nginx_logs:/var/log/nginx
     networks:
