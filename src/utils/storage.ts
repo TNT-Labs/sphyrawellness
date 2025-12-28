@@ -1,4 +1,4 @@
-import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings, StaffRole, ServiceCategory } from '../types';
+import { Customer, Service, Staff, Appointment, Payment, Reminder, AppSettings, StaffRole, ServiceCategory, BusinessHours } from '../types';
 import { logger } from './logger';
 import { safeJsonParse } from './errorHandling';
 import { secureStore, secureRetrieve, isEncryptionAvailable } from './encryption';
@@ -140,9 +140,21 @@ export const loadReminders = (): Reminder[] => {
   return loadFromStorage<Reminder[]>(STORAGE_KEYS.REMINDERS, []);
 };
 
+// Default business hours: Monday-Friday 9:00-19:00, Saturday 9:00-13:00, Sunday closed
+const DEFAULT_BUSINESS_HOURS: BusinessHours = {
+  monday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+  tuesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+  wednesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+  thursday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+  friday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+  saturday: { enabled: true, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+  sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+};
+
 // Settings
 const DEFAULT_SETTINGS: AppSettings = {
   idleTimeout: 5, // 5 minutes by default
+  businessHours: DEFAULT_BUSINESS_HOURS,
 };
 
 /**

@@ -7,10 +7,11 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import { StaffRole, ServiceCategory } from '../types';
+import { StaffRole, ServiceCategory, BusinessHours } from '../types';
 import { logger, LogEntry } from '../utils/logger';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 import UserManagementCard from '../components/settings/UserManagementCard';
+import BusinessHoursSettings from '../components/BusinessHoursSettings';
 
 type SettingsTab = 'general' | 'configuration' | 'advanced' | 'users';
 
@@ -20,6 +21,7 @@ const Settings: React.FC = () => {
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
   const { canModifySettings } = useAuth();
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
+  const [businessHours, setBusinessHours] = useState<BusinessHours | undefined>(undefined);
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
   // Staff Roles state
@@ -41,6 +43,7 @@ const Settings: React.FC = () => {
     const loadAppSettings = () => {
       const settings = loadSettings();
       setIdleTimeout(settings.idleTimeout);
+      setBusinessHours(settings.businessHours);
     };
 
     loadAppSettings();
@@ -54,6 +57,14 @@ const Settings: React.FC = () => {
     // Trigger custom event so App.tsx can react immediately
     window.dispatchEvent(new Event('settingsChanged'));
     showSuccess('Impostazione salvata');
+  };
+
+  const handleBusinessHoursChange = async (newBusinessHours: BusinessHours) => {
+    setBusinessHours(newBusinessHours);
+    const settings = loadSettings();
+    settings.businessHours = newBusinessHours;
+    await saveSettings(settings);
+    showSuccess('Orari di apertura salvati');
   };
 
   // Staff Roles handlers
@@ -538,6 +549,13 @@ const Settings: React.FC = () => {
                   </div>
                 </div>
               </div>
+
+              {/* Business Hours Settings */}
+              {businessHours && (
+                <div className="card mt-6">
+                  <BusinessHoursSettings businessHours={businessHours} onChange={handleBusinessHoursChange} />
+                </div>
+              )}
             </>
           )}
 

@@ -148,27 +148,65 @@ const ConfirmAppointment: React.FC = () => {
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-start gap-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="bg-green-100 rounded-lg p-3">
-                    <Calendar className="text-green-600" size={24} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Data</p>
-                    <p className="text-lg font-bold text-gray-900">
-                      {format(parse(appointment.date, 'yyyy-MM-dd', new Date()), 'EEEE d MMMM yyyy', { locale: it })}
-                    </p>
-                  </div>
-                </div>
+                {appointment.date && (
+                  <div className="flex items-start gap-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-green-100 rounded-lg p-3">
+                      <Calendar className="text-green-600" size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Data</p>
+                      <p className="text-lg font-bold text-gray-900">
+                        {(() => {
+                          try {
+                            // Handle both ISO string and yyyy-MM-dd format
+                            const dateStr = appointment.date;
+                            let dateObj: Date;
 
-                <div className="flex items-start gap-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-                  <div className="bg-emerald-100 rounded-lg p-3">
-                    <Clock className="text-emerald-600" size={24} />
+                            // Check if it's an ISO string (contains 'T')
+                            if (typeof dateStr === 'string' && dateStr.includes('T')) {
+                              dateObj = new Date(dateStr);
+                            } else {
+                              // Parse as yyyy-MM-dd
+                              dateObj = parse(dateStr, 'yyyy-MM-dd', new Date());
+                            }
+
+                            return format(dateObj, 'EEEE d MMMM yyyy', { locale: it });
+                          } catch (err) {
+                            console.error('Error formatting date:', err);
+                            return appointment.date; // Fallback to raw date
+                          }
+                        })()}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">Orario</p>
-                    <p className="text-lg font-bold text-gray-900">{appointment.startTime}</p>
+                )}
+
+                {appointment.startTime && (
+                  <div className="flex items-start gap-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-emerald-100 rounded-lg p-3">
+                      <Clock className="text-emerald-600" size={24} />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600 mb-1">Orario</p>
+                      <p className="text-lg font-bold text-gray-900">
+                        {(() => {
+                          try {
+                            const timeStr = appointment.startTime;
+                            // If it's a Date object or ISO string, extract time
+                            if (typeof timeStr === 'string' && timeStr.includes('T')) {
+                              return format(new Date(timeStr), 'HH:mm');
+                            }
+                            // If it's already HH:mm format, return as is
+                            return timeStr;
+                          } catch (err) {
+                            console.error('Error formatting time:', err);
+                            return appointment.startTime;
+                          }
+                        })()}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-start gap-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
                   <div className="bg-teal-100 rounded-lg p-3">
