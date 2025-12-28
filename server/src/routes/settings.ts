@@ -10,23 +10,7 @@ const updateSettingsSchema = z.record(z.any());
 // ============================================================================
 // BUSINESS HOURS - Specialized endpoints (must be before parametric routes)
 // ============================================================================
-
-/**
- * GET /api/settings/business-hours
- * Public endpoint - get business hours for slot calculation
- */
-router.get('/business-hours', async (req, res, next) => {
-  try {
-    const businessHours = await settingsRepository.getBusinessHours();
-
-    res.json({
-      success: true,
-      data: { businessHours },
-    });
-  } catch (error) {
-    next(error);
-  }
-});
+// Note: GET /api/settings/business-hours is public and registered in app.ts
 
 /**
  * PUT /api/settings/business-hours

@@ -12,22 +12,16 @@ const PORT = process.env.PORT || 3001;
 // Initialize and start server
 async function startServer() {
   try {
-    console.log('[DEBUG] startServer() called');
     logger.info('🚀 Starting Sphyra Wellness Lab Server...\n');
 
-    console.log('[DEBUG] Before initializeBusinessHours');
     // Initialize business hours with defaults if not present
     await settingsRepository.initializeBusinessHours();
-    console.log('[DEBUG] After initializeBusinessHours');
 
     // Initialize daily reminder cron job
     initializeDailyReminderCron();
-    console.log('[DEBUG] After initializeDailyReminderCron');
 
-    console.log('[DEBUG] Before app.listen');
     // Start Express server
     app.listen(PORT, () => {
-      console.log('[DEBUG] app.listen callback fired');
       logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       logger.info('✅ Sphyra Wellness Lab Server is running!');
       logger.info(`📍 Server URL: http://localhost:${PORT}`);
