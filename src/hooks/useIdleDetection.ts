@@ -19,8 +19,18 @@ export const useIdleDetection = ({
   const [isIdle, setIsIdle] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const onIdleRef = useRef(onIdle);
+  const enabledRef = useRef(enabled);
+  const timeoutMinutesRef = useRef(timeoutMinutes);
 
-  // Reset idle timer
+  // Keep refs up to date
+  useEffect(() => {
+    onIdleRef.current = onIdle;
+    enabledRef.current = enabled;
+    timeoutMinutesRef.current = timeoutMinutes;
+  }, [onIdle, enabled, timeoutMinutes]);
+
+  // Reset idle timer - stable function that doesn't change
   const resetIdle = useCallback(() => {
     console.log('⏰ [useIdleDetection] resetIdle called');
     setIsIdle(false);
@@ -30,42 +40,45 @@ export const useIdleDetection = ({
     if (timeoutRef.current) {
       console.log('⏰ [useIdleDetection] Clearing existing timeout');
       clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
 
     // Set new timeout only if enabled and timeout > 0
-    if (enabled && timeoutMinutes > 0) {
-      const timeoutMs = timeoutMinutes * 60 * 1000;
+    if (enabledRef.current && timeoutMinutesRef.current > 0) {
+      const timeoutMs = timeoutMinutesRef.current * 60 * 1000;
       console.log('⏰ [useIdleDetection] Setting new timeout:', {
-        enabled,
-        timeoutMinutes,
+        enabled: enabledRef.current,
+        timeoutMinutes: timeoutMinutesRef.current,
         timeoutMs,
         willTriggerAt: new Date(Date.now() + timeoutMs).toLocaleTimeString()
       });
       timeoutRef.current = setTimeout(() => {
         console.log('⏰ [useIdleDetection] ⚠️ TIMEOUT FIRED - Setting isIdle to true');
         setIsIdle(true);
-        if (onIdle) {
-          onIdle();
+        if (onIdleRef.current) {
+          onIdleRef.current();
         }
       }, timeoutMs);
     } else {
-      console.log('⏰ [useIdleDetection] NOT setting timeout:', { enabled, timeoutMinutes });
+      console.log('⏰ [useIdleDetection] NOT setting timeout:', {
+        enabled: enabledRef.current,
+        timeoutMinutes: timeoutMinutesRef.current
+      });
     }
-  }, [timeoutMinutes, onIdle, enabled]);
+  }, []); // No dependencies - stable function
 
-  // Handle user activity
+  // Handle user activity - stable function that doesn't change
   const handleActivity = useCallback(() => {
-    // Only reset if currently idle or if enough time has passed (debounce)
+    // Only reset if enough time has passed (debounce)
     const now = Date.now();
     const timeSinceLastActivity = now - lastActivityRef.current;
-    if (isIdle || timeSinceLastActivity > 1000) {
+    if (timeSinceLastActivity > 1000) {
       console.log('⏰ [useIdleDetection] Activity detected, resetting timer', {
-        isIdle,
         timeSinceLastActivity: `${timeSinceLastActivity}ms`
       });
       resetIdle();
     }
-  }, [isIdle, resetIdle]);
+  }, [resetIdle]);
 
   useEffect(() => {
     console.log('⏰ [useIdleDetection] useEffect triggered', { enabled, timeoutMinutes });
@@ -112,7 +125,7 @@ export const useIdleDetection = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [timeoutMinutes, enabled, handleActivity, resetIdle]);
+  }, [timeoutMinutes, enabled]); // Only re-run when timeout or enabled changes, not when callbacks change
 
   return {
     isIdle,
