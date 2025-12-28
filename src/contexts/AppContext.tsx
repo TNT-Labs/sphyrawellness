@@ -26,6 +26,7 @@ import {
   paymentsApi,
   settingsApi,
   usersApi,
+  remindersApi,
 } from '../api';
 import { logger } from '../utils/logger';
 import { useAuth } from './AuthContext';
@@ -156,6 +157,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
         paymentsData,
         settingsData,
         usersData,
+        remindersData,
       ] = await Promise.all([
         customersApi.getAll(),
         servicesApi.getAll(),
@@ -166,6 +168,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
         paymentsApi.getAll(),
         settingsApi.getAll(),
         usersApi.getAll(),
+        remindersApi.getAll(),
       ]);
 
       setCustomers(customersData);
@@ -177,6 +180,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       setPayments(paymentsData);
       setSettings(settingsData);
       setUsers(usersData);
+      setReminders(remindersData);
 
       logger.info('Data loaded successfully');
     } catch (err: any) {
@@ -327,11 +331,12 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
 
   const refreshReminders = async (): Promise<void> => {
     try {
-      // Stub implementation - reminders API not available yet
-      setReminders([]);
-      logger.info('Reminders refreshed (stub)');
+      const fetchedReminders = await remindersApi.getAll();
+      setReminders(fetchedReminders);
+      logger.info('Reminders refreshed:', fetchedReminders.length);
     } catch (err: any) {
       logger.error('Failed to refresh reminders:', err);
+      setReminders([]); // Set empty array on error
     }
   };
 
