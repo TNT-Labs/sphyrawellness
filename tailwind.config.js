@@ -20,6 +20,36 @@ export default {
           900: '#831843',
         },
       },
+      animation: {
+        'blob': 'blob 7s infinite',
+        'confetti': 'confetti 3s ease-out forwards',
+      },
+      keyframes: {
+        blob: {
+          '0%': {
+            transform: 'translate(0px, 0px) scale(1)',
+          },
+          '33%': {
+            transform: 'translate(30px, -50px) scale(1.1)',
+          },
+          '66%': {
+            transform: 'translate(-20px, 20px) scale(0.9)',
+          },
+          '100%': {
+            transform: 'translate(0px, 0px) scale(1)',
+          },
+        },
+        confetti: {
+          '0%': {
+            transform: 'translateY(0) rotateZ(0deg)',
+            opacity: '1',
+          },
+          '100%': {
+            transform: 'translateY(100vh) rotateZ(360deg)',
+            opacity: '0',
+          },
+        },
+      },
     },
   },
   plugins: [],

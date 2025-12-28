@@ -355,6 +355,18 @@ router.post('/appointments', async (req, res, next) => {
       status: 'scheduled',
     });
 
+    // Generate confirmation token (so customer can confirm later)
+    const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
+    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48); // Token valid for 48 hours
+
+    // Update appointment with confirmation token
+    await appointmentRepository.update(appointment.id, {
+      confirmationTokenHash,
+      tokenExpiresAt,
+    });
+
     // Send confirmation email (async, non-blocking)
     try {
       const staff = await staffRepository.findById(data.staffId);
@@ -383,9 +395,9 @@ router.post('/appointments', async (req, res, next) => {
           } as any
         });
 
-        // Generate confirmation link (points to appointment confirmation page)
+        // Generate confirmation link using both ID and token
         const confirmationLink = process.env.FRONTEND_URL
-          ? `${process.env.FRONTEND_URL}/confirm-appointment?token=${appointment.id}`
+          ? `${process.env.FRONTEND_URL}/confirm-appointment?id=${appointment.id}&token=${confirmationToken}`
           : undefined;
 
         // Send confirmation email
@@ -610,9 +622,9 @@ router.post('/bookings', async (req, res, next) => {
           } as any
         });
 
-        // Generate confirmation link using the token
+        // Generate confirmation link using both ID and token
         const confirmationLink = process.env.FRONTEND_URL
-          ? `${process.env.FRONTEND_URL}/confirm-appointment?token=${confirmationToken}`
+          ? `${process.env.FRONTEND_URL}/confirm-appointment?id=${appointment.id}&token=${confirmationToken}`
           : undefined;
 
         // Send confirmation email
