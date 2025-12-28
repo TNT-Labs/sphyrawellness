@@ -103,10 +103,11 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    # Non esporre la porta pubblicamente in produzione
-    # Commenta questa linea se non serve accesso esterno
-    ports:
-      - "5432:5432"
+    # ⚠️ SECURITY: Database port is NOT exposed to the internet (recommended)
+    # The database is only accessible from within the Docker network
+    # If you need local access for debugging, uncomment the line below:
+    # ports:
+    #   - "127.0.0.1:5432:5432"  # Only bind to localhost, NOT public internet
 
   # ========================================
   # BACKEND - API Server (HTTPS)
