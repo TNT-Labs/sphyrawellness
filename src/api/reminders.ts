@@ -1,6 +1,15 @@
 import { apiClient } from './client';
+import type { Reminder } from '../types';
 
 export const remindersApi = {
+  /**
+   * Get all reminders
+   */
+  getAll: async (): Promise<Reminder[]> => {
+    const { data } = await apiClient.get<Reminder[]>('/reminders');
+    return data;
+  },
+
   /**
    * Send reminder for a specific appointment
    */
