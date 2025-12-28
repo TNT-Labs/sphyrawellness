@@ -11,7 +11,11 @@ export const paymentsApi = {
     appointmentId?: string;
   }): Promise<Payment[]> => {
     const { data } = await apiClient.get<Payment[]>('/payments', { params });
-    return data;
+    // Convert Decimal amounts from strings to numbers
+    return data.map(payment => ({
+      ...payment,
+      amount: typeof payment.amount === 'string' ? parseFloat(payment.amount) : payment.amount,
+    }));
   },
 
   /**
@@ -19,7 +23,11 @@ export const paymentsApi = {
    */
   getById: async (id: string): Promise<Payment> => {
     const { data } = await apiClient.get<Payment>(`/payments/${id}`);
-    return data;
+    // Convert Decimal amount from string to number
+    return {
+      ...data,
+      amount: typeof data.amount === 'string' ? parseFloat(data.amount) : data.amount,
+    };
   },
 
   /**
@@ -27,7 +35,11 @@ export const paymentsApi = {
    */
   create: async (payment: Partial<Payment>): Promise<Payment> => {
     const { data } = await apiClient.post<Payment>('/payments', payment);
-    return data;
+    // Convert Decimal amount from string to number
+    return {
+      ...data,
+      amount: typeof data.amount === 'string' ? parseFloat(data.amount) : data.amount,
+    };
   },
 
   /**
@@ -35,7 +47,11 @@ export const paymentsApi = {
    */
   update: async (id: string, payment: Partial<Payment>): Promise<Payment> => {
     const { data } = await apiClient.put<Payment>(`/payments/${id}`, payment);
-    return data;
+    // Convert Decimal amount from string to number
+    return {
+      ...data,
+      amount: typeof data.amount === 'string' ? parseFloat(data.amount) : data.amount,
+    };
   },
 
   /**

@@ -9,10 +9,11 @@ export const servicesApi = {
     const { data } = await apiClient.get<any[]>('/services', {
       params: { categoryId },
     });
-    // Transform backend response: category object → categoryId string
+    // Transform backend response: category object → categoryId string, Decimal price → number
     return data.map((service) => ({
       ...service,
       category: service.category?.id || service.categoryId || service.category,
+      price: typeof service.price === 'string' ? parseFloat(service.price) : service.price,
     }));
   },
 
@@ -21,10 +22,11 @@ export const servicesApi = {
    */
   getById: async (id: string): Promise<Service> => {
     const { data } = await apiClient.get<any>(`/services/${id}`);
-    // Transform backend response: category object → categoryId string
+    // Transform backend response: category object → categoryId string, Decimal price → number
     return {
       ...data,
       category: data.category?.id || data.categoryId || data.category,
+      price: typeof data.price === 'string' ? parseFloat(data.price) : data.price,
     };
   },
 
@@ -45,10 +47,11 @@ export const servicesApi = {
     if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
 
     const { data } = await apiClient.post<any>('/services', apiData);
-    // Transform backend response: category object → categoryId string
+    // Transform backend response: category object → categoryId string, Decimal price → number
     return {
       ...data,
       category: data.category?.id || data.categoryId || data.category,
+      price: typeof data.price === 'string' ? parseFloat(data.price) : data.price,
     };
   },
 
@@ -69,10 +72,11 @@ export const servicesApi = {
     if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
 
     const { data } = await apiClient.put<any>(`/services/${id}`, apiData);
-    // Transform backend response: category object → categoryId string
+    // Transform backend response: category object → categoryId string, Decimal price → number
     return {
       ...data,
       category: data.category?.id || data.categoryId || data.category,
+      price: typeof data.price === 'string' ? parseFloat(data.price) : data.price,
     };
   },
 
