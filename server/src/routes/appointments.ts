@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
 import reminderServicePrisma from '../services/reminderServicePrisma.js';
+import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 import { z } from 'zod';
 
 const router = Router();
@@ -92,6 +94,18 @@ router.post('/', async (req, res, next) => {
       endTime: new Date(`1970-01-01T${data.endTime}:00Z`),
       status: data.status,
       notes: data.notes,
+    });
+
+    // Generate confirmation token immediately
+    const confirmationToken = uuidv4() + uuidv4();
+    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48);
+
+    // Update appointment with confirmation token
+    await appointmentRepository.update(appointment.id, {
+      confirmationTokenHash,
+      tokenExpiresAt,
     });
 
     res.status(201).json(appointment);

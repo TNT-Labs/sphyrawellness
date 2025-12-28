@@ -4,6 +4,8 @@ import { staffRepository } from '../repositories/staffRepository.js';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
 import { customerRepository } from '../repositories/customerRepository.js';
 import reminderServicePrisma from '../services/reminderServicePrisma.js';
+import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { startOfDay, endOfDay, setHours, setMinutes, addMinutes } from 'date-fns';
 
@@ -508,6 +510,18 @@ router.post('/bookings', async (req, res, next) => {
       endTime: endTimeISO,
       status: 'scheduled',
       notes: data.notes || undefined,
+    });
+
+    // Generate confirmation token immediately (so customer can confirm later)
+    const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
+    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48); // Token valid for 48 hours
+
+    // Update appointment with confirmation token
+    await appointmentRepository.update(appointment.id, {
+      confirmationTokenHash,
+      tokenExpiresAt,
     });
 
     console.log(`✅ Public booking created: ${customer.firstName} ${customer.lastName} - ${service.name} on ${data.date} at ${data.startTime}`);

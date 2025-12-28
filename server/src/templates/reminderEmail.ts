@@ -172,15 +172,39 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
       <!-- Confirmation CTA -->
       ${data.confirmationLink ? `
       <div class="cta-container">
-        <p style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: #dc2626;">
-          ⚠️ CONFERMA LA TUA PRESENZA
-        </p>
-        <a href="${data.confirmationLink}" class="cta-button">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <div style="display: inline-block; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); padding: 15px 25px; border-radius: 12px; border: 2px solid #f59e0b; margin-bottom: 20px;">
+            <p style="margin: 0; font-size: 16px; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 1px;">
+              ⚠️ Azione Richiesta
+            </p>
+          </div>
+          <h2 style="margin: 0 0 15px 0; font-size: 24px; font-weight: 700; color: #111827;">
+            Conferma il Tuo Appuntamento
+          </h2>
+          <p style="margin: 0 0 25px 0; font-size: 15px; color: #4b5563; line-height: 1.7;">
+            Per garantire il tuo posto e permetterci di preparare tutto per il tuo trattamento,<br>
+            ti chiediamo di confermare la tua presenza cliccando sul pulsante qui sotto.
+          </p>
+        </div>
+
+        <a href="${data.confirmationLink}" class="cta-button" style="display: inline-block; margin: 0 auto 25px;">
           ✅ CONFERMA APPUNTAMENTO
         </a>
-        <p style="margin-top: 20px; font-size: 14px; color: #6b7280; line-height: 1.6;">
-          <strong>Importante:</strong> Clicca sul pulsante sopra per confermare la tua presenza.<br>
-          La conferma ci aiuta a organizzare al meglio il tuo trattamento.
+
+        <div style="background-color: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px 20px; border-radius: 8px; text-align: left;">
+          <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600; color: #1e40af;">
+            💡 Cosa succede quando confermi?
+          </p>
+          <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #1e3a8a; line-height: 1.8;">
+            <li>Il tuo posto viene <strong>garantito</strong></li>
+            <li>Riceverai una <strong>email di conferma</strong> immediata</li>
+            <li>Potremo <strong>preparare</strong> tutto per il tuo trattamento</li>
+            <li>Eviti <strong>sovrapposizioni</strong> o disguidi</li>
+          </ul>
+        </div>
+
+        <p style="margin-top: 20px; font-size: 12px; color: #9ca3af; text-align: center; font-style: italic;">
+          Non riesci a partecipare? Contattaci il prima possibile per riprogrammare.
         </p>
       </div>
       ` : ''}
