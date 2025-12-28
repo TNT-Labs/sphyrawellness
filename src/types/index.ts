@@ -164,8 +164,26 @@ export interface Statistics {
   revenueByMonth: { month: string; revenue: number }[];
 }
 
+// Business hours configuration
+export interface TimeSlot {
+  start: string; // HH:mm format (es. "09:00")
+  end: string;   // HH:mm format (es. "13:00")
+}
+
+export interface DaySchedule {
+  enabled: boolean; // true = aperto, false = chiuso
+  type: 'continuous' | 'split'; // continuous = orario continuato, split = mattina/pomeriggio
+  morning: TimeSlot;
+  afternoon?: TimeSlot; // Solo se type = 'split'
+}
+
+export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+
+export type BusinessHours = Record<DayOfWeek, DaySchedule>;
+
 export interface AppSettings {
   idleTimeout: number; // in minutes (0 = disabled)
+  businessHours?: BusinessHours; // Orari di apertura per giorno della settimana
   // Legacy fields kept for backward compatibility - will be removed in future version
   syncEnabled?: boolean; // @deprecated - sync functionality removed
   couchdbUrl?: string; // @deprecated - CouchDB no longer used
