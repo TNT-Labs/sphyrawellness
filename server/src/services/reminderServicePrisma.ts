@@ -201,6 +201,7 @@ export class ReminderServicePrisma {
 
       // 4. Generate confirmation link
       const confirmationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-appointment/${appointmentId}/${confirmationToken}`;
+      console.log(`🔗 Generated confirmation link: ${confirmationLink}`);
 
       // 5. Send reminder based on type
       let sendResult: { success: boolean; messageId?: string; error?: string };

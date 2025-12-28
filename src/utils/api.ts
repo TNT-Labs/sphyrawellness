@@ -235,7 +235,8 @@ export const appointmentsApi = {
   },
 
   async confirm(appointmentId: string, token: string): Promise<Appointment> {
-    const response = await fetch(`${API_BASE_URL}/appointments/${appointmentId}/confirm`, {
+    // Public endpoint - no authentication required
+    const response = await fetch(`${API_BASE_URL}/public/appointments/${appointmentId}/confirm`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -243,13 +244,13 @@ export const appointmentsApi = {
       body: JSON.stringify({ token }),
     });
 
-    const result: ApiResponse<Appointment> = await response.json();
-
-    if (!result.success || !result.data) {
-      throw new Error(result.error || 'Failed to confirm appointment');
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to confirm appointment');
     }
 
-    return result.data;
+    const appointment = await response.json();
+    return appointment;
   },
 };
 

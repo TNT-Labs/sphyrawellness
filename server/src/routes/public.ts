@@ -3,6 +3,7 @@ import { serviceRepository } from '../repositories/serviceRepository.js';
 import { staffRepository } from '../repositories/staffRepository.js';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
 import { customerRepository } from '../repositories/customerRepository.js';
+import reminderServicePrisma from '../services/reminderServicePrisma.js';
 import { z } from 'zod';
 import { startOfDay, endOfDay, setHours, setMinutes, addMinutes } from 'date-fns';
 
@@ -532,6 +533,36 @@ router.post('/bookings', async (req, res, next) => {
       });
     }
     console.error('Error creating public booking:', error);
+    next(error);
+  }
+});
+
+// POST /api/public/appointments/:id/confirm - Confirm appointment (Public endpoint)
+router.post('/appointments/:id/confirm', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+
+    // Use reminderServicePrisma for secure hashed token validation
+    const result = await reminderServicePrisma.confirmAppointment(id, token);
+
+    if (!result.success) {
+      // Map error messages to appropriate HTTP status codes
+      if (result.error?.includes('not found')) {
+        return res.status(404).json({ error: result.error });
+      }
+      if (result.error?.includes('expired')) {
+        return res.status(410).json({ error: result.error });
+      }
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json(result.appointment);
+  } catch (error) {
     next(error);
   }
 });
