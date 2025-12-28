@@ -94,6 +94,7 @@ const Payments: React.FC = () => {
     const paymentData: Payment = {
       id: generateId(),
       ...formData,
+      amount: Number(formData.amount), // Ensure amount is a number
       notes: formData.notes || undefined,
     };
 
