@@ -16,7 +16,10 @@ const Statistics: React.FC = () => {
 
   // Memoize expensive calculations
   const stats = useMemo(() => {
-    const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+    // Filter out refunded payments for revenue calculations
+    const paidPayments = payments.filter((p) => p.status !== 'refunded');
+
+    const totalRevenue = paidPayments.reduce((sum, p) => sum + p.amount, 0);
     const totalCustomers = customers.length;
     const totalAppointments = appointments.length;
     const completedAppointments = appointments.filter(
@@ -33,7 +36,7 @@ const Statistics: React.FC = () => {
       return isWithinInterval(aptDate, { start: monthStart, end: monthEnd });
     });
 
-    const thisMonthPayments = payments.filter((p) => {
+    const thisMonthPayments = paidPayments.filter((p) => {
       const payDate = parseISO(p.date);
       return isWithinInterval(payDate, { start: monthStart, end: monthEnd });
     });
@@ -72,6 +75,9 @@ const Statistics: React.FC = () => {
 
   // Category statistics - memoized
   const categoryStats = useMemo(() => {
+    // Filter out refunded payments
+    const paidPayments = payments.filter((p) => p.status !== 'refunded');
+
     const stats = serviceCategories.map((category) => {
       // Get all services in this category
       const categoryServices = services.filter(
@@ -84,8 +90,8 @@ const Statistics: React.FC = () => {
         categoryServiceIds.includes(apt.serviceId)
       );
 
-      // Calculate revenue for this category
-      const revenue = payments
+      // Calculate revenue for this category (excluding refunded payments)
+      const revenue = paidPayments
         .filter((p) => {
           const apt = appointments.find((a) => a.id === p.appointmentId);
           return apt && categoryServiceIds.includes(apt.serviceId);
@@ -104,11 +110,14 @@ const Statistics: React.FC = () => {
 
   // Service statistics - memoized
   const serviceStats = useMemo(() => {
+    // Filter out refunded payments
+    const paidPayments = payments.filter((p) => p.status !== 'refunded');
+
     const stats = services.map((service) => {
       const serviceAppointments = appointments.filter(
         (apt) => apt.serviceId === service.id
       );
-      const revenue = payments
+      const revenue = paidPayments
         .filter((p) => {
           const apt = appointments.find((a) => a.id === p.appointmentId);
           return apt?.serviceId === service.id;

@@ -3,8 +3,27 @@ import { paymentRepository } from '../repositories/paymentRepository.js';
 import { z } from 'zod';
 import type { AuthRequest } from '../middleware/auth.js';
 import { logAuditEvent, AuditAction, AuditSeverity } from '../utils/auditLog.js';
+import type { Payment } from '@prisma/client';
 
 const router = Router();
+
+/**
+ * Serialize payment for JSON response
+ * Converts Decimal fields to numbers
+ */
+function serializePayment(payment: Payment) {
+  return {
+    ...payment,
+    amount: Number(payment.amount),
+  };
+}
+
+/**
+ * Serialize array of payments
+ */
+function serializePayments(payments: Payment[]) {
+  return payments.map(serializePayment);
+}
 
 const createPaymentSchema = z.object({
   appointmentId: z.string().uuid(),
@@ -38,7 +57,7 @@ router.get('/', async (req, res, next) => {
       payments = await paymentRepository.findAll();
     }
 
-    res.json(payments);
+    res.json(serializePayments(payments));
   } catch (error) {
     next(error);
   }
@@ -54,7 +73,7 @@ router.get('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'Payment not found' });
     }
 
-    res.json(payment);
+    res.json(serializePayment(payment));
   } catch (error) {
     next(error);
   }
@@ -73,7 +92,7 @@ router.post('/', async (req, res, next) => {
       notes: data.notes,
     });
 
-    res.status(201).json(payment);
+    res.status(201).json(serializePayment(payment));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -101,7 +120,7 @@ router.put('/:id', async (req, res, next) => {
       notes: data.notes,
     });
 
-    res.json(payment);
+    res.json(serializePayment(payment));
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: 'Validation error', details: error.errors });
@@ -160,7 +179,7 @@ router.post('/:id/refund', async (req: AuthRequest, res, next) => {
     res.json({
       success: true,
       message: 'Payment refunded successfully',
-      payment,
+      payment: serializePayment(payment),
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
