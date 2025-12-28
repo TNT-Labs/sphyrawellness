@@ -356,8 +356,14 @@ async function main() {
   ]);
 
   console.log(`✅ Created ${users.length} users`);
+  console.log('');
   console.log('   📝 Admin credentials: admin / admin123');
   console.log('   📝 User credentials: user / user123');
+  console.log('');
+  console.log('   ⚠️  WARNING: DEFAULT PASSWORDS IN USE!');
+  console.log('   ⚠️  CHANGE THESE IMMEDIATELY AFTER FIRST LOGIN!');
+  console.log('   ⚠️  Go to Settings → Users → Change Password');
+  console.log('');
 
   // ============================================================================
   // 8. SETTINGS

@@ -3,6 +3,7 @@ import { userRepository } from '../repositories/userRepository.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { authLimiter } from '../middleware/rateLimiter.js';
+import { logLoginSuccess, logLoginFailure } from '../utils/auditLog.js';
 
 const router = Router();
 
@@ -22,8 +23,13 @@ router.post('/login', authLimiter, async (req, res, next) => {
     const user = await userRepository.authenticate(username, password);
 
     if (!user) {
+      // Log failed login attempt
+      logLoginFailure(req, username, 'Invalid credentials');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    // Log successful login
+    logLoginSuccess(req, user.id, user.username);
 
     // Generate JWT token
     const token = jwt.sign(

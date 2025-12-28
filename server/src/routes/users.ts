@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { userRepository } from '../repositories/userRepository.js';
 import { z } from 'zod';
+import { validatePassword } from '../utils/passwordPolicy.js';
 
 const router = Router();
 
@@ -71,6 +72,16 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createUserSchema.parse(req.body);
 
+    // Validate password strength
+    const passwordValidation = validatePassword(data.password);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        error: 'Password does not meet security requirements',
+        details: passwordValidation.errors,
+        score: passwordValidation.score
+      });
+    }
+
     // Check if username already exists
     const existingUser = await userRepository.findByUsername(data.username);
     if (existingUser) {
@@ -119,6 +130,16 @@ router.patch('/:id/password', async (req, res, next) => {
   try {
     const { id } = req.params;
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+
+    // Validate password strength
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({
+        error: 'Password does not meet security requirements',
+        details: passwordValidation.errors,
+        score: passwordValidation.score
+      });
+    }
 
     const user = await userRepository.findById(id);
     if (!user) {

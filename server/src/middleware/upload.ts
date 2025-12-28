@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import { isValidImage } from '../utils/fileValidation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -89,5 +90,51 @@ export const deleteImageFile = (imageUrl: string) => {
     }
   } catch (error) {
     console.error('Error deleting image file:', error);
+  }
+};
+
+/**
+ * Middleware wrapper that validates file magic bytes after upload
+ * Provides additional security beyond MIME type checking
+ */
+export const validateUploadedImage = async (
+  req: Express.Request,
+  res: Express.Response,
+  next: Express.NextFunction
+) => {
+  if (!req.file) {
+    return next();
+  }
+
+  try {
+    // Validate file using magic bytes
+    const validation = await isValidImage(req.file.path, req.file.mimetype);
+
+    if (!validation.valid) {
+      // Delete the invalid file
+      fs.unlinkSync(req.file.path);
+
+      // Return error
+      return res.status(400).json({
+        success: false,
+        error: validation.error || 'Invalid image file',
+      });
+    }
+
+    // File is valid, log for audit
+    console.log(`✅ Image validated: ${req.file.filename} (${validation.detectedType})`);
+
+    next();
+  } catch (error) {
+    // If validation fails, delete the file
+    if (req.file?.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+
+    console.error('Error validating uploaded image:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Error validating uploaded file',
+    });
   }
 };
