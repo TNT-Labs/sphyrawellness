@@ -13,16 +13,17 @@ export interface PasswordValidationResult {
  * Password policy configuration
  */
 export const PASSWORD_POLICY = {
-  minLength: 8,
+  minLength: 10,
   requireUppercase: true,
   requireLowercase: true,
   requireNumbers: true,
-  requireSpecialChars: false, // Optional for better UX
+  requireSpecialChars: true, // REQUIRED for production security
   forbiddenPasswords: [
     'password',
     'admin123',
     'user123',
     '12345678',
+    '1234567890',
     'qwerty',
     'letmein',
     'welcome',
@@ -70,11 +71,11 @@ export function validatePassword(password: string): PasswordValidationResult {
     score += 15;
   }
 
-  // Check for special characters (bonus points, not required)
+  // Check for special characters (required for production security)
   if (PASSWORD_POLICY.requireSpecialChars && !/[^A-Za-z0-9]/.test(password)) {
-    errors.push('Password must contain at least one special character (!@#$%^&*)');
+    errors.push('Password must contain at least one special character (e.g., !@#$%^&*_-+=)');
   } else if (/[^A-Za-z0-9]/.test(password)) {
-    score += 15; // Bonus for special chars even if not required
+    score += 15;
   }
 
   // Check against forbidden passwords
