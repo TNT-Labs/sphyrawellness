@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, RefreshCw } from 'lucide-react';
+import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, RefreshCw, XCircle, AlertCircle } from 'lucide-react';
 import { format, parseISO, addHours } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '../contexts/ToastContext';
@@ -363,6 +363,129 @@ const Reminders: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Sent Reminders */}
+      <div className="card">
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+          <CheckCircle className="mr-2 text-green-600" size={24} />
+          Reminder Inviati
+        </h2>
+
+        {reminders.length === 0 ? (
+          <div className="text-center py-12">
+            <Bell size={48} className="mx-auto mb-3 text-gray-400" />
+            <p className="text-gray-500">Nessun reminder inviato</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {reminders
+              .sort((a, b) => {
+                // Sort by sentAt descending (most recent first)
+                const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+                const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+                return dateB - dateA;
+              })
+              .map((reminder) => {
+                const appointment = appointments.find(apt => apt.id === reminder.appointmentId);
+                if (!appointment) return null;
+
+                const channelIcon = reminder.type === 'email' ? Mail :
+                                  reminder.type === 'sms' ? MessageSquare :
+                                  Smartphone;
+
+                const channelColor = reminder.type === 'email' ? 'text-blue-600' :
+                                   reminder.type === 'sms' ? 'text-green-600' :
+                                   'text-purple-600';
+
+                const channelBg = reminder.type === 'email' ? 'bg-blue-100' :
+                                reminder.type === 'sms' ? 'bg-green-100' :
+                                'bg-purple-100';
+
+                const ChannelIcon = channelIcon;
+
+                return (
+                  <div
+                    key={reminder.id}
+                    className={`p-4 rounded-lg border ${
+                      reminder.sent
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-gray-900">
+                            {getCustomerName(appointment.customerId)}
+                          </h3>
+
+                          {/* Channel Badge */}
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${channelBg} ${channelColor} text-xs font-medium rounded-full`}>
+                            <ChannelIcon size={12} />
+                            {reminder.type === 'email' ? 'Email' :
+                             reminder.type === 'sms' ? 'SMS' :
+                             'WhatsApp'}
+                          </span>
+
+                          {/* Status Badge */}
+                          {reminder.sent ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                              <CheckCircle size={12} />
+                              Inviato
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                              <XCircle size={12} />
+                              Fallito
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="mt-2 space-y-1 text-sm text-gray-600">
+                          <p>
+                            <strong>Servizio:</strong> {getServiceName(appointment.serviceId)}
+                          </p>
+                          <p>
+                            <strong>Appuntamento:</strong>{' '}
+                            {format(parseISO(appointment.date), 'dd MMMM yyyy', {
+                              locale: it,
+                            })}{' '}
+                            alle {extractTimeString(appointment.startTime)}
+                          </p>
+                          {reminder.sentAt && (
+                            <p>
+                              <strong>Inviato il:</strong>{' '}
+                              {format(parseISO(reminder.sentAt), 'dd MMMM yyyy \'alle\' HH:mm', {
+                                locale: it,
+                              })}
+                            </p>
+                          )}
+                          {!reminder.sent && reminder.errorMessage && (
+                            <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-red-700 flex items-start gap-2">
+                              <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                              <span className="text-xs">{reminder.errorMessage}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-sm text-gray-500">
+                          {reminder.sentAt ? (
+                            format(parseISO(reminder.sentAt), 'HH:mm', { locale: it })
+                          ) : (
+                            'N/A'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+              .filter(Boolean)}
+          </div>
+        )}
+      </div>
 
       {/* All Upcoming Appointments */}
       <div className="card">
