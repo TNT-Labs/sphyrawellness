@@ -26,6 +26,9 @@ import publicRouter from './routes/public.js';
 // Upload route
 import uploadRouter from './routes/upload.js';
 
+// Repositories for public endpoints
+import { settingsRepository } from './repositories/settingsRepository.js';
+
 import logger from './utils/logger.js';
 import type { ApiResponse } from './types/index.js';
 
@@ -132,6 +135,19 @@ app.get('/health', (req, res) => {
 // Public routes (no authentication)
 app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
+
+// Public business hours endpoint (must be before protected /api/settings)
+app.get('/api/settings/business-hours', async (req, res, next) => {
+  try {
+    const businessHours = await settingsRepository.getBusinessHours();
+    res.json({
+      success: true,
+      data: { businessHours },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Protected routes (require authentication)
 app.use('/api/customers', authenticateToken, customersRouter);
