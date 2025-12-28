@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import app from './app.js';
 import { initializeDailyReminderCron } from './jobs/dailyReminderCronPrisma.js';
+import { settingsRepository } from './repositories/settingsRepository';
 import logger from './utils/logger.js';
 
 // Load environment variables
@@ -12,6 +13,9 @@ const PORT = process.env.PORT || 3001;
 async function startServer() {
   try {
     logger.info('🚀 Starting Sphyra Wellness Lab Server...\n');
+
+    // Initialize business hours with defaults if not present
+    await settingsRepository.initializeBusinessHours();
 
     // Initialize daily reminder cron job
     initializeDailyReminderCron();

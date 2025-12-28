@@ -3,6 +3,7 @@ import { AlertCircle, Clock, Users, Tag, Plus, Edit, FileText, Download, Trash2,
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { loadSettings, saveSettings } from '../utils/storage';
+import { settingsApi } from '../utils/api';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
@@ -21,7 +22,15 @@ const Settings: React.FC = () => {
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
   const { canModifySettings } = useAuth();
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
-  const [businessHours, setBusinessHours] = useState<BusinessHours | undefined>(undefined);
+  const [businessHours, setBusinessHours] = useState<BusinessHours>({
+    monday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    tuesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    wednesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    thursday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    friday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    saturday: { enabled: true, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+    sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+  });
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
   // Staff Roles state
@@ -40,14 +49,35 @@ const Settings: React.FC = () => {
   const [logFilter, setLogFilter] = useState<'all' | 'error' | 'warn' | 'info' | 'log' | 'debug'>('all');
 
   useEffect(() => {
-    const loadAppSettings = () => {
+    const loadAppSettings = async () => {
+      // Load idle timeout from localStorage
       const settings = loadSettings();
       setIdleTimeout(settings.idleTimeout);
-      setBusinessHours(settings.businessHours);
+
+      // Load business hours from database via API
+      try {
+        const hours = await settingsApi.getBusinessHours();
+        setBusinessHours(hours);
+      } catch (error) {
+        console.error('Failed to load business hours from API:', error);
+        showError('Errore nel caricamento degli orari di apertura');
+
+        // Fallback to defaults if API fails
+        const defaultBusinessHours: BusinessHours = {
+          monday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          tuesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          wednesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          thursday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          friday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          saturday: { enabled: true, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+          sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+        };
+        setBusinessHours(defaultBusinessHours);
+      }
     };
 
     loadAppSettings();
-  }, []);
+  }, [showError]);
 
   const handleIdleTimeoutChange = async (value: number) => {
     setIdleTimeout(value);
@@ -60,11 +90,14 @@ const Settings: React.FC = () => {
   };
 
   const handleBusinessHoursChange = async (newBusinessHours: BusinessHours) => {
-    setBusinessHours(newBusinessHours);
-    const settings = loadSettings();
-    settings.businessHours = newBusinessHours;
-    await saveSettings(settings);
-    showSuccess('Orari di apertura salvati');
+    try {
+      setBusinessHours(newBusinessHours);
+      await settingsApi.updateBusinessHours(newBusinessHours);
+      showSuccess('Orari di apertura salvati con successo');
+    } catch (error) {
+      console.error('Failed to save business hours:', error);
+      showError('Errore nel salvataggio degli orari di apertura');
+    }
   };
 
   // Staff Roles handlers
@@ -551,11 +584,9 @@ const Settings: React.FC = () => {
               </div>
 
               {/* Business Hours Settings */}
-              {businessHours && (
-                <div className="card mt-6">
-                  <BusinessHoursSettings businessHours={businessHours} onChange={handleBusinessHoursChange} />
-                </div>
-              )}
+              <div className="card mt-6">
+                <BusinessHoursSettings businessHours={businessHours} onChange={handleBusinessHoursChange} />
+              </div>
             </>
           )}
 
