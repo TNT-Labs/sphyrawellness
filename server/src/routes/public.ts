@@ -3,7 +3,7 @@ import { serviceRepository } from '../repositories/serviceRepository.js';
 import { staffRepository } from '../repositories/staffRepository.js';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
 import { customerRepository } from '../repositories/customerRepository.js';
-import { settingsRepository } from '../repositories/settingsRepository';
+import { settingsRepository } from '../repositories/settingsRepository.js';
 import reminderServicePrisma from '../services/reminderServicePrisma.js';
 import emailService from '../services/emailService.js';
 import calendarService from '../services/calendarService.js';
