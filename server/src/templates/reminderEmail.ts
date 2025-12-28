@@ -69,22 +69,30 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
     .cta-container {
       text-align: center;
       margin: 40px 0;
+      background-color: #fef3f2;
+      border: 3px dashed #f97316;
+      border-radius: 12px;
+      padding: 30px 20px;
     }
     .cta-button {
       display: inline-block;
-      background: linear-gradient(135deg, #db2777 0%, #9333ea 100%);
-      color: #ffffff;
-      text-decoration: none;
-      padding: 16px 40px;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
-      box-shadow: 0 4px 12px rgba(219, 39, 119, 0.3);
-      transition: transform 0.2s;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: #ffffff !important;
+      text-decoration: none !important;
+      padding: 20px 50px;
+      border-radius: 50px;
+      font-size: 20px;
+      font-weight: 700;
+      box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+      border: 3px solid #ffffff;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      transition: all 0.3s ease;
     }
     .cta-button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(219, 39, 119, 0.4);
+      transform: translateY(-3px);
+      box-shadow: 0 12px 28px rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
     }
     .info-text {
       font-size: 14px;
@@ -164,11 +172,15 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
       <!-- Confirmation CTA -->
       ${data.confirmationLink ? `
       <div class="cta-container">
+        <p style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: #dc2626;">
+          ⚠️ CONFERMA LA TUA PRESENZA
+        </p>
         <a href="${data.confirmationLink}" class="cta-button">
-          ✓ Conferma Appuntamento
+          ✅ CONFERMA APPUNTAMENTO
         </a>
-        <p style="margin-top: 15px; font-size: 13px; color: #6b7280;">
-          Clicca sul pulsante per confermare la tua presenza
+        <p style="margin-top: 20px; font-size: 14px; color: #6b7280; line-height: 1.6;">
+          <strong>Importante:</strong> Clicca sul pulsante sopra per confermare la tua presenza.<br>
+          La conferma ci aiuta a organizzare al meglio il tuo trattamento.
         </p>
       </div>
       ` : ''}
