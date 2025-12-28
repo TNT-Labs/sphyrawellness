@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
+import reminderServicePrisma from '../services/reminderServicePrisma.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -188,20 +189,21 @@ router.post('/:id/confirm', async (req, res, next) => {
       return res.status(400).json({ error: 'Token is required' });
     }
 
-    const appointment = await appointmentRepository.findByConfirmationToken(token);
+    // Use reminderServicePrisma for secure hashed token validation
+    const result = await reminderServicePrisma.confirmAppointment(id, token);
 
-    if (!appointment || appointment.id !== id) {
-      return res.status(404).json({ error: 'Invalid confirmation token' });
+    if (!result.success) {
+      // Map error messages to appropriate HTTP status codes
+      if (result.error?.includes('not found')) {
+        return res.status(404).json({ error: result.error });
+      }
+      if (result.error?.includes('expired')) {
+        return res.status(410).json({ error: result.error });
+      }
+      return res.status(400).json({ error: result.error });
     }
 
-    // Check token expiry
-    if (appointment.tokenExpiresAt && new Date() > appointment.tokenExpiresAt) {
-      return res.status(410).json({ error: 'Confirmation token expired' });
-    }
-
-    const confirmed = await appointmentRepository.confirm(id);
-
-    res.json(confirmed);
+    res.json(result.appointment);
   } catch (error) {
     next(error);
   }
