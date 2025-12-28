@@ -4,10 +4,13 @@ import { staffRepository } from '../repositories/staffRepository.js';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
 import { customerRepository } from '../repositories/customerRepository.js';
 import reminderServicePrisma from '../services/reminderServicePrisma.js';
+import emailService from '../services/emailService.js';
+import calendarService from '../services/calendarService.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
-import { startOfDay, endOfDay, setHours, setMinutes, addMinutes } from 'date-fns';
+import { startOfDay, endOfDay, setHours, setMinutes, addMinutes, format as formatDate } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 const router = Router();
 
@@ -352,7 +355,60 @@ router.post('/appointments', async (req, res, next) => {
       status: 'scheduled',
     });
 
-    // TODO: Send confirmation email
+    // Send confirmation email (async, non-blocking)
+    try {
+      const staff = await staffRepository.findById(data.staffId);
+
+      if (staff && customer.email) {
+        // Generate ICS calendar file
+        const icsContent = calendarService.generateICS({
+          appointment: {
+            id: appointment.id,
+            date: data.date,
+            startTime: data.startTime,
+            endTime: endTime.toTimeString().substring(0, 5)
+          } as any,
+          customer: {
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            email: customer.email
+          } as any,
+          service: {
+            name: service.name,
+            duration: service.duration
+          } as any,
+          staff: {
+            firstName: staff.firstName,
+            lastName: staff.lastName
+          } as any
+        });
+
+        // Generate confirmation link (points to appointment confirmation page)
+        const confirmationLink = process.env.FRONTEND_URL
+          ? `${process.env.FRONTEND_URL}/confirm-appointment?token=${appointment.id}`
+          : undefined;
+
+        // Send confirmation email
+        const emailResult = await emailService.sendAppointmentConfirmation(customer.email, {
+          customerName: `${customer.firstName} ${customer.lastName}`,
+          appointmentDate: formatDate(new Date(data.date), 'EEEE d MMMM yyyy', { locale: it }),
+          appointmentTime: data.startTime,
+          serviceName: service.name,
+          staffName: `${staff.firstName} ${staff.lastName}`,
+          confirmationLink,
+          icsContent
+        });
+
+        if (emailResult.success) {
+          console.log(`✅ Confirmation email sent to ${customer.email}`);
+        } else {
+          console.error(`⚠️ Failed to send confirmation email: ${emailResult.error}`);
+        }
+      }
+    } catch (emailError) {
+      // Log error but don't fail the appointment creation
+      console.error('⚠️ Error sending confirmation email:', emailError);
+    }
 
     res.status(201).json({
       message: 'Appointment created successfully',
@@ -525,6 +581,61 @@ router.post('/bookings', async (req, res, next) => {
     });
 
     console.log(`✅ Public booking created: ${customer.firstName} ${customer.lastName} - ${service.name} on ${data.date} at ${data.startTime}`);
+
+    // Send confirmation email (async, non-blocking)
+    try {
+      const staff = await staffRepository.findById(availableStaffId);
+
+      if (staff && customer.email) {
+        // Generate ICS calendar file
+        const icsContent = calendarService.generateICS({
+          appointment: {
+            id: appointment.id,
+            date: data.date,
+            startTime: data.startTime,
+            endTime: endTimeStr
+          } as any,
+          customer: {
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            email: customer.email
+          } as any,
+          service: {
+            name: service.name,
+            duration: service.duration
+          } as any,
+          staff: {
+            firstName: staff.firstName,
+            lastName: staff.lastName
+          } as any
+        });
+
+        // Generate confirmation link using the token
+        const confirmationLink = process.env.FRONTEND_URL
+          ? `${process.env.FRONTEND_URL}/confirm-appointment?token=${confirmationToken}`
+          : undefined;
+
+        // Send confirmation email
+        const emailResult = await emailService.sendAppointmentConfirmation(customer.email, {
+          customerName: `${customer.firstName} ${customer.lastName}`,
+          appointmentDate: formatDate(appointmentDate, 'EEEE d MMMM yyyy', { locale: it }),
+          appointmentTime: data.startTime,
+          serviceName: service.name,
+          staffName: `${staff.firstName} ${staff.lastName}`,
+          confirmationLink,
+          icsContent
+        });
+
+        if (emailResult.success) {
+          console.log(`✅ Confirmation email sent to ${customer.email}`);
+        } else {
+          console.error(`⚠️ Failed to send confirmation email: ${emailResult.error}`);
+        }
+      }
+    } catch (emailError) {
+      // Log error but don't fail the appointment creation
+      console.error('⚠️ Error sending confirmation email:', emailError);
+    }
 
     // 6. Return success response
     res.status(201).json({
