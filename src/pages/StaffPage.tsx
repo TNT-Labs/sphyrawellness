@@ -198,22 +198,26 @@ const StaffPage: React.FC = () => {
     };
 
     try {
-      // Save staff first
+      // Save staff first and get the created/updated staff member
+      let savedStaff: Staff;
       if (editingStaff) {
-        await updateStaff(staffData);
+        savedStaff = await updateStaff(staffData);
       } else {
-        await addStaff(staffData);
+        // CRITICAL FIX: Use the ID returned by the backend, not the local generated ID
+        savedStaff = await addStaff(staffData);
       }
 
       // Then upload image if selected
       if (selectedImage) {
         setIsUploadingImage(true);
         try {
-          const { staff: updatedStaff } = await uploadStaffImage(staffData.id, selectedImage);
+          // Use the ID from the saved staff member (important for new staff!)
+          const { staff: updatedStaff } = await uploadStaffImage(savedStaff.id, selectedImage);
           // FIX: Preserve original staff data, only update profileImageUrl
           // This prevents the backend's minimal placeholder data from overwriting the correct staff data
           await updateStaff({
             ...staffData,
+            id: savedStaff.id, // Use the real ID from backend
             profileImageUrl: updatedStaff.profileImageUrl,
             updatedAt: updatedStaff.updatedAt
           });

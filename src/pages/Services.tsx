@@ -191,22 +191,26 @@ const Services: React.FC = () => {
     };
 
     try {
-      // Save service first
+      // Save service first and get the created/updated service
+      let savedService: Service;
       if (editingService) {
-        await updateService(serviceData);
+        savedService = await updateService(serviceData);
       } else {
-        await addService(serviceData);
+        // CRITICAL FIX: Use the ID returned by the backend, not the local generated ID
+        savedService = await addService(serviceData);
       }
 
       // Then upload image if selected
       if (selectedImage) {
         setIsUploadingImage(true);
         try {
-          const { service } = await uploadServiceImage(serviceData.id, selectedImage);
+          // Use the ID from the saved service (important for new services!)
+          const { service } = await uploadServiceImage(savedService.id, selectedImage);
           // FIX: Preserve original service data, only update imageUrl
           // This prevents the backend's minimal placeholder data from overwriting the correct service data
           await updateService({
             ...serviceData,
+            id: savedService.id, // Use the real ID from backend
             imageUrl: service.imageUrl,
             updatedAt: service.updatedAt
           });
