@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import type { Request, Response, NextFunction } from 'express';
 import { isValidImage } from '../utils/fileValidation.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -98,9 +99,9 @@ export const deleteImageFile = (imageUrl: string) => {
  * Provides additional security beyond MIME type checking
  */
 export const validateUploadedImage = async (
-  req: Express.Request,
-  res: Express.Response,
-  next: Express.NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ) => {
   if (!req.file) {
     return next();
