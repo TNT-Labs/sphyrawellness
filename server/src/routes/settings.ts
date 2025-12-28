@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { settingRepository } from '../repositories/settingRepository.js';
-import { settingsRepository } from '../repositories/settingsRepository';
+import { settingsRepository } from '../repositories/settingsRepository.js';
 import { z } from 'zod';
 
 const router = Router();

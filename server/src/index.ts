@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 import app from './app.js';
 import { initializeDailyReminderCron } from './jobs/dailyReminderCronPrisma.js';
-import { settingsRepository } from './repositories/settingsRepository';
+import { settingsRepository } from './repositories/settingsRepository.js';
 import logger from './utils/logger.js';
 
 // Load environment variables
