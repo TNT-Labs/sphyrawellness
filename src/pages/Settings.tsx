@@ -3,6 +3,7 @@ import { AlertCircle, Clock, Users, Tag, Plus, Edit, FileText, Download, Trash2,
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { loadSettings, saveSettings } from '../utils/storage';
+import { settingsApi } from '../utils/api';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
@@ -48,14 +49,20 @@ const Settings: React.FC = () => {
   const [logFilter, setLogFilter] = useState<'all' | 'error' | 'warn' | 'info' | 'log' | 'debug'>('all');
 
   useEffect(() => {
-    const loadAppSettings = () => {
+    const loadAppSettings = async () => {
+      // Load idle timeout from localStorage
       const settings = loadSettings();
       setIdleTimeout(settings.idleTimeout);
-      // Ensure businessHours always has a value (use defaults if not present)
-      if (settings.businessHours) {
-        setBusinessHours(settings.businessHours);
-      } else {
-        // Initialize with defaults if not present
+
+      // Load business hours from database via API
+      try {
+        const hours = await settingsApi.getBusinessHours();
+        setBusinessHours(hours);
+      } catch (error) {
+        console.error('Failed to load business hours from API:', error);
+        showError('Errore nel caricamento degli orari di apertura');
+
+        // Fallback to defaults if API fails
         const defaultBusinessHours: BusinessHours = {
           monday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
           tuesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
@@ -66,14 +73,11 @@ const Settings: React.FC = () => {
           sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
         };
         setBusinessHours(defaultBusinessHours);
-        // Save defaults
-        settings.businessHours = defaultBusinessHours;
-        saveSettings(settings);
       }
     };
 
     loadAppSettings();
-  }, []);
+  }, [showError]);
 
   const handleIdleTimeoutChange = async (value: number) => {
     setIdleTimeout(value);
@@ -86,11 +90,14 @@ const Settings: React.FC = () => {
   };
 
   const handleBusinessHoursChange = async (newBusinessHours: BusinessHours) => {
-    setBusinessHours(newBusinessHours);
-    const settings = loadSettings();
-    settings.businessHours = newBusinessHours;
-    await saveSettings(settings);
-    showSuccess('Orari di apertura salvati');
+    try {
+      setBusinessHours(newBusinessHours);
+      await settingsApi.updateBusinessHours(newBusinessHours);
+      showSuccess('Orari di apertura salvati con successo');
+    } catch (error) {
+      console.error('Failed to save business hours:', error);
+      showError('Errore nel salvataggio degli orari di apertura');
+    }
   };
 
   // Staff Roles handlers

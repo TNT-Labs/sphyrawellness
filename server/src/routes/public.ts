@@ -3,13 +3,14 @@ import { serviceRepository } from '../repositories/serviceRepository.js';
 import { staffRepository } from '../repositories/staffRepository.js';
 import { appointmentRepository } from '../repositories/appointmentRepository.js';
 import { customerRepository } from '../repositories/customerRepository.js';
+import { settingsRepository } from '../repositories/settingsRepository';
 import reminderServicePrisma from '../services/reminderServicePrisma.js';
 import emailService from '../services/emailService.js';
 import calendarService from '../services/calendarService.js';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcrypt';
 import { z } from 'zod';
-import { startOfDay, endOfDay, setHours, setMinutes, addMinutes, format as formatDate } from 'date-fns';
+import { startOfDay, endOfDay, setHours, setMinutes, addMinutes, format as formatDate, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 const router = Router();
@@ -105,7 +106,7 @@ router.get('/staff', async (req, res, next) => {
 // GET /api/public/available-slots - Get available time slots for a service on a specific date
 router.get('/available-slots', async (req, res, next) => {
   try {
-    const { serviceId, date, daySchedule } = req.query;
+    const { serviceId, date } = req.query;
 
     if (!serviceId || !date) {
       return res.status(400).json({
@@ -123,21 +124,17 @@ router.get('/available-slots', async (req, res, next) => {
       });
     }
 
-    // Parse business hours for the day (if provided)
-    let schedule = {
-      enabled: true,
-      type: 'continuous' as 'continuous' | 'split',
-      morning: { start: '09:00', end: '18:00' },
-      afternoon: undefined as { start: string; end: string } | undefined
-    };
+    // Load business hours from database
+    const businessHours = await settingsRepository.getBusinessHours();
 
-    if (daySchedule) {
-      try {
-        schedule = JSON.parse(daySchedule as string);
-      } catch (e) {
-        console.warn('Invalid daySchedule format, using defaults');
-      }
-    }
+    // Determine day of week from date (0 = Sunday, 1 = Monday, etc.)
+    const appointmentDate = new Date(date as string);
+    const dayIndex = getDay(appointmentDate);
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+    const dayOfWeek = dayNames[dayIndex];
+
+    // Get schedule for this day
+    const schedule = businessHours[dayOfWeek];
 
     // If day is closed, return empty slots
     if (!schedule.enabled) {
@@ -162,7 +159,6 @@ router.get('/available-slots', async (req, res, next) => {
       });
     }
 
-    const appointmentDate = new Date(date as string);
     const allSlots = new Map(); // Use Map to track unique time slots
 
     // Helper function to parse HH:mm time string to { hours, minutes }

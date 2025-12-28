@@ -1,4 +1,4 @@
-import type { Settings, Appointment, CustomerConsents } from '../types';
+import type { Settings, Appointment, CustomerConsents, BusinessHours } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -69,6 +69,53 @@ export const settingsApi = {
     }
 
     return result.data;
+  },
+
+  async getBusinessHours(): Promise<BusinessHours> {
+    const response = await fetch(`${API_BASE_URL}/settings/business-hours`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse<{ businessHours: BusinessHours }> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch business hours');
+    }
+
+    return result.data.businessHours;
+  },
+
+  async updateBusinessHours(businessHours: BusinessHours): Promise<BusinessHours> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/settings/business-hours`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ businessHours }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication required');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse<{ businessHours: BusinessHours }> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to update business hours');
+    }
+
+    return result.data.businessHours;
   },
 
   async isServer(): Promise<boolean> {
