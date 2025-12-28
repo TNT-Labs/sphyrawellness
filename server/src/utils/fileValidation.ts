@@ -40,7 +40,9 @@ function readFileSignature(filePath: string, bytesToRead: number = 12): Promise<
     const stream = fs.createReadStream(filePath, { start: 0, end: bytesToRead - 1 });
     const chunks: Buffer[] = [];
 
-    stream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    stream.on('data', (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
     stream.on('end', () => resolve(Buffer.concat(chunks)));
     stream.on('error', reject);
   });
