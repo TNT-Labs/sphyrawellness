@@ -104,7 +104,7 @@ export class PaymentRepository {
   }
 
   /**
-   * Get total revenue for a date range
+   * Get total revenue for a date range (excludes refunded payments)
    */
   async getTotalRevenue(startDate: Date, endDate: Date): Promise<number> {
     const result = await prisma.payment.aggregate({
@@ -113,6 +113,7 @@ export class PaymentRepository {
           gte: startDate,
           lte: endDate,
         },
+        status: 'paid', // Only count paid payments, exclude refunded
       },
       _sum: {
         amount: true,
@@ -123,7 +124,7 @@ export class PaymentRepository {
   }
 
   /**
-   * Get revenue by payment method
+   * Get revenue by payment method (excludes refunded payments)
    */
   async getRevenueByMethod(startDate: Date, endDate: Date) {
     return prisma.payment.groupBy({
@@ -133,6 +134,7 @@ export class PaymentRepository {
           gte: startDate,
           lte: endDate,
         },
+        status: 'paid', // Only count paid payments, exclude refunded
       },
       _sum: {
         amount: true,

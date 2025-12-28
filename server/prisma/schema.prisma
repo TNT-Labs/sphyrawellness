@@ -202,13 +202,27 @@ enum PaymentMethod {
   @@map("payment_method")
 }
 
+enum PaymentStatus {
+  paid      // Pagamento valido
+  refunded  // Pagamento stornato
+
+  @@map("payment_status")
+}
+
 model Payment {
   id            String        @id @default(uuid())
   appointmentId String        @map("appointment_id")
   amount        Decimal       @db.Decimal(10, 2)
   method        PaymentMethod
+  status        PaymentStatus @default(paid)
   date          DateTime      @db.Date
   notes         String?       @db.Text
+
+  // Storno/Refund tracking
+  refundedAt     DateTime? @map("refunded_at")
+  refundReason   String?   @map("refund_reason") @db.Text
+  refundedBy     String?   @map("refunded_by") // User ID che ha effettuato lo storno
+
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
@@ -217,6 +231,7 @@ model Payment {
 
   @@index([appointmentId])
   @@index([date])
+  @@index([status])
   @@map("payments")
 }
 
