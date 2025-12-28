@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
-import type { Service, ServiceCategory, Staff } from '../types';
-import { format, addDays, startOfWeek, isBefore, startOfDay, parse } from 'date-fns';
+import type { Service, ServiceCategory, Staff, BusinessHours, DayOfWeek } from '../types';
+import { format, addDays, startOfWeek, isBefore, startOfDay, parse, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getImageUrl } from '../services/uploadService';
 import { formatCurrency } from '../utils/currency';
+import { loadSettings } from '../utils/storage';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -146,10 +147,27 @@ const PublicBooking: React.FC = () => {
 
     try {
       setIsLoadingSlots(true);
-      const response = await fetch(
-        `${API_URL}/public/available-slots?serviceId=${serviceId}&date=${date}`,
-        { signal: abortController.signal }
-      );
+
+      // Load business hours from settings
+      const settings = loadSettings();
+      const businessHours = settings.businessHours;
+
+      // Determine day of week from date
+      const dateObj = parse(date, 'yyyy-MM-dd', new Date());
+      const dayIndex = getDay(dateObj); // 0 = Sunday, 1 = Monday, etc.
+      const dayNames: DayOfWeek[] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayOfWeek = dayNames[dayIndex];
+
+      // Get schedule for this day
+      const daySchedule = businessHours?.[dayOfWeek];
+
+      // Build URL with daySchedule parameter
+      let url = `${API_URL}/public/available-slots?serviceId=${serviceId}&date=${date}`;
+      if (daySchedule) {
+        url += `&daySchedule=${encodeURIComponent(JSON.stringify(daySchedule))}`;
+      }
+
+      const response = await fetch(url, { signal: abortController.signal });
       const data = await response.json();
 
       if (!data.success) {

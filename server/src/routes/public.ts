@@ -105,7 +105,7 @@ router.get('/staff', async (req, res, next) => {
 // GET /api/public/available-slots - Get available time slots for a service on a specific date
 router.get('/available-slots', async (req, res, next) => {
   try {
-    const { serviceId, date } = req.query;
+    const { serviceId, date, daySchedule } = req.query;
 
     if (!serviceId || !date) {
       return res.status(400).json({
@@ -123,6 +123,32 @@ router.get('/available-slots', async (req, res, next) => {
       });
     }
 
+    // Parse business hours for the day (if provided)
+    let schedule = {
+      enabled: true,
+      type: 'continuous' as 'continuous' | 'split',
+      morning: { start: '09:00', end: '18:00' },
+      afternoon: undefined as { start: string; end: string } | undefined
+    };
+
+    if (daySchedule) {
+      try {
+        schedule = JSON.parse(daySchedule as string);
+      } catch (e) {
+        console.warn('Invalid daySchedule format, using defaults');
+      }
+    }
+
+    // If day is closed, return empty slots
+    if (!schedule.enabled) {
+      return res.json({
+        success: true,
+        data: {
+          slots: []
+        }
+      });
+    }
+
     // Get all active staff
     const allStaff = await staffRepository.findAll();
     const activeStaff = allStaff.filter(s => s.isActive);
@@ -130,12 +156,31 @@ router.get('/available-slots', async (req, res, next) => {
     if (activeStaff.length === 0) {
       return res.json({
         success: true,
-        availableSlots: []
+        data: {
+          slots: []
+        }
       });
     }
 
     const appointmentDate = new Date(date as string);
     const allSlots = new Map(); // Use Map to track unique time slots
+
+    // Helper function to parse HH:mm time string to { hours, minutes }
+    const parseTime = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return { hours, minutes };
+    };
+
+    // Generate time periods based on schedule type
+    const timePeriods: Array<{ start: string; end: string }> = [];
+    if (schedule.type === 'continuous') {
+      timePeriods.push(schedule.morning);
+    } else {
+      timePeriods.push(schedule.morning);
+      if (schedule.afternoon) {
+        timePeriods.push(schedule.afternoon);
+      }
+    }
 
     // For each staff member, get their available slots
     for (const staff of activeStaff) {
@@ -145,19 +190,28 @@ router.get('/available-slots', async (req, res, next) => {
         endOfDay(appointmentDate)
       );
 
-      // Generate time slots (9:00 - 18:00, every 30 minutes)
-      const workStart = 9; // 9 AM
-      const workEnd = 18; // 6 PM
       const slotInterval = 30; // minutes
 
-      for (let hour = workStart; hour < workEnd; hour++) {
-        for (let minute = 0; minute < 60; minute += slotInterval) {
+      // Generate slots for each time period
+      for (const period of timePeriods) {
+        const periodStart = parseTime(period.start);
+        const periodEnd = parseTime(period.end);
+
+        // Convert to minutes from midnight for easier iteration
+        const startMinutes = periodStart.hours * 60 + periodStart.minutes;
+        const endMinutes = periodEnd.hours * 60 + periodEnd.minutes;
+
+        for (let currentMinutes = startMinutes; currentMinutes < endMinutes; currentMinutes += slotInterval) {
+          const hour = Math.floor(currentMinutes / 60);
+          const minute = currentMinutes % 60;
+
           const slotStart = setMinutes(setHours(appointmentDate, hour), minute);
           const slotEnd = addMinutes(slotStart, service.duration);
 
-          // Check if slot end is within working hours
-          if (slotEnd.getHours() > workEnd) {
-            break;
+          // Check if slot end is within the current period
+          const slotEndMinutes = slotEnd.getHours() * 60 + slotEnd.getMinutes();
+          if (slotEndMinutes > endMinutes) {
+            continue; // Skip this slot if it extends beyond the period
           }
 
           // Check if slot conflicts with existing appointments for this staff
