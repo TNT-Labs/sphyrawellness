@@ -80,7 +80,7 @@ export function generateReminderEmailHTML(data: ReminderEmailData): string {
       color: #ffffff !important;
       text-decoration: none !important;
       padding: 20px 50px;
-      border-radius: 50px;
+      border-radius: 12px;
       font-size: 20px;
       font-weight: 700;
       box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
