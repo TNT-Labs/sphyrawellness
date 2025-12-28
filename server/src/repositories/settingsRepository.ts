@@ -53,7 +53,7 @@ export async function getBusinessHours(): Promise<BusinessHours> {
       return DEFAULT_BUSINESS_HOURS;
     }
 
-    return setting.value as BusinessHours;
+    return setting.value as unknown as BusinessHours;
   } catch (error) {
     logger.error('Error fetching business hours:', error);
     return DEFAULT_BUSINESS_HOURS;
@@ -80,7 +80,7 @@ export async function updateBusinessHours(businessHours: BusinessHours, userId?:
     });
 
     logger.log('Business hours updated successfully');
-    return setting.value as BusinessHours;
+    return setting.value as unknown as BusinessHours;
   } catch (error) {
     logger.error('Error updating business hours:', error);
     throw new Error('Failed to update business hours');
