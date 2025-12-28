@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { userRepository } from '../repositories/userRepository.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
+import { authLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
 
@@ -14,7 +15,7 @@ const JWT_SECRET: string = process.env.JWT_SECRET || 'development-secret-key';
 const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
 
 // POST /api/auth/login
-router.post('/login', async (req, res, next) => {
+router.post('/login', authLimiter, async (req, res, next) => {
   try {
     const { username, password } = loginSchema.parse(req.body);
 
