@@ -85,8 +85,8 @@ const AppContent: React.FC = () => {
             <Route path="/prenota" element={<PublicBooking />} />
             <Route path="/booking" element={<PublicBooking />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
-            {/* Public appointment confirmation (accessed from email links) */}
-            <Route path="/confirm-appointment/:appointmentId/:token" element={<ConfirmAppointment />} />
+            {/* Public appointment confirmation (accessed from email links with query params) */}
+            <Route path="/confirm-appointment" element={<ConfirmAppointment />} />
 
             {/* Protected routes */}
             <Route
