@@ -135,6 +135,7 @@ export interface Reminder {
   scheduledFor: string;
   sent: boolean;
   sentAt?: string;
+  errorMessage?: string; // Error message if reminder failed to send
   createdAt?: string; // ISO timestamp of creation
   updatedAt?: string; // ISO timestamp of last modification
 }

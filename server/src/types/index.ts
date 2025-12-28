@@ -110,7 +110,7 @@ export interface Reminder {
   scheduledFor: string;
   sent: boolean;
   sentAt?: string;
-  error?: string;
+  errorMessage?: string; // Error message if reminder failed to send
   createdAt?: string;
   updatedAt?: string;
 }
