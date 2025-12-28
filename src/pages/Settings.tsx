@@ -21,7 +21,15 @@ const Settings: React.FC = () => {
   const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
   const { canModifySettings } = useAuth();
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
-  const [businessHours, setBusinessHours] = useState<BusinessHours | undefined>(undefined);
+  const [businessHours, setBusinessHours] = useState<BusinessHours>({
+    monday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    tuesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    wednesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    thursday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    friday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+    saturday: { enabled: true, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+    sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+  });
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
   // Staff Roles state
@@ -43,7 +51,25 @@ const Settings: React.FC = () => {
     const loadAppSettings = () => {
       const settings = loadSettings();
       setIdleTimeout(settings.idleTimeout);
-      setBusinessHours(settings.businessHours);
+      // Ensure businessHours always has a value (use defaults if not present)
+      if (settings.businessHours) {
+        setBusinessHours(settings.businessHours);
+      } else {
+        // Initialize with defaults if not present
+        const defaultBusinessHours: BusinessHours = {
+          monday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          tuesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          wednesday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          thursday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          friday: { enabled: true, type: 'split', morning: { start: '09:00', end: '13:00' }, afternoon: { start: '15:00', end: '19:00' } },
+          saturday: { enabled: true, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+          sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
+        };
+        setBusinessHours(defaultBusinessHours);
+        // Save defaults
+        settings.businessHours = defaultBusinessHours;
+        saveSettings(settings);
+      }
     };
 
     loadAppSettings();
@@ -551,11 +577,9 @@ const Settings: React.FC = () => {
               </div>
 
               {/* Business Hours Settings */}
-              {businessHours && (
-                <div className="card mt-6">
-                  <BusinessHoursSettings businessHours={businessHours} onChange={handleBusinessHoursChange} />
-                </div>
-              )}
+              <div className="card mt-6">
+                <BusinessHoursSettings businessHours={businessHours} onChange={handleBusinessHoursChange} />
+              </div>
             </>
           )}
 
