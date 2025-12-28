@@ -122,8 +122,15 @@ export interface Payment {
   appointmentId: string;
   amount: number;
   method: 'cash' | 'card' | 'transfer' | 'other';
+  status?: 'paid' | 'refunded'; // Payment status (default: paid)
   date: string;
   notes?: string;
+
+  // Refund tracking
+  refundedAt?: string; // ISO timestamp when payment was refunded
+  refundReason?: string; // Reason for refund
+  refundedBy?: string; // User ID who performed the refund
+
   createdAt?: string; // ISO timestamp of creation
   updatedAt?: string; // ISO timestamp of last modification
 }

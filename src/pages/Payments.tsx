@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Payment } from '../types';
-import { DollarSign, Plus, CreditCard, Banknote, Building2, Search } from 'lucide-react';
+import { DollarSign, Plus, CreditCard, Banknote, Building2, Search, RotateCcw, AlertTriangle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generateId, validateAmount } from '../utils/helpers';
@@ -10,10 +10,13 @@ import { useToast } from '../contexts/ToastContext';
 import { logger } from '../utils/logger';
 
 const Payments: React.FC = () => {
-  const { payments, addPayment, appointments, customers, services } = useApp();
+  const { payments, addPayment, refundPayment, appointments, customers, services } = useApp();
   const { showSuccess, showError } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
+  const [refundReason, setRefundReason] = useState('');
 
   const [formData, setFormData] = useState({
     appointmentId: '',
@@ -27,7 +30,10 @@ const Payments: React.FC = () => {
     (apt) => apt.status === 'completed'
   );
 
-  const paidAppointmentIds = new Set(payments.map((p) => p.appointmentId));
+  // Only consider paid payments (exclude refunded)
+  const paidAppointmentIds = new Set(
+    payments.filter((p) => p.status !== 'refunded').map((p) => p.appointmentId)
+  );
   const unpaidAppointments = completedAppointments.filter(
     (apt) => !paidAppointmentIds.has(apt.id)
   );
@@ -63,9 +69,12 @@ const Payments: React.FC = () => {
     );
   });
 
-  const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+  // Only count paid payments for revenue (exclude refunded)
+  const paidPayments = payments.filter((p) => p.status !== 'refunded');
 
-  const revenueByMethod = payments.reduce((acc, p) => {
+  const totalRevenue = paidPayments.reduce((sum, p) => sum + p.amount, 0);
+
+  const revenueByMethod = paidPayments.reduce((acc, p) => {
     acc[p.method] = (acc[p.method] || 0) + p.amount;
     return acc;
   }, {} as Record<Payment['method'], number>);
@@ -144,6 +153,48 @@ const Payments: React.FC = () => {
       case 'other':
         return 'Altro';
     }
+  };
+
+  const handleOpenRefundModal = (payment: Payment) => {
+    setSelectedPayment(payment);
+    setRefundReason('');
+    setIsRefundModalOpen(true);
+  };
+
+  const handleCloseRefundModal = () => {
+    setIsRefundModalOpen(false);
+    setSelectedPayment(null);
+    setRefundReason('');
+  };
+
+  const handleRefundSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPayment) return;
+
+    try {
+      await refundPayment(selectedPayment.id, refundReason);
+      showSuccess('Pagamento stornato con successo');
+      handleCloseRefundModal();
+    } catch (error) {
+      showError('Errore durante lo storno del pagamento');
+      logger.error('Error refunding payment:', error);
+    }
+  };
+
+  const getStatusBadge = (payment: Payment) => {
+    if (payment.status === 'refunded') {
+      return (
+        <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+          <RotateCcw size={12} className="mr-1" />
+          Stornato
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+        Pagato
+      </span>
+    );
   };
 
   return (
@@ -260,8 +311,14 @@ const Payments: React.FC = () => {
                   <th className="text-left py-3 px-4 font-semibold text-gray-900">
                     Metodo
                   </th>
+                  <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                    Stato
+                  </th>
                   <th className="text-right py-3 px-4 font-semibold text-gray-900">
                     Importo
+                  </th>
+                  <th className="text-right py-3 px-4 font-semibold text-gray-900">
+                    Azioni
                   </th>
                 </tr>
               </thead>
@@ -275,32 +332,61 @@ const Payments: React.FC = () => {
                     const details = getAppointmentDetails(payment.appointmentId);
                     if (!details) return null;
 
+                    const isRefunded = payment.status === 'refunded';
+
                     return (
                       <tr
                         key={payment.id}
-                        className="border-b border-gray-100 hover:bg-gray-50"
+                        className={`border-b border-gray-100 hover:bg-gray-50 ${
+                          isRefunded ? 'bg-gray-50 opacity-75' : ''
+                        }`}
                       >
-                        <td className="py-3 px-4 text-gray-900">
+                        <td className={`py-3 px-4 ${isRefunded ? 'text-gray-500' : 'text-gray-900'}`}>
                           {format(parseISO(payment.date), 'dd MMM yyyy', {
                             locale: it,
                           })}
                         </td>
-                        <td className="py-3 px-4 text-gray-900">
+                        <td className={`py-3 px-4 ${isRefunded ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
                           {details.customer}
                         </td>
-                        <td className="py-3 px-4 text-gray-600">
+                        <td className={`py-3 px-4 ${isRefunded ? 'text-gray-400 line-through' : 'text-gray-600'}`}>
                           {details.service}
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center text-gray-600">
+                          <div className={`flex items-center ${isRefunded ? 'text-gray-400' : 'text-gray-600'}`}>
                             {getMethodIcon(payment.method)}
                             <span className="ml-2">
                               {getMethodLabel(payment.method)}
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 px-4 text-right font-semibold text-gray-900">
+                        <td className="py-3 px-4">
+                          {getStatusBadge(payment)}
+                        </td>
+                        <td className={`py-3 px-4 text-right font-semibold ${
+                          isRefunded ? 'text-gray-500 line-through' : 'text-gray-900'
+                        }`}>
                           €{payment.amount.toFixed(2)}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {!isRefunded && (
+                            <button
+                              onClick={() => handleOpenRefundModal(payment)}
+                              className="text-red-600 hover:text-red-800 font-medium text-sm"
+                              title="Storna pagamento"
+                            >
+                              <RotateCcw size={16} className="inline mr-1" />
+                              Storna
+                            </button>
+                          )}
+                          {isRefunded && payment.refundReason && (
+                            <div className="text-xs text-gray-500 text-right">
+                              <div className="font-medium">Motivo:</div>
+                              <div className="max-w-xs truncate" title={payment.refundReason}>
+                                {payment.refundReason}
+                              </div>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -449,6 +535,113 @@ const Payments: React.FC = () => {
                     className="btn-secondary flex-1 touch-manipulation"
                   >
                     Annulla
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Modal */}
+      {isRefundModalOpen && selectedPayment && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden">
+          <div className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+            <div className="p-6">
+              <div className="flex items-center mb-6">
+                <AlertTriangle className="text-red-600 mr-3" size={32} />
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Storna Pagamento
+                </h2>
+              </div>
+
+              {/* Payment Details */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="font-semibold text-gray-900 mb-3">Dettagli Pagamento</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Cliente:</span>
+                    <span className="font-medium text-gray-900">
+                      {getAppointmentDetails(selectedPayment.appointmentId)?.customer}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Servizio:</span>
+                    <span className="font-medium text-gray-900">
+                      {getAppointmentDetails(selectedPayment.appointmentId)?.service}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Importo:</span>
+                    <span className="font-medium text-gray-900">
+                      €{selectedPayment.amount.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Metodo:</span>
+                    <span className="font-medium text-gray-900">
+                      {getMethodLabel(selectedPayment.method)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Data:</span>
+                    <span className="font-medium text-gray-900">
+                      {format(parseISO(selectedPayment.date), 'dd MMM yyyy', { locale: it })}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warning */}
+              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+                <div className="flex">
+                  <AlertTriangle className="text-yellow-600 mr-3 flex-shrink-0" size={20} />
+                  <div>
+                    <p className="text-sm text-yellow-800 font-medium">
+                      Attenzione: questa operazione non può essere annullata
+                    </p>
+                    <p className="text-sm text-yellow-700 mt-1">
+                      Il pagamento verrà contrassegnato come stornato e non sarà più conteggiato
+                      nelle statistiche di fatturato. Sarà possibile registrare un nuovo pagamento
+                      corretto per lo stesso appuntamento.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <form onSubmit={handleRefundSubmit} className="space-y-4">
+                <div>
+                  <label className="label">Motivo dello Storno *</label>
+                  <textarea
+                    required
+                    value={refundReason}
+                    onChange={(e) => setRefundReason(e.target.value)}
+                    className="input"
+                    rows={4}
+                    placeholder="Spiega il motivo dello storno (es. pagamento errato, annullamento appuntamento, ecc.)"
+                    minLength={10}
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Minimo 10 caratteri, massimo 500 caratteri
+                  </p>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCloseRefundModal}
+                    className="btn-secondary flex-1 touch-manipulation"
+                  >
+                    Annulla
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn-primary flex-1 touch-manipulation bg-red-600 hover:bg-red-700"
+                    disabled={refundReason.length < 10}
+                  >
+                    <RotateCcw size={16} className="inline mr-2" />
+                    Conferma Storno
                   </button>
                 </div>
               </form>
