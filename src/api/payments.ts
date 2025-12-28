@@ -39,7 +39,18 @@ export const paymentsApi = {
   },
 
   /**
-   * Delete payment
+   * Refund/Storno payment
+   */
+  refund: async (
+    id: string,
+    reason: string
+  ): Promise<{ success: boolean; message: string; payment: Payment }> => {
+    const { data } = await apiClient.post(`/payments/${id}/refund`, { reason });
+    return data;
+  },
+
+  /**
+   * Delete payment (only for refunded payments)
    */
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/payments/${id}`);

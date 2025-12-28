@@ -82,6 +82,7 @@ interface AppContextType {
   addPayment: (payment: Partial<Payment>) => Promise<Payment>;
   updatePayment: (payment: Payment) => Promise<Payment>;
   deletePayment: (id: string) => Promise<void>;
+  refundPayment: (id: string, reason: string) => Promise<Payment>;
 
   // User operations
   addUser: (user: Partial<User>) => Promise<User>;
@@ -362,6 +363,13 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     setPayments((prev) => prev.filter((p) => p.id !== id));
   };
 
+  const refundPayment = async (id: string, reason: string): Promise<Payment> => {
+    const result = await paymentsApi.refund(id, reason);
+    // Update the payment in the state
+    setPayments((prev) => prev.map((p) => (p.id === id ? result.payment : p)));
+    return result.payment;
+  };
+
   // ============================================================================
   // USER OPERATIONS
   // ============================================================================
@@ -435,6 +443,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     addPayment,
     updatePayment,
     deletePayment,
+    refundPayment,
     addUser,
     updateUser,
     deleteUser,
