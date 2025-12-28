@@ -46,15 +46,11 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const settings = loadSettings();
-    console.log('🔧 [Splash Screen Debug] Settings loaded:', settings);
-    console.log('🔧 [Splash Screen Debug] Initial idleTimeout:', settings.idleTimeout);
     setIdleTimeout(settings.idleTimeout);
 
     // Listen for storage changes (when settings are updated)
     const handleStorageChange = () => {
       const newSettings = loadSettings();
-      console.log('🔧 [Splash Screen Debug] Settings changed:', newSettings);
-      console.log('🔧 [Splash Screen Debug] New idleTimeout:', newSettings.idleTimeout);
       setIdleTimeout(newSettings.idleTimeout);
     };
 
@@ -72,19 +68,6 @@ const AppContent: React.FC = () => {
     timeoutMinutes: idleTimeout,
     enabled: idleTimeout > 0,
   });
-
-  // Debug logging for idle state
-  useEffect(() => {
-    console.log('🔧 [Splash Screen Debug] idleTimeout state:', idleTimeout);
-    console.log('🔧 [Splash Screen Debug] enabled:', idleTimeout > 0);
-    console.log('🔧 [Splash Screen Debug] timeout in milliseconds:', idleTimeout * 60 * 1000);
-  }, [idleTimeout]);
-
-  useEffect(() => {
-    console.log('🔧 [Splash Screen Debug] isIdle:', isIdle);
-    console.log('🔧 [Splash Screen Debug] isLoading:', isLoading);
-    console.log('🔧 [Splash Screen Debug] Should show splash screen:', isIdle && !isLoading);
-  }, [isIdle, isLoading]);
 
   return (
     <>
