@@ -44,7 +44,9 @@ Questa app mobile consente di inviare SMS reminder ai clienti direttamente dalla
 
 - **Node.js** 18+
 - **Android Studio** (per build)
-- **Java JDK** 17+
+- **Java JDK** 17+ (consigliato: **JDK 21 LTS**)
+  - Versioni supportate: Java 17, 18, 19, 20, 21
+  - Download: https://adoptium.net/
 - **Android Device** con SIM card
 
 ### 1. Installazione Dipendenze

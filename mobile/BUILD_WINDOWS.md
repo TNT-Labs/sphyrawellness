@@ -23,12 +23,17 @@
 
 Lo script controllerà automaticamente la presenza di:
 
+> **💡 Perché Java 21?**
+> Java 21 è l'ultima versione **LTS (Long Term Support)** rilasciata a settembre 2023. È completamente supportata da React Native 0.73 e Gradle 8+, offre migliori prestazioni e riceve aggiornamenti di sicurezza a lungo termine. Se stai installando Java per la prima volta, scegli la versione 21!
+
 ### 1. Node.js 18+
 - **Download**: https://nodejs.org/
 - **Verifica**: `node --version`
 
-### 2. Java JDK 17+
-- **Download**: https://adoptium.net/
+### 2. Java JDK 17+ (consigliato JDK 21 LTS)
+- **Download**: https://adoptium.net/ (Temurin)
+- **Versioni supportate**: Java 17, 18, 19, 20, 21
+- **Consigliata**: Java 21 (LTS - Long Term Support)
 - **Verifica**: `java -version`
 
 ### 3. Android SDK
@@ -73,9 +78,11 @@ Lo script controllerà automaticamente la presenza di:
 Segui i passaggi sopra per configurare la variabile d'ambiente `ANDROID_HOME`.
 
 ### Errore: "Java JDK non trovato"
-1. Scarica JDK 17 da https://adoptium.net/
-2. Installa
+1. Scarica JDK 21 LTS da https://adoptium.net/ (raccomandato)
+   - Oppure JDK 17 LTS (versione minima)
+2. Durante l'installazione, seleziona "Add to PATH"
 3. Riavvia Command Prompt
+4. Verifica: `java -version` (dovrebbe mostrare versione 17-21)
 
 ### Errore: "gradlew: command not found" o problemi di permessi
 1. Assicurati di essere nella cartella `mobile`
