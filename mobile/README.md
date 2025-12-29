@@ -103,10 +103,19 @@ adb install android/app/build/outputs/apk/release/app-release.apk
 1. **Apri l'app** sul telefono
 2. **Clicca "⚙️ Impostazioni API"**
 3. **Inserisci l'URL del backend** Sphyra:
+
+   **Opzione A - Rete Locale (solo Wi-Fi locale):**
    ```
    http://192.168.1.XXX:3001/api
    ```
    (Sostituisci XXX con l'IP del server)
+
+   **Opzione B - HTTPS Pubblico (RACCOMANDATO - funziona ovunque!):**
+   ```
+   https://tuo-dominio.duckdns.org/api
+   ```
+   ⭐ **Configurazione HTTPS:** Vedi [HTTPS_SETUP.md](HTTPS_SETUP.md)
+
 4. **Testa la connessione** con il pulsante "🔍 Testa Connessione"
 5. **Salva** e torna alla schermata di login
 
