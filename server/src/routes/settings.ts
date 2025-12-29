@@ -1,11 +1,19 @@
 import { Router } from 'express';
 import { settingRepository } from '../repositories/settingRepository.js';
 import { settingsRepository } from '../repositories/settingsRepository.js';
+import { userRepository } from '../repositories/userRepository.js';
+import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
+import { UserRole } from '@prisma/client';
+import logger from '../utils/logger.js';
 
 const router = Router();
 
 const updateSettingsSchema = z.record(z.any());
+
+const resetDatabaseSchema = z.object({
+  confirmation: z.string(),
+});
 
 // ============================================================================
 // BUSINESS HOURS - Specialized endpoints (must be before parametric routes)
@@ -172,6 +180,119 @@ router.delete('/:key', async (req, res, next) => {
 
     res.status(204).send();
   } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================================
+// DANGER ZONE - DATABASE RESET
+// ============================================================================
+
+/**
+ * POST /api/settings/reset-database
+ * EXTREMELY DANGEROUS - Resets the entire database and creates a new admin user
+ * Requires RESPONSABILE role and strong confirmation
+ */
+router.post('/reset-database', async (req, res, next) => {
+  try {
+    // Check user role
+    const user = (req as any).user;
+    if (!user || user.role !== UserRole.RESPONSABILE) {
+      return res.status(403).json({
+        success: false,
+        error: 'Solo gli utenti con ruolo RESPONSABILE possono resettare il database',
+      });
+    }
+
+    // Validate confirmation
+    const { confirmation } = resetDatabaseSchema.parse(req.body);
+
+    if (confirmation !== 'RESET DATABASE') {
+      return res.status(400).json({
+        success: false,
+        error: 'Conferma non valida. Digitare esattamente "RESET DATABASE"',
+      });
+    }
+
+    logger.warn(`⚠️ DATABASE RESET initiated by user: ${user.username} (${user.id})`);
+
+    // Get admin password from environment
+    const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+    if (!adminPassword) {
+      logger.error('❌ ADMIN_DEFAULT_PASSWORD not set in environment variables');
+      return res.status(500).json({
+        success: false,
+        error: 'Configurazione mancante: ADMIN_DEFAULT_PASSWORD non impostata',
+      });
+    }
+
+    // Execute database reset in a transaction
+    await prisma.$transaction(async (tx) => {
+      // Delete all data in correct order (respecting foreign keys)
+      logger.info('🗑️ Deleting all payments...');
+      await tx.payment.deleteMany({});
+
+      logger.info('🗑️ Deleting all reminders...');
+      await tx.reminder.deleteMany({});
+
+      logger.info('🗑️ Deleting all appointments...');
+      await tx.appointment.deleteMany({});
+
+      logger.info('🗑️ Deleting all staff...');
+      await tx.staff.deleteMany({});
+
+      logger.info('🗑️ Deleting all staff roles...');
+      await tx.staffRole.deleteMany({});
+
+      logger.info('🗑️ Deleting all services...');
+      await tx.service.deleteMany({});
+
+      logger.info('🗑️ Deleting all service categories...');
+      await tx.serviceCategory.deleteMany({});
+
+      logger.info('🗑️ Deleting all customers...');
+      await tx.customer.deleteMany({});
+
+      logger.info('🗑️ Deleting all settings...');
+      await tx.setting.deleteMany({});
+
+      logger.info('🗑️ Deleting all users...');
+      await tx.user.deleteMany({});
+
+      logger.info('✅ All data deleted successfully');
+    });
+
+    // Create default admin user
+    logger.info('👤 Creating default admin user...');
+    const adminUser = await userRepository.create({
+      username: 'admin',
+      password: adminPassword,
+      role: UserRole.RESPONSABILE,
+      firstName: 'Admin',
+      lastName: 'Sphyra',
+      email: 'admin@sphyrawellness.com',
+      isActive: true,
+    });
+
+    logger.info(`✅ Database reset completed. Admin user created: ${adminUser.username} (${adminUser.id})`);
+
+    res.json({
+      success: true,
+      message: 'Database resettato con successo. Utente admin creato.',
+      data: {
+        adminUsername: adminUser.username,
+        adminEmail: adminUser.email,
+      },
+    });
+  } catch (error) {
+    logger.error('❌ Database reset failed:', error);
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Errore di validazione',
+        details: error.errors,
+      });
+    }
     next(error);
   }
 });

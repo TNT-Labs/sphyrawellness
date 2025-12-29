@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Clock, Users, Tag, Plus, Edit, FileText, Download, Trash2, Shield } from 'lucide-react';
+import { AlertCircle, Clock, Users, Tag, Plus, Edit, FileText, Download, Trash2, Shield, AlertTriangle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { loadSettings, saveSettings } from '../utils/storage';
@@ -47,6 +47,9 @@ const Settings: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [showLogs, setShowLogs] = useState(false);
   const [logFilter, setLogFilter] = useState<'all' | 'error' | 'warn' | 'info' | 'log' | 'debug'>('all');
+
+  // Database reset state
+  const [resetConfirmation, setResetConfirmation] = useState('');
 
   useEffect(() => {
     const loadAppSettings = async () => {
@@ -346,6 +349,50 @@ const Settings: React.FC = () => {
         return 'text-purple-600 bg-purple-50';
       default:
         return 'text-gray-600 bg-gray-50';
+    }
+  };
+
+  // Database reset handler
+  const handleResetDatabase = async () => {
+    // First confirmation with dialog
+    const dialogConfirmed = await confirm({
+      title: 'ATTENZIONE: Reset Completo Database',
+      message: 'Questa operazione cancellerà TUTTI i dati del database in modo IRREVERSIBILE. Tutti i clienti, appuntamenti, servizi, personale e pagamenti saranno eliminati. Solo l\'utente admin verrà ricreato. Sei assolutamente sicuro?',
+      confirmText: 'Procedi con Reset',
+      variant: 'danger',
+    });
+
+    if (!dialogConfirmed) {
+      setResetConfirmation('');
+      return;
+    }
+
+    // Second confirmation: check if user typed the correct text
+    if (resetConfirmation !== 'RESET DATABASE') {
+      showError('Conferma non valida. Digitare esattamente "RESET DATABASE"');
+      return;
+    }
+
+    try {
+      // Show loading state
+      showSuccess('Reset in corso... Attendere...');
+
+      const result = await settingsApi.resetDatabase(resetConfirmation);
+
+      if (result.success) {
+        showSuccess(result.message);
+        setResetConfirmation('');
+
+        // Log out and redirect after a short delay
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
+    } catch (error: any) {
+      console.error('Reset database error:', error);
+      const errorMessage = error.response?.data?.error || 'Errore durante il reset del database';
+      showError(errorMessage);
+      logger.error('Database reset failed:', error);
     }
   };
 
@@ -945,6 +992,79 @@ const Settings: React.FC = () => {
                       </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* DANGER ZONE - Database Reset */}
+              <div className="card border-2 border-red-500 bg-red-50">
+                <div className="flex items-center mb-4">
+                  <AlertTriangle className="text-red-600 mr-2" size={24} />
+                  <h2 className="text-xl font-bold text-red-900">Zona Pericolosa</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Warning Banner */}
+                  <div className="flex items-start gap-3 p-4 bg-red-100 border border-red-300 rounded-lg">
+                    <AlertTriangle className="text-red-700 flex-shrink-0 mt-1" size={20} />
+                    <div>
+                      <p className="font-bold text-red-900 mb-2">ATTENZIONE: Operazione Irreversibile</p>
+                      <p className="text-sm text-red-800 mb-2">
+                        Il reset del database eliminerà <strong>TUTTI</strong> i dati in modo permanente:
+                      </p>
+                      <ul className="text-sm text-red-800 list-disc list-inside space-y-1 ml-2">
+                        <li>Tutti i clienti e le loro informazioni</li>
+                        <li>Tutti gli appuntamenti (passati e futuri)</li>
+                        <li>Tutti i servizi e le categorie</li>
+                        <li>Tutto il personale e i ruoli</li>
+                        <li>Tutti i pagamenti e promemoria</li>
+                        <li>Tutte le impostazioni personalizzate</li>
+                      </ul>
+                      <p className="text-sm text-red-800 font-bold mt-3">
+                        Verrà creato solo l'utente amministratore predefinito con username "admin".
+                      </p>
+                      <p className="text-sm text-red-800 mt-2">
+                        Questa operazione NON può essere annullata. Assicurati di aver effettuato un backup prima di procedere.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Reset Form */}
+                  <div className="bg-white p-4 rounded-lg border border-red-200">
+                    <h3 className="font-bold text-gray-900 mb-3">Reset Database Completo</h3>
+                    <p className="text-sm text-gray-700 mb-4">
+                      Per procedere con il reset del database, digita esattamente <code className="bg-gray-100 px-2 py-1 rounded font-mono text-sm">RESET DATABASE</code> nel campo sottostante:
+                    </p>
+
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        placeholder="Digita: RESET DATABASE"
+                        value={resetConfirmation}
+                        onChange={(e) => setResetConfirmation(e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 font-mono"
+                      />
+
+                      <button
+                        onClick={handleResetDatabase}
+                        disabled={resetConfirmation !== 'RESET DATABASE'}
+                        className={`w-full py-3 px-4 rounded-lg font-bold text-white transition-colors ${
+                          resetConfirmation === 'RESET DATABASE'
+                            ? 'bg-red-600 hover:bg-red-700 active:bg-red-800'
+                            : 'bg-gray-300 cursor-not-allowed'
+                        }`}
+                      >
+                        {resetConfirmation === 'RESET DATABASE'
+                          ? '🔥 Conferma Reset Database'
+                          : 'Digitare conferma per abilitare'}
+                      </button>
+
+                      {resetConfirmation && resetConfirmation !== 'RESET DATABASE' && (
+                        <p className="text-sm text-red-600 text-center">
+                          Testo non corretto. Digita esattamente "RESET DATABASE"
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
