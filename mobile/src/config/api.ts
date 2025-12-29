@@ -3,6 +3,8 @@
  */
 
 // Default API URL - should be configured by user
+// For local network: http://192.168.1.100:3001/api
+// For public HTTPS (RECOMMENDED): https://your-domain.duckdns.org/api
 export const DEFAULT_API_URL = 'http://192.168.1.100:3001/api';
 
 // Sync interval in minutes
