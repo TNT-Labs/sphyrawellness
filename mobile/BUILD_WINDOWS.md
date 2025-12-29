@@ -84,6 +84,28 @@ Segui i passaggi sopra per configurare la variabile d'ambiente `ANDROID_HOME`.
 3. Riavvia Command Prompt
 4. Verifica: `java -version` (dovrebbe mostrare versione 17-21)
 
+### Errore: "JAVA_HOME is set to an invalid directory"
+
+Questo è un **errore molto comune**! JAVA_HOME deve puntare alla directory root del JDK, **non** alla sottocartella `bin`.
+
+**Esempio di errore:**
+```
+ERROR: JAVA_HOME is set to an invalid directory: C:\Program Files\Java\jdk-21\bin
+```
+
+**Come correggere:**
+
+1. Premi `Win + R` e digita: `sysdm.cpl`
+2. Clicca su **"Avanzate"** → **"Variabili d'ambiente"**
+3. In **"Variabili di sistema"**, trova `JAVA_HOME`
+4. Clicca **Modifica** e correggi il valore:
+   - ❌ **ERRATO**: `C:\Program Files\Java\jdk-21\bin`
+   - ✅ **CORRETTO**: `C:\Program Files\Java\jdk-21`
+5. Verifica che nella variabile `Path` ci sia: `%JAVA_HOME%\bin`
+6. Clicca **OK** su tutte le finestre
+7. **Riavvia Command Prompt** (importante!)
+8. Verifica: `echo %JAVA_HOME%` (non deve terminare con \bin)
+
 ### Errore: "gradlew: command not found" o problemi di permessi
 1. Assicurati di essere nella cartella `mobile`
 2. Esegui: `cd android && gradlew.bat clean`
