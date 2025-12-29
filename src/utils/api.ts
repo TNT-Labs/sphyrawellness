@@ -142,6 +142,39 @@ export const settingsApi = {
       return false;
     }
   },
+
+  /**
+   * Reset database (DANGER ZONE)
+   * Requires strong confirmation
+   */
+  async resetDatabase(confirmation: string): Promise<{ success: boolean; message: string; data: any }> {
+    const token = getAuthToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/settings/reset-database`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ confirmation }),
+    });
+
+    if (!response.ok) {
+      const result: ApiResponse = await response.json();
+      throw new Error(result.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to reset database');
+    }
+
+    return result as { success: boolean; message: string; data: any };
+  },
 };
 
 /**
