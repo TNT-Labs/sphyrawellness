@@ -338,7 +338,7 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
                   <option value="confirmed">Confermato</option>
                   <option value="completed">Completato</option>
                   <option value="cancelled">Cancellato</option>
-                  <option value="no-show">Non presentato</option>
+                  <option value="no_show">Non presentato</option>
                 </select>
               </div>
 
