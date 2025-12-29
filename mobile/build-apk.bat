@@ -42,6 +42,39 @@ echo Versione Java installata:
 java -version 2>&1 | findstr /i "version"
 echo.
 
+:: Verifica JAVA_HOME
+if defined JAVA_HOME (
+    echo Controllo JAVA_HOME: %JAVA_HOME%
+    if "%JAVA_HOME:~-4%"=="\bin" (
+        echo.
+        echo [AVVISO] JAVA_HOME non deve terminare con \bin!
+        echo.
+        echo ERRATO: %JAVA_HOME%
+        echo CORRETTO: %JAVA_HOME:~0,-4%
+        echo.
+        echo Come correggere:
+        echo 1. Premi Win+R e digita: sysdm.cpl
+        echo 2. Vai su Avanzate ^> Variabili d'ambiente
+        echo 3. Modifica JAVA_HOME e rimuovi \bin dalla fine
+        echo 4. Riavvia Command Prompt
+        echo.
+        pause
+        exit /b 1
+    )
+    if not exist "%JAVA_HOME%\bin\java.exe" (
+        echo.
+        echo [AVVISO] JAVA_HOME non punta a una JDK valida!
+        echo JAVA_HOME: %JAVA_HOME%
+        echo File atteso: %JAVA_HOME%\bin\java.exe
+        echo.
+        pause
+        exit /b 1
+    )
+    echo [OK] JAVA_HOME configurato correttamente
+    echo.
+)
+echo.
+
 :: Controlla Android SDK
 echo [3/5] Controllo Android SDK...
 if not defined ANDROID_HOME (
