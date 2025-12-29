@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Appointment } from '../types';
-import { isSameDay, parseISO } from 'date-fns';
+import { isSameDay, parseISO, startOfMonth, endOfMonth, addMonths, subMonths } from 'date-fns';
 
 export type CalendarView = 'day' | 'week' | 'month';
 
@@ -17,8 +17,24 @@ export const useCalendarLogic = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<CalendarView>('week');
 
+  // Filtra appuntamenti solo per il range visibile (±1 mese dalla data corrente)
+  // Questo riduce significativamente il numero di appuntamenti da processare
+  const visibleAppointments = useMemo(() => {
+    const rangeStart = startOfMonth(subMonths(currentDate, 1));
+    const rangeEnd = endOfMonth(addMonths(currentDate, 1));
+
+    return appointments.filter((apt) => {
+      try {
+        const aptDate = parseISO(apt.date);
+        return aptDate >= rangeStart && aptDate <= rangeEnd;
+      } catch {
+        return false;
+      }
+    });
+  }, [appointments, currentDate]);
+
   const getAppointmentsForDay = (date: Date) => {
-    return appointments
+    return visibleAppointments
       .filter((apt) => isSameDay(parseISO(apt.date), date))
       .sort((a, b) => a.startTime.localeCompare(b.startTime));
   };

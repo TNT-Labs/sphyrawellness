@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Service } from '../types';
-import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X, Upload, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
 import { logger } from '../utils/logger';
@@ -28,6 +28,10 @@ const Services: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Paginazione
+  const [currentPage, setCurrentPage] = useState(0);
+  const SERVICES_PER_PAGE = 30;
 
   // Check if filter=today is present
   const filterToday = searchParams.get('filter') === 'today';
@@ -71,6 +75,18 @@ const Services: React.FC = () => {
       );
     });
   }, [services, debouncedSearchTerm, serviceCategories, filterToday, todayServiceIds]);
+
+  // Paginazione dei servizi filtrati
+  const totalPages = Math.ceil(filteredServices.length / SERVICES_PER_PAGE);
+  const paginatedServices = useMemo(() => {
+    const startIndex = currentPage * SERVICES_PER_PAGE;
+    return filteredServices.slice(startIndex, startIndex + SERVICES_PER_PAGE);
+  }, [filteredServices, currentPage]);
+
+  // Reset page quando cambia la ricerca o il filtro
+  React.useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedSearchTerm, filterToday]);
 
   const handleOpenModal = (service?: Service) => {
     if (service) {
@@ -350,8 +366,9 @@ const Services: React.FC = () => {
           )}
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServices.map((service) => {
+          {paginatedServices.map((service) => {
             const category = serviceCategories.find(c => c.id === service.category);
             const displayColor = category?.color || service.color || '#ec4899';
             const imageUrl = getImageUrl(service.imageUrl);
@@ -434,6 +451,72 @@ const Services: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Controlli di paginazione */}
+        {totalPages > 1 && (
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Mostrando {currentPage * SERVICES_PER_PAGE + 1} -{' '}
+                {Math.min((currentPage + 1) * SERVICES_PER_PAGE, filteredServices.length)} di{' '}
+                {filteredServices.length} servizi
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft size={16} />
+                  Precedente
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i).map((page) => {
+                    // Mostra solo alcune pagine intorno alla pagina corrente
+                    if (
+                      page === 0 ||
+                      page === totalPages - 1 ||
+                      (page >= currentPage - 2 && page <= currentPage + 2)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 rounded-md transition-colors ${
+                            currentPage === page
+                              ? 'bg-primary-600 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page + 1}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 3 ||
+                      page === currentPage + 3
+                    ) {
+                      return (
+                        <span key={page} className="px-2 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage === totalPages - 1}
+                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                >
+                  Successiva
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Modal */}

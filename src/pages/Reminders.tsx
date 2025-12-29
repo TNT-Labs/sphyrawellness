@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, RefreshCw, XCircle, AlertCircle } from 'lucide-react';
-import { format, parseISO, addHours } from 'date-fns';
+import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, RefreshCw, XCircle, AlertCircle, ChevronDown, Search } from 'lucide-react';
+import { format, parseISO, addHours, startOfDay, endOfDay } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
@@ -15,6 +15,12 @@ const Reminders: React.FC = () => {
   const { confirm, ConfirmationDialog } = useConfirm();
   const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
   const [sendingAll, setSendingAll] = useState(false);
+
+  // Stati per lo storico reminder
+  const [historicExpanded, setHistoricExpanded] = useState(false);
+  const [historicSearch, setHistoricSearch] = useState('');
+  const [historicPage, setHistoricPage] = useState(0);
+  const HISTORIC_PAGE_SIZE = 20;
 
   const upcomingAppointments = appointments
     .filter((apt) => {
@@ -74,6 +80,83 @@ const Reminders: React.FC = () => {
   };
 
   const appointmentsNeedingReminders = upcomingAppointments.filter(needsReminder);
+
+  // Separazione reminder: oggi vs storico
+  const { todayReminders, historicalReminders } = useMemo(() => {
+    const today = new Date();
+    const todayStart = startOfDay(today);
+    const todayEnd = endOfDay(today);
+
+    const todayRems: typeof reminders = [];
+    const historicalRems: typeof reminders = [];
+
+    reminders.forEach((reminder) => {
+      if (!reminder.sentAt) return;
+
+      try {
+        const sentDate = parseISO(reminder.sentAt);
+        if (sentDate >= todayStart && sentDate <= todayEnd) {
+          todayRems.push(reminder);
+        } else {
+          historicalRems.push(reminder);
+        }
+      } catch {
+        // Se non riesco a parsare la data, lo metto nello storico
+        historicalRems.push(reminder);
+      }
+    });
+
+    // Ordina entrambe le liste per data decrescente (più recenti prima)
+    const sortByDate = (a: typeof reminders[0], b: typeof reminders[0]) => {
+      const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
+      const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
+      return dateB - dateA;
+    };
+
+    return {
+      todayReminders: todayRems.sort(sortByDate),
+      historicalReminders: historicalRems.sort(sortByDate),
+    };
+  }, [reminders]);
+
+  // Filtro e paginazione dello storico
+  const filteredHistoricReminders = useMemo(() => {
+    let filtered = historicalReminders;
+
+    // Applica ricerca
+    if (historicSearch.trim()) {
+      filtered = filtered.filter((reminder) => {
+        const appointment = appointments.find((apt) => apt.id === reminder.appointmentId);
+        if (!appointment) return false;
+
+        const customerName = getCustomerName(appointment.customerId).toLowerCase();
+        const serviceName = getServiceName(appointment.serviceId).toLowerCase();
+        const searchLower = historicSearch.toLowerCase();
+
+        return (
+          customerName.includes(searchLower) ||
+          serviceName.includes(searchLower)
+        );
+      });
+    }
+
+    // Applica paginazione
+    const endIndex = (historicPage + 1) * HISTORIC_PAGE_SIZE;
+    return filtered.slice(0, endIndex);
+  }, [historicalReminders, historicSearch, historicPage, appointments]);
+
+  const hasMoreHistoric = filteredHistoricReminders.length < (
+    historicSearch.trim()
+      ? historicalReminders.filter((reminder) => {
+          const appointment = appointments.find((apt) => apt.id === reminder.appointmentId);
+          if (!appointment) return false;
+          const customerName = getCustomerName(appointment.customerId).toLowerCase();
+          const serviceName = getServiceName(appointment.serviceId).toLowerCase();
+          const searchLower = historicSearch.toLowerCase();
+          return customerName.includes(searchLower) || serviceName.includes(searchLower);
+        }).length
+      : historicalReminders.length
+  );
 
   const handleSendReminder = async (
     appointmentId: string,
@@ -364,128 +447,283 @@ const Reminders: React.FC = () => {
         </div>
       )}
 
-      {/* Sent Reminders */}
+      {/* Reminder Inviati Oggi */}
       <div className="card">
         <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
           <CheckCircle className="mr-2 text-green-600" size={24} />
-          Reminder Inviati
+          Reminder Inviati Oggi
+          <span className="ml-2 text-sm font-normal text-gray-500">
+            ({todayReminders.length})
+          </span>
         </h2>
 
-        {reminders.length === 0 ? (
-          <div className="text-center py-12">
-            <Bell size={48} className="mx-auto mb-3 text-gray-400" />
-            <p className="text-gray-500">Nessun reminder inviato</p>
+        {todayReminders.length === 0 ? (
+          <div className="text-center py-8">
+            <Bell size={40} className="mx-auto mb-3 text-gray-400" />
+            <p className="text-gray-500">Nessun reminder inviato oggi</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {reminders
-              .sort((a, b) => {
-                // Sort by sentAt descending (most recent first)
-                const dateA = a.sentAt ? new Date(a.sentAt).getTime() : 0;
-                const dateB = b.sentAt ? new Date(b.sentAt).getTime() : 0;
-                return dateB - dateA;
-              })
-              .map((reminder) => {
-                const appointment = appointments.find(apt => apt.id === reminder.appointmentId);
-                if (!appointment) return null;
+            {todayReminders.map((reminder) => {
+              const appointment = appointments.find(apt => apt.id === reminder.appointmentId);
+              if (!appointment) return null;
 
-                const channelIcon = reminder.type === 'email' ? Mail :
-                                  reminder.type === 'sms' ? MessageSquare :
-                                  Smartphone;
+              const channelIcon = reminder.type === 'email' ? Mail :
+                                reminder.type === 'sms' ? MessageSquare :
+                                Smartphone;
 
-                const channelColor = reminder.type === 'email' ? 'text-blue-600' :
-                                   reminder.type === 'sms' ? 'text-green-600' :
-                                   'text-purple-600';
+              const channelColor = reminder.type === 'email' ? 'text-blue-600' :
+                                 reminder.type === 'sms' ? 'text-green-600' :
+                                 'text-purple-600';
 
-                const channelBg = reminder.type === 'email' ? 'bg-blue-100' :
-                                reminder.type === 'sms' ? 'bg-green-100' :
-                                'bg-purple-100';
+              const channelBg = reminder.type === 'email' ? 'bg-blue-100' :
+                              reminder.type === 'sms' ? 'bg-green-100' :
+                              'bg-purple-100';
 
-                const ChannelIcon = channelIcon;
+              const ChannelIcon = channelIcon;
 
-                return (
-                  <div
-                    key={reminder.id}
-                    className={`p-4 rounded-lg border ${
-                      reminder.sent
-                        ? 'bg-green-50 border-green-200'
-                        : 'bg-red-50 border-red-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-gray-900">
-                            {getCustomerName(appointment.customerId)}
-                          </h3>
+              return (
+                <div
+                  key={reminder.id}
+                  className={`p-4 rounded-lg border ${
+                    reminder.sent
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-gray-900">
+                          {getCustomerName(appointment.customerId)}
+                        </h3>
 
-                          {/* Channel Badge */}
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${channelBg} ${channelColor} text-xs font-medium rounded-full`}>
-                            <ChannelIcon size={12} />
-                            {reminder.type === 'email' ? 'Email' :
-                             reminder.type === 'sms' ? 'SMS' :
-                             'WhatsApp'}
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${channelBg} ${channelColor} text-xs font-medium rounded-full`}>
+                          <ChannelIcon size={12} />
+                          {reminder.type === 'email' ? 'Email' :
+                           reminder.type === 'sms' ? 'SMS' :
+                           'WhatsApp'}
+                        </span>
+
+                        {reminder.sent ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                            <CheckCircle size={12} />
+                            Inviato
                           </span>
-
-                          {/* Status Badge */}
-                          {reminder.sent ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                              <CheckCircle size={12} />
-                              Inviato
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-                              <XCircle size={12} />
-                              Fallito
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="mt-2 space-y-1 text-sm text-gray-600">
-                          <p>
-                            <strong>Servizio:</strong> {getServiceName(appointment.serviceId)}
-                          </p>
-                          <p>
-                            <strong>Appuntamento:</strong>{' '}
-                            {format(parseISO(appointment.date), 'dd MMMM yyyy', {
-                              locale: it,
-                            })}{' '}
-                            alle {extractTimeString(appointment.startTime)}
-                          </p>
-                          {reminder.sentAt && (
-                            <p>
-                              <strong>Inviato il:</strong>{' '}
-                              {format(parseISO(reminder.sentAt), 'dd MMMM yyyy \'alle\' HH:mm', {
-                                locale: it,
-                              })}
-                            </p>
-                          )}
-                          {!reminder.sent && reminder.errorMessage && (
-                            <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-red-700 flex items-start gap-2">
-                              <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
-                              <span className="text-xs">{reminder.errorMessage}</span>
-                            </div>
-                          )}
-                        </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                            <XCircle size={12} />
+                            Fallito
+                          </span>
+                        )}
                       </div>
 
-                      <div className="text-right flex-shrink-0">
-                        <div className="text-sm text-gray-500">
-                          {reminder.sentAt ? (
-                            format(parseISO(reminder.sentAt), 'HH:mm', { locale: it })
-                          ) : (
-                            'N/A'
-                          )}
-                        </div>
+                      <div className="mt-2 space-y-1 text-sm text-gray-600">
+                        <p>
+                          <strong>Servizio:</strong> {getServiceName(appointment.serviceId)}
+                        </p>
+                        <p>
+                          <strong>Appuntamento:</strong>{' '}
+                          {format(parseISO(appointment.date), 'dd MMMM yyyy', {
+                            locale: it,
+                          })}{' '}
+                          alle {extractTimeString(appointment.startTime)}
+                        </p>
+                        {reminder.sentAt && (
+                          <p>
+                            <strong>Inviato il:</strong>{' '}
+                            {format(parseISO(reminder.sentAt), 'dd MMMM yyyy \'alle\' HH:mm', {
+                              locale: it,
+                            })}
+                          </p>
+                        )}
+                        {!reminder.sent && reminder.errorMessage && (
+                          <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-red-700 flex items-start gap-2">
+                            <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                            <span className="text-xs">{reminder.errorMessage}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-sm text-gray-500">
+                        {reminder.sentAt ? (
+                          format(parseISO(reminder.sentAt), 'HH:mm', { locale: it })
+                        ) : (
+                          'N/A'
+                        )}
                       </div>
                     </div>
                   </div>
-                );
-              })
-              .filter(Boolean)}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
+
+      {/* Storico Reminder (Collassabile) */}
+      {historicalReminders.length > 0 && (
+        <div className="card">
+          <button
+            onClick={() => setHistoricExpanded(!historicExpanded)}
+            className="w-full flex items-center justify-between text-left group"
+          >
+            <h2 className="text-xl font-bold text-gray-900 flex items-center">
+              <Clock className="mr-2 text-gray-600" size={24} />
+              Storico
+              <span className="ml-2 text-sm font-normal text-gray-500">
+                ({historicalReminders.length} reminder precedenti)
+              </span>
+            </h2>
+            <ChevronDown
+              className={`transition-transform text-gray-600 group-hover:text-gray-900 ${
+                historicExpanded ? 'rotate-180' : ''
+              }`}
+              size={24}
+            />
+          </button>
+
+          {historicExpanded && (
+            <div className="mt-4 space-y-4">
+              {/* Barra di ricerca */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type="search"
+                  placeholder="Cerca per nome cliente o servizio..."
+                  value={historicSearch}
+                  onChange={(e) => {
+                    setHistoricSearch(e.target.value);
+                    setHistoricPage(0); // Reset pagination on search
+                  }}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Lista paginata */}
+              {filteredHistoricReminders.length === 0 ? (
+                <div className="text-center py-8">
+                  <Search size={40} className="mx-auto mb-3 text-gray-400" />
+                  <p className="text-gray-500">Nessun risultato trovato</p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    {filteredHistoricReminders.map((reminder) => {
+                      const appointment = appointments.find(apt => apt.id === reminder.appointmentId);
+                      if (!appointment) return null;
+
+                      const channelIcon = reminder.type === 'email' ? Mail :
+                                        reminder.type === 'sms' ? MessageSquare :
+                                        Smartphone;
+
+                      const channelColor = reminder.type === 'email' ? 'text-blue-600' :
+                                         reminder.type === 'sms' ? 'text-green-600' :
+                                         'text-purple-600';
+
+                      const channelBg = reminder.type === 'email' ? 'bg-blue-100' :
+                                      reminder.type === 'sms' ? 'bg-green-100' :
+                                      'bg-purple-100';
+
+                      const ChannelIcon = channelIcon;
+
+                      return (
+                        <div
+                          key={reminder.id}
+                          className={`p-4 rounded-lg border ${
+                            reminder.sent
+                              ? 'bg-gray-50 border-gray-200'
+                              : 'bg-red-50 border-red-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h3 className="font-semibold text-gray-900">
+                                  {getCustomerName(appointment.customerId)}
+                                </h3>
+
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${channelBg} ${channelColor} text-xs font-medium rounded-full`}>
+                                  <ChannelIcon size={12} />
+                                  {reminder.type === 'email' ? 'Email' :
+                                   reminder.type === 'sms' ? 'SMS' :
+                                   'WhatsApp'}
+                                </span>
+
+                                {reminder.sent ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+                                    <CheckCircle size={12} />
+                                    Inviato
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+                                    <XCircle size={12} />
+                                    Fallito
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-2 space-y-1 text-sm text-gray-600">
+                                <p>
+                                  <strong>Servizio:</strong> {getServiceName(appointment.serviceId)}
+                                </p>
+                                <p>
+                                  <strong>Appuntamento:</strong>{' '}
+                                  {format(parseISO(appointment.date), 'dd MMMM yyyy', {
+                                    locale: it,
+                                  })}{' '}
+                                  alle {extractTimeString(appointment.startTime)}
+                                </p>
+                                {reminder.sentAt && (
+                                  <p>
+                                    <strong>Inviato il:</strong>{' '}
+                                    {format(parseISO(reminder.sentAt), 'dd MMMM yyyy \'alle\' HH:mm', {
+                                      locale: it,
+                                    })}
+                                  </p>
+                                )}
+                                {!reminder.sent && reminder.errorMessage && (
+                                  <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded text-red-700 flex items-start gap-2">
+                                    <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+                                    <span className="text-xs">{reminder.errorMessage}</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="text-right flex-shrink-0">
+                              <div className="text-sm text-gray-500">
+                                {reminder.sentAt ? (
+                                  format(parseISO(reminder.sentAt), 'dd/MM', { locale: it })
+                                ) : (
+                                  'N/A'
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Pulsante carica altri */}
+                  {hasMoreHistoric && (
+                    <button
+                      onClick={() => setHistoricPage((p) => p + 1)}
+                      className="w-full py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw size={16} />
+                      Carica altri {Math.min(HISTORIC_PAGE_SIZE, historicalReminders.length - filteredHistoricReminders.length)} reminder
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* All Upcoming Appointments */}
       <div className="card">
