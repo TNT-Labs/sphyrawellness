@@ -30,7 +30,9 @@ echo.
 echo [2/5] Controllo Java JDK...
 java -version >nul 2>&1
 if errorlevel 1 (
-    echo [ERRORE] Java JDK non trovato! Installa JDK 17+ da adoptium.net
+    echo [ERRORE] Java JDK non trovato!
+    echo Installa JDK 17 o 21 (LTS) da adoptium.net
+    echo React Native 0.73 supporta Java 17, 18, 19, 20 e 21
     pause
     exit /b 1
 )
