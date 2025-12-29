@@ -5,7 +5,8 @@ buildscript {
         compileSdkVersion = 34
         targetSdkVersion = 34
         ndkVersion = "25.1.8937393"
-        kotlinVersion = "1.9.0"
+        // Kotlin 2.0+ is required for Java 21 support
+        kotlinVersion = "2.0.0"
         // Force Java 21 for all subprojects
         javaVersion = JavaVersion.VERSION_21
     }
