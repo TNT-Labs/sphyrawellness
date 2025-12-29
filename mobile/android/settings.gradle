@@ -1,10 +1,4 @@
 rootProject.name = 'SphyraSMSReminder'
-
-// React Native 0.73+ uses new architecture
-includeBuild('../node_modules/@react-native/gradle-plugin')
-
+apply from: file("../node_modules/@react-native-community/cli-platform-android/native_modules.gradle"); applyNativeModulesSettingsGradle(settings)
 include ':app'
-
-// Apply native modules
-apply from: new File(["node", "--print", "require.resolve('@react-native-community/cli-platform-android/package.json')"].execute(null, rootDir).text.trim(), "../native_modules.gradle")
-applyNativeModulesSettingsGradle(this)
+includeBuild('../node_modules/@react-native/gradle-plugin')
