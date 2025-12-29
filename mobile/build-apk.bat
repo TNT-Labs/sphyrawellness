@@ -115,6 +115,16 @@ echo.
 echo [5/5] Build APK di release...
 echo Questo richiederà diversi minuti...
 echo.
+
+:: Crea local.properties se non esiste (per Java 21 compatibility)
+if not exist "android\local.properties" (
+    echo Creazione android\local.properties...
+    (
+        echo sdk.dir=%ANDROID_HOME:\=\\%
+        echo java.home=%JAVA_HOME:\=\\%
+    ) > android\local.properties
+)
+
 cd android
 call gradlew.bat clean assembleRelease
 if errorlevel 1 (
