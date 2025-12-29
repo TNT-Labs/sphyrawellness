@@ -89,6 +89,13 @@ android {
         targetCompatibility JavaVersion.VERSION_21
     }
 
+    // Force Java 21 toolchain for all tasks
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(21)
+        }
+    }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
