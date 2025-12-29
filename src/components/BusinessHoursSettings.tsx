@@ -59,9 +59,9 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
               <div key={day} className="hover:bg-gray-50 transition-colors">
                 {/* Row principale */}
                 <div className="p-4">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4">
                     {/* Checkbox Aperto/Chiuso */}
-                    <div className="flex items-center min-w-[120px]">
+                    <div className="flex items-center min-w-0 sm:min-w-[120px] flex-shrink-0">
                       <input
                         type="checkbox"
                         id={`${day}-enabled`}
@@ -69,28 +69,29 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                         onChange={(e) => updateDay(day, { enabled: e.target.checked })}
                         className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                       />
-                      <label htmlFor={`${day}-enabled`} className="ml-2 font-medium text-gray-900">
+                      <label htmlFor={`${day}-enabled`} className="ml-2 font-medium text-gray-900 text-sm sm:text-base">
                         {DAYS_IT[day]}
                       </label>
                     </div>
 
                     {/* Mostra orari o "Chiuso" */}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       {schedule.enabled ? (
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs sm:text-sm text-gray-600">
                           {schedule.type === 'continuous' ? (
-                            <span>
+                            <span className="whitespace-nowrap">
                               {schedule.morning.start} - {schedule.morning.end}
                             </span>
                           ) : (
-                            <span>
-                              {schedule.morning.start}-{schedule.morning.end} • {schedule.afternoon?.start}-
-                              {schedule.afternoon?.end}
-                            </span>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
+                              <span className="whitespace-nowrap">{schedule.morning.start}-{schedule.morning.end}</span>
+                              <span className="hidden sm:inline">•</span>
+                              <span className="whitespace-nowrap">{schedule.afternoon?.start}-{schedule.afternoon?.end}</span>
+                            </div>
                           )}
                         </div>
                       ) : (
-                        <span className="text-sm text-gray-400">Chiuso</span>
+                        <span className="text-xs sm:text-sm text-gray-400">Chiuso</span>
                       )}
                     </div>
 
@@ -145,7 +146,7 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           {schedule.type === 'continuous' ? 'Orario' : 'Mattina'}
                         </label>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
                           <input
                             type="time"
                             value={schedule.morning.start}
@@ -154,9 +155,9 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                                 morning: { ...schedule.morning, start: e.target.value },
                               })
                             }
-                            className="input"
+                            className="input flex-1 min-w-[120px]"
                           />
-                          <span className="text-gray-500">-</span>
+                          <span className="text-gray-500 flex-shrink-0">-</span>
                           <input
                             type="time"
                             value={schedule.morning.end}
@@ -165,7 +166,7 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                                 morning: { ...schedule.morning, end: e.target.value },
                               })
                             }
-                            className="input"
+                            className="input flex-1 min-w-[120px]"
                           />
                         </div>
                       </div>
@@ -174,7 +175,7 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                       {schedule.type === 'split' && (
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">Pomeriggio</label>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
                             <input
                               type="time"
                               value={schedule.afternoon?.start || '15:00'}
@@ -186,9 +187,9 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                                   },
                                 })
                               }
-                              className="input"
+                              className="input flex-1 min-w-[120px]"
                             />
-                            <span className="text-gray-500">-</span>
+                            <span className="text-gray-500 flex-shrink-0">-</span>
                             <input
                               type="time"
                               value={schedule.afternoon?.end || '19:00'}
@@ -200,27 +201,27 @@ const BusinessHoursSettings: React.FC<BusinessHoursSettingsProps> = ({ businessH
                                   },
                                 })
                               }
-                              className="input"
+                              className="input flex-1 min-w-[120px]"
                             />
                           </div>
                         </div>
                       )}
 
                       {/* Azioni */}
-                      <div className="flex gap-2 pt-2">
+                      <div className="flex flex-col sm:flex-row gap-2 pt-2">
                         <button
                           onClick={() => copyToAll(day)}
-                          className="px-3 py-2 text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors flex items-center gap-2"
+                          className="px-3 py-2 text-xs sm:text-sm bg-primary-600 text-white rounded hover:bg-primary-700 transition-colors flex items-center gap-1.5 justify-center min-h-[44px] touch-manipulation"
                         >
-                          <Check size={16} />
-                          Applica a Tutti i Giorni
+                          <Check size={16} className="flex-shrink-0" />
+                          <span>Applica a Tutti i Giorni</span>
                         </button>
                         <button
                           onClick={() => setExpanded(null)}
-                          className="px-3 py-2 text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors flex items-center gap-2"
+                          className="px-3 py-2 text-xs sm:text-sm bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors flex items-center gap-1.5 justify-center min-h-[44px] touch-manipulation"
                         >
-                          <X size={16} />
-                          Chiudi
+                          <X size={16} className="flex-shrink-0" />
+                          <span>Chiudi</span>
                         </button>
                       </div>
                     </div>

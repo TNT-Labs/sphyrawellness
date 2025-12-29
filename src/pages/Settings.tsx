@@ -377,7 +377,7 @@ const Settings: React.FC = () => {
         {/* Tabs Navigation - Only for RESPONSABILE */}
         {!isStandardUser && (
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-2 sm:space-x-4 md:space-x-8 overflow-x-auto" aria-label="Tabs">
+            <nav className="-mb-px flex space-x-1 sm:space-x-2 md:space-x-4 overflow-x-auto px-1 sm:px-0 -mx-1 sm:mx-0" aria-label="Tabs">
               {tabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -386,7 +386,7 @@ const Settings: React.FC = () => {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`
-                      flex items-center gap-1.5 sm:gap-2 py-3 sm:py-4 px-2 sm:px-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0
+                      flex items-center gap-2 py-3 sm:py-4 px-3 sm:px-4 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex-shrink-0 touch-manipulation min-h-[44px]
                       ${isActive
                         ? 'border-primary-600 text-primary-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -409,12 +409,12 @@ const Settings: React.FC = () => {
             <>
               {/* Logs Viewer - For standard users */}
               <div className="card">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="flex items-center">
                     <FileText className="text-primary-600 mr-2" size={24} />
                     <h2 className="text-xl font-bold text-gray-900">Visualizza Logs</h2>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
                     <button
                       onClick={() => {
                         loadLogs();
@@ -442,11 +442,11 @@ const Settings: React.FC = () => {
                   {showLogs && (
                     <div className="space-y-3">
                       {/* Controls */}
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-2 sm:gap-3">
                         <select
                           value={logFilter}
                           onChange={(e) => setLogFilter(e.target.value as typeof logFilter)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[44px] flex-1 sm:flex-initial"
                         >
                           <option value="all">Tutti i Livelli</option>
                           <option value="error">Solo Errori</option>
@@ -457,17 +457,17 @@ const Settings: React.FC = () => {
                         </select>
                         <button
                           onClick={handleExportLogs}
-                          className="btn-secondary text-sm"
+                          className="btn-secondary text-sm gap-1"
                         >
-                          <Download size={16} className="inline mr-1" />
-                          Esporta
+                          <Download size={16} />
+                          <span className="hidden sm:inline">Esporta</span>
                         </button>
                         <button
                           onClick={handleClearLogs}
-                          className="btn-secondary text-sm"
+                          className="btn-secondary text-sm gap-1"
                         >
-                          <Trash2 size={16} className="inline mr-1" />
-                          Cancella
+                          <Trash2 size={16} />
+                          <span className="hidden sm:inline">Cancella</span>
                         </button>
                       </div>
 
@@ -665,7 +665,7 @@ const Settings: React.FC = () => {
                         <div className="flex gap-2 flex-shrink-0">
                           <button
                             onClick={() => handleToggleRoleActive(role)}
-                            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-semibold touch-manipulation ${
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-semibold touch-manipulation min-h-[44px] ${
                               role.isActive
                                 ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
                                 : 'bg-green-50 text-green-600 hover:bg-green-100'
@@ -675,15 +675,17 @@ const Settings: React.FC = () => {
                           </button>
                           <button
                             onClick={() => startEditRole(role)}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold touch-manipulation"
+                            className="icon-button bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            title="Modifica"
                           >
-                            <Edit size={16} className="inline" />
+                            <Edit size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteRole(role.id)}
-                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold touch-manipulation"
+                            className="icon-button bg-red-50 text-red-600 hover:bg-red-100"
+                            title="Elimina"
                           >
-                            <Trash2 size={16} className="inline" />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -718,15 +720,15 @@ const Settings: React.FC = () => {
                       {editingCategoryId ? 'Modifica Categoria' : 'Nuova Categoria'}
                     </h3>
                     <div className="flex flex-col gap-3">
-                      <div className="flex gap-3">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <input
                           type="text"
                           placeholder="Nome categoria"
                           value={categoryFormData.name}
                           onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
                         />
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 flex-shrink-0 justify-between sm:justify-start">
                           <label htmlFor="category-color" className="text-sm font-semibold text-gray-700 whitespace-nowrap">
                             Colore:
                           </label>
@@ -784,7 +786,7 @@ const Settings: React.FC = () => {
                         <div className="flex gap-2 flex-shrink-0">
                           <button
                             onClick={() => handleToggleCategoryActive(category)}
-                            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-md text-sm font-semibold touch-manipulation ${
+                            className={`flex-1 sm:flex-none px-4 py-2 rounded-md text-sm font-semibold touch-manipulation min-h-[44px] ${
                               category.isActive
                                 ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
                                 : 'bg-green-50 text-green-600 hover:bg-green-100'
@@ -794,15 +796,17 @@ const Settings: React.FC = () => {
                           </button>
                           <button
                             onClick={() => startEditCategory(category)}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 text-sm font-semibold touch-manipulation"
+                            className="icon-button bg-blue-50 text-blue-600 hover:bg-blue-100"
+                            title="Modifica"
                           >
-                            <Edit size={16} className="inline" />
+                            <Edit size={16} />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(category.id)}
-                            className="px-3 py-1.5 bg-red-50 text-red-600 rounded-md hover:bg-red-100 text-sm font-semibold touch-manipulation"
+                            className="icon-button bg-red-50 text-red-600 hover:bg-red-100"
+                            title="Elimina"
                           >
-                            <Trash2 size={16} className="inline" />
+                            <Trash2 size={16} />
                           </button>
                         </div>
                       </div>
@@ -828,12 +832,12 @@ const Settings: React.FC = () => {
             <>
               {/* Logs Viewer */}
               <div className="card">
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <div className="flex items-center">
                     <FileText className="text-primary-600 mr-2" size={24} />
                     <h2 className="text-xl font-bold text-gray-900">Visualizza Logs</h2>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 sm:gap-3">
                     <button
                       onClick={() => {
                         loadLogs();
@@ -861,11 +865,11 @@ const Settings: React.FC = () => {
                   {showLogs && (
                     <div className="space-y-3">
                       {/* Controls */}
-                      <div className="flex flex-wrap gap-3">
+                      <div className="flex flex-wrap gap-2 sm:gap-3">
                         <select
                           value={logFilter}
                           onChange={(e) => setLogFilter(e.target.value as typeof logFilter)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 min-h-[44px] flex-1 sm:flex-initial"
                         >
                           <option value="all">Tutti i Livelli</option>
                           <option value="error">Solo Errori</option>
@@ -876,17 +880,17 @@ const Settings: React.FC = () => {
                         </select>
                         <button
                           onClick={handleExportLogs}
-                          className="btn-secondary text-sm"
+                          className="btn-secondary text-sm gap-1"
                         >
-                          <Download size={16} className="inline mr-1" />
-                          Esporta
+                          <Download size={16} />
+                          <span className="hidden sm:inline">Esporta</span>
                         </button>
                         <button
                           onClick={handleClearLogs}
-                          className="btn-secondary text-sm"
+                          className="btn-secondary text-sm gap-1"
                         >
-                          <Trash2 size={16} className="inline mr-1" />
-                          Cancella
+                          <Trash2 size={16} />
+                          <span className="hidden sm:inline">Cancella</span>
                         </button>
                       </div>
 

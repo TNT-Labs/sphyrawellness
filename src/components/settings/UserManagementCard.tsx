@@ -213,7 +213,7 @@ export default function UserManagementCard(): JSX.Element {
     <div className="bg-white rounded-lg shadow p-6">
       <ConfirmationDialog />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div className="flex items-center">
           <Users className="w-6 h-6 text-purple-600 mr-3" />
           <div>
@@ -224,10 +224,10 @@ export default function UserManagementCard(): JSX.Element {
         {!isReadOnly && !isAdding && !editingId && (
           <button
             onClick={() => setIsAdding(true)}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 min-h-[44px] touch-manipulation"
           >
-            <Plus size={18} className="mr-2" />
-            Nuovo Utente
+            <Plus size={18} />
+            <span>Nuovo Utente</span>
           </button>
         )}
       </div>
@@ -291,9 +291,9 @@ export default function UserManagementCard(): JSX.Element {
               </div>
 
               {/* Password Requirements Info */}
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs font-medium text-blue-900 mb-1">Requisiti di sicurezza:</p>
-                <ul className="text-xs text-blue-800 space-y-0.5">
+              <div className="mt-2 p-2 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-xs font-medium text-blue-900 mb-1">Requisiti:</p>
+                <ul className="text-[10px] sm:text-xs text-blue-800 space-y-0.5 leading-tight">
                   <li>• Minimo 10 caratteri</li>
                   <li>• Almeno una lettera maiuscola (A-Z)</li>
                   <li>• Almeno una lettera minuscola (a-z)</li>
@@ -394,14 +394,14 @@ export default function UserManagementCard(): JSX.Element {
           users.map((user) => (
             <div
               key={user.id}
-              className={`flex items-center justify-between p-4 rounded-lg border ${
+              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-lg border ${
                 user.isActive
                   ? 'bg-white border-gray-200'
                   : 'bg-gray-50 border-gray-200 opacity-60'
               }`}
             >
-              <div className="flex items-center space-x-3 flex-1">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                   user.role === 'RESPONSABILE' ? 'bg-purple-100' : 'bg-blue-100'
                 }`}>
                   {user.role === 'RESPONSABILE' ? (
@@ -411,17 +411,17 @@ export default function UserManagementCard(): JSX.Element {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center flex-wrap gap-2">
                     <p className="font-medium text-gray-900 truncate">
                       {user.firstName} {user.lastName}
                     </p>
                     {user.id === currentUser?.id && (
-                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full">
+                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full flex-shrink-0">
                         Tu
                       </span>
                     )}
                     {!user.isActive && (
-                      <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full">
+                      <span className="px-2 py-0.5 bg-gray-200 text-gray-700 text-xs rounded-full flex-shrink-0">
                         Disattivato
                       </span>
                     )}
@@ -436,10 +436,10 @@ export default function UserManagementCard(): JSX.Element {
               </div>
 
               {!isReadOnly && (
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     onClick={() => handleToggleActive(user)}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                    className={`px-4 py-2 text-sm rounded-lg transition-colors min-h-[44px] touch-manipulation flex-1 sm:flex-initial ${
                       user.isActive
                         ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                         : 'bg-green-100 text-green-700 hover:bg-green-200'
@@ -450,14 +450,14 @@ export default function UserManagementCard(): JSX.Element {
                   <button
                     onClick={() => handleStartEdit(user)}
                     disabled={!user.isActive}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="icon-button text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     title="Modifica"
                   >
                     <Edit size={18} />
                   </button>
                   <button
                     onClick={() => handleDelete(user.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    className="icon-button text-red-600 hover:bg-red-50"
                     title="Elimina"
                   >
                     <Trash2 size={18} />

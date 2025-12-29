@@ -34,15 +34,15 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 touch-manipulation;
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 touch-manipulation min-h-[44px] flex items-center justify-center;
   }
 
   .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 touch-manipulation;
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg transition-colors duration-200 touch-manipulation min-h-[44px] flex items-center justify-center;
   }
 
   .card {
-    @apply bg-white rounded-lg shadow-md p-4 sm:p-6;
+    @apply bg-white rounded-lg shadow-md p-3 sm:p-4 md:p-6;
   }
 
   .input {
@@ -74,7 +74,12 @@ body {
 
   /* Ensure minimum touch target size of 44x44px for accessibility */
   .touch-target {
-    @apply min-w-[44px] min-h-[44px] flex items-center justify-center;
+    @apply min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation;
+  }
+
+  /* Icon button with proper touch target */
+  .icon-button {
+    @apply min-w-[44px] min-h-[44px] flex items-center justify-center touch-manipulation rounded-lg transition-colors;
   }
 }
 
