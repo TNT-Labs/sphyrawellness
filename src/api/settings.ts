@@ -31,4 +31,13 @@ export const settingsApi = {
   updateByKey: async (key: string, value: any): Promise<void> => {
     await apiClient.put(`/settings/${key}`, { value });
   },
+
+  /**
+   * Reset database (DANGER ZONE)
+   * Requires strong confirmation
+   */
+  resetDatabase: async (confirmation: string): Promise<{ success: boolean; message: string; data: any }> => {
+    const { data } = await apiClient.post('/settings/reset-database', { confirmation });
+    return data;
+  },
 };
