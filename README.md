@@ -84,6 +84,7 @@
 ### 🔔 Sistema Reminder
 - Email automatiche via SendGrid
 - SMS via Twilio (opzionale)
+- **📱 App Mobile SMS** - Invio SMS tramite SIM del telefono (NUOVO!)
 - WhatsApp notifications (framework pronto)
 - Rispetto preferenze consenso cliente
 - Cron job configurabile per invio automatico
@@ -1192,6 +1193,8 @@ Apri issue con tag `enhancement` descrivendo:
 - **[USER_MANUAL.md](docs/USER_MANUAL.md)** - Manuale utente completo
 - **[DOCKER_GUIDE.md](DOCKER_GUIDE.md)** - Guida Docker dettagliata
 - **[DEPLOY_DUCKDNS.md](DEPLOY_DUCKDNS.md)** - Deploy HTTPS pubblico
+- **[📱 MOBILE APP README](mobile/README.md)** - App mobile SMS Reminder (NUOVO!)
+- **[📱 MOBILE SETUP GUIDE](mobile/SETUP_GUIDE.md)** - Guida setup completa mobile
 - **[MIGRATION_SUCCESS.md](MIGRATION_SUCCESS.md)** - Migrazione PouchDB → PostgreSQL
 - **[API_DOCS.md](docs/API_DOCS.md)** - Documentazione API completa *(se presente)*
 
@@ -1199,11 +1202,13 @@ Apri issue con tag `enhancement` descrivendo:
 
 ## 🗺️ Roadmap
 
+### ✅ Completato
+- [x] **App mobile nativa (React Native)** - SMS Reminder Service
+
 ### In Sviluppo
 - [ ] Dashboard analytics avanzata
 - [ ] Export PDF appuntamenti/fatture
 - [ ] Integrazione calendario Google/Outlook
-- [ ] App mobile nativa (React Native)
 
 ### Pianificato
 - [ ] Sistema fatturazione elettronica
