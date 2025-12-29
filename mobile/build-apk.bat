@@ -68,12 +68,13 @@ echo.
 echo [4/5] Installazione dipendenze npm...
 echo Questo potrebbe richiedere qualche minuto...
 echo.
-npm install
+call npm install
 if errorlevel 1 (
     echo [ERRORE] Installazione dipendenze fallita!
     pause
     exit /b 1
 )
+echo.
 echo [OK] Dipendenze installate
 echo.
 
