@@ -78,6 +78,17 @@ npm run android
 
 ### 4. Build APK di Release
 
+**🪟 WINDOWS - Build Automatica (CONSIGLIATO):**
+
+Doppio click su `build-apk.bat` oppure esegui:
+```cmd
+build-apk.bat
+```
+
+Lo script controllerà automaticamente tutti i prerequisiti, installerà le dipendenze e builderà l'APK!
+
+**🐧 Linux/Mac - Build Manuale:**
+
 ```bash
 cd android
 ./gradlew assembleRelease
