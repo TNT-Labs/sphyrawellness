@@ -54,6 +54,8 @@ cd mobile
 npm install
 ```
 
+> **ℹ️ Nota sui Warning npm**: Durante l'installazione vedrai alcuni warning su pacchetti deprecati (es. `sudo-prompt`, `inflight`, plugin Babel, ecc.). Questi sono **normali** e non impediscono il funzionamento dell'app, in quanto sono dipendenze transitive dei pacchetti React Native che vengono gestite automaticamente. L'app funzionerà correttamente nonostante questi warning.
+
 ### 2. Configurazione Android
 
 Assicurati di avere Android SDK installato:
