@@ -5,7 +5,7 @@ import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
 import { Customer, CustomerConsents } from '../types';
-import { Plus, Search, Edit, Trash2, Phone, Mail, User, Calendar, X } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Phone, Mail, User, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
 import { generateId, isValidEmail, isValidPhone, formatPhoneNumber } from '../utils/helpers';
 import { useEscapeKey } from '../hooks/useEscapeKey';
@@ -24,6 +24,10 @@ const Customers: React.FC = () => {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | undefined>(undefined);
+
+  // Paginazione
+  const [currentPage, setCurrentPage] = useState(0);
+  const CUSTOMERS_PER_PAGE = 30;
 
   // Check if filter=today is present
   const filterToday = searchParams.get('filter') === 'today';
@@ -67,6 +71,18 @@ const Customers: React.FC = () => {
       );
     });
   }, [customers, debouncedSearchTerm, filterToday, todayCustomerIds]);
+
+  // Paginazione dei clienti filtrati
+  const totalPages = Math.ceil(filteredCustomers.length / CUSTOMERS_PER_PAGE);
+  const paginatedCustomers = useMemo(() => {
+    const startIndex = currentPage * CUSTOMERS_PER_PAGE;
+    return filteredCustomers.slice(startIndex, startIndex + CUSTOMERS_PER_PAGE);
+  }, [filteredCustomers, currentPage]);
+
+  // Reset page quando cambia la ricerca o il filtro
+  React.useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedSearchTerm, filterToday]);
 
   const handleOpenModal = (customer?: Customer) => {
     if (customer) {
@@ -292,8 +308,9 @@ const Customers: React.FC = () => {
           )}
         </div>
       ) : (
+        <>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCustomers.map((customer) => (
+          {paginatedCustomers.map((customer) => (
             <div key={customer.id} className="card hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center">
@@ -374,6 +391,72 @@ const Customers: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Controlli di paginazione */}
+        {totalPages > 1 && (
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600">
+                Mostrando {currentPage * CUSTOMERS_PER_PAGE + 1} -{' '}
+                {Math.min((currentPage + 1) * CUSTOMERS_PER_PAGE, filteredCustomers.length)} di{' '}
+                {filteredCustomers.length} clienti
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                >
+                  <ChevronLeft size={16} />
+                  Precedente
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i).map((page) => {
+                    // Mostra solo alcune pagine intorno alla pagina corrente
+                    if (
+                      page === 0 ||
+                      page === totalPages - 1 ||
+                      (page >= currentPage - 2 && page <= currentPage + 2)
+                    ) {
+                      return (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 rounded-md transition-colors ${
+                            currentPage === page
+                              ? 'bg-primary-600 text-white'
+                              : 'border border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page + 1}
+                        </button>
+                      );
+                    } else if (
+                      page === currentPage - 3 ||
+                      page === currentPage + 3
+                    ) {
+                      return (
+                        <span key={page} className="px-2 text-gray-400">
+                          ...
+                        </span>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={currentPage === totalPages - 1}
+                  className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                >
+                  Successiva
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        </>
       )}
 
       {/* Modal */}

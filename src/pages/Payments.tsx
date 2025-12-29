@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Payment } from '../types';
-import { DollarSign, Plus, CreditCard, Banknote, Building2, Search, RotateCcw, AlertTriangle } from 'lucide-react';
+import { DollarSign, Plus, CreditCard, Banknote, Building2, Search, RotateCcw, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { generateId, validateAmount } from '../utils/helpers';
@@ -17,6 +17,10 @@ const Payments: React.FC = () => {
   const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [refundReason, setRefundReason] = useState('');
+
+  // Paginazione
+  const [currentPage, setCurrentPage] = useState(0);
+  const PAYMENTS_PER_PAGE = 25;
 
   const [formData, setFormData] = useState({
     appointmentId: '',
@@ -58,16 +62,36 @@ const Payments: React.FC = () => {
     };
   };
 
-  const filteredPayments = payments.filter((payment) => {
-    const details = getAppointmentDetails(payment.appointmentId);
-    if (!details) return false;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      details.customer.toLowerCase().includes(searchLower) ||
-      details.service.toLowerCase().includes(searchLower) ||
-      payment.method.toLowerCase().includes(searchLower)
+  const filteredPayments = useMemo(() => {
+    return payments.filter((payment) => {
+      const details = getAppointmentDetails(payment.appointmentId);
+      if (!details) return false;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        details.customer.toLowerCase().includes(searchLower) ||
+        details.service.toLowerCase().includes(searchLower) ||
+        payment.method.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [payments, searchTerm]);
+
+  // Paginazione dei pagamenti filtrati
+  const sortedPayments = useMemo(() => {
+    return [...filteredPayments].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
     );
-  });
+  }, [filteredPayments]);
+
+  const totalPages = Math.ceil(sortedPayments.length / PAYMENTS_PER_PAGE);
+  const paginatedPayments = useMemo(() => {
+    const startIndex = currentPage * PAYMENTS_PER_PAGE;
+    return sortedPayments.slice(startIndex, startIndex + PAYMENTS_PER_PAGE);
+  }, [sortedPayments, currentPage]);
+
+  // Reset page quando cambia la ricerca
+  React.useEffect(() => {
+    setCurrentPage(0);
+  }, [searchTerm]);
 
   // Only count paid payments for revenue (exclude refunded)
   const paidPayments = payments.filter((p) => p.status !== 'refunded');
@@ -323,12 +347,7 @@ const Payments: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredPayments
-                  .sort(
-                    (a, b) =>
-                      new Date(b.date).getTime() - new Date(a.date).getTime()
-                  )
-                  .map((payment) => {
+                {paginatedPayments.map((payment) => {
                     const details = getAppointmentDetails(payment.appointmentId);
                     if (!details) return null;
 
@@ -393,6 +412,69 @@ const Payments: React.FC = () => {
                   })}
               </tbody>
             </table>
+
+            {/* Controlli di paginazione */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4">
+                <div className="text-sm text-gray-600">
+                  Mostrando {currentPage * PAYMENTS_PER_PAGE + 1} -{' '}
+                  {Math.min((currentPage + 1) * PAYMENTS_PER_PAGE, sortedPayments.length)} di{' '}
+                  {sortedPayments.length} pagamenti
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  >
+                    <ChevronLeft size={16} />
+                    Precedente
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i).map((page) => {
+                      // Mostra solo alcune pagine intorno alla pagina corrente
+                      if (
+                        page === 0 ||
+                        page === totalPages - 1 ||
+                        (page >= currentPage - 2 && page <= currentPage + 2)
+                      ) {
+                        return (
+                          <button
+                            key={page}
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-3 py-2 rounded-md transition-colors ${
+                              currentPage === page
+                                ? 'bg-primary-600 text-white'
+                                : 'border border-gray-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            {page + 1}
+                          </button>
+                        );
+                      } else if (
+                        page === currentPage - 3 ||
+                        page === currentPage + 3
+                      ) {
+                        return (
+                          <span key={page} className="px-2 text-gray-400">
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage === totalPages - 1}
+                    className="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-1"
+                  >
+                    Successiva
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
