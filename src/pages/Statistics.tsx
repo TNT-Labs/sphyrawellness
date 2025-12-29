@@ -160,7 +160,7 @@ const Statistics: React.FC = () => {
     confirmed: appointments.filter((apt) => apt.status === 'confirmed').length,
     completed: appointments.filter((apt) => apt.status === 'completed').length,
     cancelled: appointments.filter((apt) => apt.status === 'cancelled').length,
-    'no-show': appointments.filter((apt) => apt.status === 'no-show').length,
+    'no_show': appointments.filter((apt) => apt.status === 'no_show').length,
   }), [appointments]);
 
   return (
@@ -402,7 +402,7 @@ const Statistics: React.FC = () => {
 
           <div className="text-center p-4 bg-orange-50 rounded-lg">
             <p className="text-3xl font-bold text-orange-600">
-              {statusCounts['no-show']}
+              {statusCounts['no_show']}
             </p>
             <p className="text-sm text-gray-600 mt-1">Non Presentati</p>
           </div>

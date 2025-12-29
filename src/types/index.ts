@@ -106,7 +106,7 @@ export interface Appointment {
   date: string; // ISO format
   startTime: string; // HH:mm format
   endTime: string; // HH:mm format
-  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no-show';
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
   notes?: string;
   reminderSent?: boolean;
   confirmationToken?: string; // Token shown to user (for generating link)

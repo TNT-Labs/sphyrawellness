@@ -103,7 +103,7 @@ export const appointmentSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Data non valida (formato: YYYY-MM-DD)'),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, 'Ora di inizio non valida (formato: HH:mm)'),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, 'Ora di fine non valida (formato: HH:mm)'),
-  status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled', 'no-show']),
+  status: z.enum(['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show']),
   notes: z.string().max(1000, 'Le note non possono superare 1000 caratteri').optional(),
   reminderSent: z.boolean().optional(),
   createdAt: z.string(),
