@@ -1,0 +1,12 @@
+# Template for local.properties
+# Copy this file to local.properties and update the paths for your system
+
+# Location of the Android SDK
+# Windows example: sdk.dir=C:\\Users\\YOUR_USERNAME\\AppData\\Local\\Android\\Sdk
+# Linux/Mac example: sdk.dir=/home/YOUR_USERNAME/Android/Sdk
+sdk.dir=
+
+# Location of the Java JDK (optional - helps avoid jlink errors)
+# Windows example: java.home=C:\\Program Files\\Eclipse Adoptium\\jdk-21.0.9.10-hotspot
+# Linux/Mac example: java.home=/usr/lib/jvm/temurin-21-jdk-amd64
+java.home=
