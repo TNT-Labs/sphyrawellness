@@ -5,7 +5,7 @@
 // Default API URL - should be configured by user
 // For local network: http://192.168.1.100:3001/api
 // For public HTTPS (RECOMMENDED): https://your-domain.duckdns.org/api
-export const DEFAULT_API_URL = 'http://192.168.1.100:3001/api';
+export const DEFAULT_API_URL = 'https://sphyrawellnesslab.duckdns.org/api';
 
 // Sync interval in minutes
 export const DEFAULT_SYNC_INTERVAL = 30; // 30 minutes
