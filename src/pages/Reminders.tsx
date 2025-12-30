@@ -369,6 +369,11 @@ const Reminders: React.FC = () => {
           <div className="space-y-4">
             {appointmentsNeedingReminders.map((apt) => {
               const contact = getCustomerContact(apt.customerId);
+              const customer = customers.find(c => c.id === apt.customerId);
+              const hasSmsConsent = customer?.consents?.smsReminderConsent === true;
+              const hasPhone = !!contact.phone;
+              const smsEnabled = hasSmsConsent && hasPhone && !sendingReminders.has(apt.id) && !sendingAll;
+
               return (
                 <div
                   key={apt.id}
@@ -422,9 +427,19 @@ const Reminders: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleSendReminder(apt.id, 'sms')}
-                        disabled
-                        className="px-4 py-2 bg-gray-400 text-white rounded-md cursor-not-allowed opacity-50 text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap"
-                        title="Non ancora implementato"
+                        disabled={!smsEnabled}
+                        className={`px-4 py-2 rounded-md transition-colors text-sm font-semibold flex items-center justify-center touch-manipulation whitespace-nowrap ${
+                          smsEnabled
+                            ? 'bg-green-600 text-white hover:bg-green-700'
+                            : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
+                        }`}
+                        title={
+                          !hasSmsConsent
+                            ? 'Cliente non ha dato consenso per SMS'
+                            : !hasPhone
+                            ? 'Cliente non ha un numero di telefono'
+                            : 'Invia SMS reminder'
+                        }
                       >
                         <MessageSquare size={16} className="mr-2" />
                         SMS
