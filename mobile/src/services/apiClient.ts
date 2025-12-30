@@ -143,7 +143,10 @@ class APIClient {
    */
   async testConnection(): Promise<{ success: boolean; error?: string }> {
     try {
-      await this.client.get('/health', { timeout: 5000 });
+      // Health endpoint is at /health (not /api/health)
+      // So we need to call it from the base URL without /api
+      const baseUrl = this.apiUrl.replace('/api', '');
+      await axios.get(`${baseUrl}/health`, { timeout: 5000 });
       return { success: true };
     } catch (error: any) {
       let errorMessage = 'Unknown error';
@@ -152,6 +155,8 @@ class APIClient {
         errorMessage = 'Connection refused - check if server is running';
       } else if (error.code === 'ETIMEDOUT') {
         errorMessage = 'Connection timeout - check network and URL';
+      } else if (error.response?.status) {
+        errorMessage = `Server error: ${error.response.status}`;
       } else if (error.message) {
         errorMessage = error.message;
       }
