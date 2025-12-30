@@ -2,7 +2,7 @@
  * SMS Service - Native SMS sending via Android SIM card
  */
 import { Platform, PermissionsAndroid, Linking } from 'react-native';
-import SmsAndroid from 'react-native-sms-android';
+import SmsAndroid from 'react-native-get-sms-android';
 import type { PendingReminder, SMSResult } from '@/types';
 
 class SMSService {
