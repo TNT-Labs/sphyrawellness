@@ -1,16 +1,63 @@
 diff --git a/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java b/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java
-index 7a27616..a8a9cac 100644
+index 7a27616..f8b9c2f 100644
 --- a/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java
 +++ b/node_modules/react-native-get-sms-android/android/src/main/java/com/react/SmsModule.java
-@@ -17,6 +17,7 @@ import android.os.Bundle;
- import android.widget.Toast;
+@@ -17,6 +17,7 @@ import android.widget.Toast;
  import android.app.LoaderManager;
  import android.app.PendingIntent;
-+import android.os.Build;
  import android.app.PendingIntent.CanceledException;
++import android.os.Build;
  import android.content.ContentResolver;
  import android.content.CursorLoader;
-@@ -241,8 +242,14 @@ public class SmsModule extends ReactContextBaseJavaModule /*implements LoaderMan
+ import android.content.Intent;
+@@ -35,6 +36,7 @@ import android.telephony.SmsMessage;
+ import java.util.HashMap;
+ import java.util.Map;
+ import java.util.ArrayList;
++import java.util.Random;
+
+ import org.json.JSONArray;
+ import org.json.JSONException;
+@@ -48,8 +50,6 @@ public class SmsModule extends ReactContextBaseJavaModule /*implements LoaderMan
+     Activity mActivity = null;
+     private static Context context;
+     private ReactContext mReactContext;
+-    private Callback cb_autoSend_succ = null;
+-    private Callback cb_autoSend_err = null;
+
+     public SmsModule(ReactApplicationContext reactContext) {
+         super(reactContext);
+@@ -216,72 +216,73 @@ public class SmsModule extends ReactContextBaseJavaModule /*implements LoaderMan
+         reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit(eventName, params);
+     }
+
+-    private void sendCallback(String message, boolean success) {
+-        if (success && cb_autoSend_succ != null) {
+-            cb_autoSend_succ.invoke(message);
+-            cb_autoSend_succ = null;
+-        } else if (!success && cb_autoSend_err != null) {
+-            cb_autoSend_err.invoke(message);
+-            cb_autoSend_err = null;
+-        }
+-
+-    }
+-
+
+     @ReactMethod
+     public void autoSend(String phoneNumber, String message, final Callback errorCallback,
+                          final Callback successCallback) {
+
+-        cb_autoSend_succ = successCallback;
+-        cb_autoSend_err = errorCallback;
+-
+         try {
+-            String SENT = "SMS_SENT";
+-            String DELIVERED = "SMS_DELIVERED";
++            // Use unique request codes to avoid PendingIntent conflicts
++            int requestCode = new Random().nextInt(1000000);
++
++            String SENT = "SMS_SENT_" + requestCode;
++            String DELIVERED = "SMS_DELIVERED_" + requestCode;
              ArrayList<PendingIntent> sentPendingIntents = new ArrayList<PendingIntent>();
              ArrayList<PendingIntent> deliveredPendingIntents = new ArrayList<PendingIntent>();
 
@@ -22,8 +69,103 @@ index 7a27616..a8a9cac 100644
 +                flags = PendingIntent.FLAG_IMMUTABLE;
 +            }
 +
-+            PendingIntent sentPI = PendingIntent.getBroadcast(context, 0, new Intent(SENT), flags);
-+            PendingIntent deliveredPI = PendingIntent.getBroadcast(context, 0, new Intent(DELIVERED), flags);
++            PendingIntent sentPI = PendingIntent.getBroadcast(context, requestCode, new Intent(SENT), flags);
++            PendingIntent deliveredPI = PendingIntent.getBroadcast(context, requestCode + 1, new Intent(DELIVERED), flags);
 
              //---when the SMS has been sent---
-             context.registerReceiver(new BroadcastReceiver() {
+-            context.registerReceiver(new BroadcastReceiver() {
++            // Only register for logging purposes, don't use for callback
++            final BroadcastReceiver sentReceiver = new BroadcastReceiver() {
+                 @Override
+                 public void onReceive(Context arg0, Intent arg1) {
+                     switch (getResultCode()) {
+                         case Activity.RESULT_OK:
+-                            sendCallback("SMS sent", true);
++                            // Just log, callback already invoked
+                             break;
+                         case SmsManager.RESULT_ERROR_GENERIC_FAILURE:
+-                            sendCallback("Generic failure", false);
++                            sendEvent(mReactContext, "sms_onError", "Generic failure");
+                             break;
+                         case SmsManager.RESULT_ERROR_NO_SERVICE:
+-                            sendCallback("No service", false);
++                            sendEvent(mReactContext, "sms_onError", "No service");
+                             break;
+                         case SmsManager.RESULT_ERROR_NULL_PDU:
+-                            sendCallback("Null PDU", false);
++                            sendEvent(mReactContext, "sms_onError", "Null PDU");
+                             break;
+                         case SmsManager.RESULT_ERROR_RADIO_OFF:
+-                            sendCallback("Radio off", false);
++                            sendEvent(mReactContext, "sms_onError", "Radio off");
+                             break;
+                     }
++                    // Unregister after receiving broadcast
++                    try {
++                        context.unregisterReceiver(this);
++                    } catch (Exception e) {
++                        // Already unregistered
++                    }
+                 }
+-            }, new IntentFilter(SENT));
++            };
++
++            // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED flag
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
++                context.registerReceiver(sentReceiver, new IntentFilter(SENT), Context.RECEIVER_NOT_EXPORTED);
++            } else {
++                context.registerReceiver(sentReceiver, new IntentFilter(SENT));
++            }
+
+             //---when the SMS has been delivered---
+-            context.registerReceiver(new BroadcastReceiver() {
++            final BroadcastReceiver deliveredReceiver = new BroadcastReceiver() {
+                 @Override
+                 public void onReceive(Context arg0, Intent arg1) {
+-                    switch (getResultCode()) {
+-                        case Activity.RESULT_OK:
+-                            sendEvent(mReactContext, "sms_onDelivery", "SMS delivered");
+-                            break;
+-                        case Activity.RESULT_CANCELED:
+-                            sendEvent(mReactContext, "sms_onDelivery", "SMS not delivered");
+-                            break;
+-                    }
++                    // Just for logging delivery status
++                    sendEvent(mReactContext, "sms_onDelivery",
++                        getResultCode() == Activity.RESULT_OK ? "delivered" : "not delivered");
++
+                     // Unregister after receiving broadcast
+                     try {
+                         context.unregisterReceiver(this);
+@@ -289,7 +290,14 @@ public class SmsModule extends ReactContextBaseJavaModule /*implements LoaderMan
+                         // Already unregistered
+                     }
+                 }
+-            }, new IntentFilter(DELIVERED));
++            };
++
++            // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED flag
++            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
++                context.registerReceiver(deliveredReceiver, new IntentFilter(DELIVERED), Context.RECEIVER_NOT_EXPORTED);
++            } else {
++                context.registerReceiver(deliveredReceiver, new IntentFilter(DELIVERED));
++            }
+
+             SmsManager sms = SmsManager.getDefault();
+             ArrayList<String> parts = sms.divideMessage(message);
+@@ -302,11 +310,14 @@ public class SmsModule extends ReactContextBaseJavaModule /*implements LoaderMan
+             ContentValues values = new ContentValues();
+             values.put("address", phoneNumber);
+             values.put("body", message);
+             context.getContentResolver().insert(Uri.parse("content://sms/sent"), values);
++
++            // Invoke success callback immediately after sending
++            // Don't wait for broadcast as it may be delayed or never arrive
++            successCallback.invoke("SMS sent");
+
+         } catch (Exception e) {
+-            sendCallback(e.getMessage(), false);
++            errorCallback.invoke(e.getMessage());
+         }
+     }
+ }
