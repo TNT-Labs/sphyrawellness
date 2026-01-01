@@ -215,9 +215,34 @@ router.get('/mobile/pending', async (req, res, next) => {
 
     console.log(`📱 Found ${appointments.length} appointments in next 24 hours`);
 
+    // Get all appointment IDs to check for existing SMS reminders
+    const appointmentIds = appointments.map(apt => apt.id);
+    const existingReminders = appointmentIds.length > 0
+      ? await prisma.reminder.findMany({
+          where: {
+            appointmentId: { in: appointmentIds },
+            type: 'sms',
+            sent: true
+          },
+          select: {
+            appointmentId: true
+          }
+        })
+      : [];
+
+    const appointmentsWithSentReminders = new Set(existingReminders.map(r => r.appointmentId));
+
     // Transform to mobile-friendly format with SMS message
     const pendingReminders = appointments
-      .filter((apt: AppointmentWithRelations) => apt.customer.smsReminderConsent && apt.customer.phone)
+      .filter((apt: AppointmentWithRelations) => {
+        // Skip if already has sent SMS reminder
+        if (appointmentsWithSentReminders.has(apt.id)) {
+          console.log(`📱 Skipping appointment ${apt.id} - SMS reminder already sent`);
+          return false;
+        }
+        // Apply GDPR filters
+        return apt.customer.smsReminderConsent && apt.customer.phone;
+      })
       .map((apt: AppointmentWithRelations) => ({
         appointment: {
           id: apt.id,
@@ -272,7 +297,35 @@ router.post('/mobile/mark-sent', async (req, res, next) => {
       return res.status(400).json({ error: 'appointmentId is required' });
     }
 
-    // Create reminder record
+    // Check if appointment exists and is not already marked as sent
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: appointmentId }
+    });
+
+    if (!appointment) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    if (appointment.reminderSent) {
+      console.log(`⚠️ Reminder for appointment ${appointmentId} already marked as sent`);
+      return res.json({ success: true, alreadySent: true });
+    }
+
+    // Check if SMS reminder already exists for this appointment
+    const existingReminders = await reminderRepository.findByAppointment(appointmentId);
+    const existingSmsReminder = existingReminders.find(r => r.type === 'sms' && r.sent);
+
+    if (existingSmsReminder) {
+      console.log(`⚠️ SMS reminder already exists for appointment ${appointmentId}`);
+      // Update appointment flag if not already set
+      await prisma.appointment.update({
+        where: { id: appointmentId },
+        data: { reminderSent: true }
+      });
+      return res.json({ success: true, alreadySent: true });
+    }
+
+    // Create reminder record (without sending SMS again!)
     await reminderRepository.create({
       appointment: { connect: { id: appointmentId } },
       type: 'sms',
@@ -281,8 +334,13 @@ router.post('/mobile/mark-sent', async (req, res, next) => {
       sentAt: new Date(),
     });
 
-    // Update appointment
-    await reminderServicePrisma.sendReminderForAppointment(appointmentId, 'sms');
+    // Update appointment reminderSent flag (without sending SMS!)
+    await prisma.appointment.update({
+      where: { id: appointmentId },
+      data: { reminderSent: true }
+    });
+
+    console.log(`✅ Marked SMS reminder as sent for appointment ${appointmentId}`);
 
     res.json({ success: true });
   } catch (error) {
