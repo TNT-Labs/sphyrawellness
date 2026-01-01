@@ -1,9 +1,18 @@
 import { Router } from 'express';
 import { reminderRepository } from '../repositories/reminderRepository.js';
 import reminderServicePrisma from '../services/reminderServicePrisma.js';
+import { prisma } from '../lib/prisma.js';
+import type { Appointment, Customer, Service, Staff, AppointmentStatus } from '@prisma/client';
 import { z } from 'zod';
 
 const router = Router();
+
+// Type for appointment with relations
+type AppointmentWithRelations = Appointment & {
+  customer: Customer;
+  service: Service;
+  staff: Staff;
+};
 
 const createReminderSchema = z.object({
   appointmentId: z.string().uuid(),
@@ -208,8 +217,8 @@ router.get('/mobile/pending', async (req, res, next) => {
 
     // Transform to mobile-friendly format with SMS message
     const pendingReminders = appointments
-      .filter(apt => apt.customer.smsReminderConsent && apt.customer.phone)
-      .map(apt => ({
+      .filter((apt: AppointmentWithRelations) => apt.customer.smsReminderConsent && apt.customer.phone)
+      .map((apt: AppointmentWithRelations) => ({
         appointment: {
           id: apt.id,
           customerId: apt.customerId,
@@ -310,7 +319,7 @@ router.post('/mobile/mark-failed', async (req, res, next) => {
 /**
  * Generate SMS message for appointment reminder
  */
-function generateSMSMessage(appointment: any): string {
+function generateSMSMessage(appointment: AppointmentWithRelations): string {
   const { customer, service, staff, date, startTime } = appointment;
 
   // Format date in Italian
