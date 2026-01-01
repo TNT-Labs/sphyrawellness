@@ -176,8 +176,35 @@ router.delete('/:id', async (req, res, next) => {
 // GET /api/reminders/mobile/pending - Get pending SMS reminders for mobile app
 router.get('/mobile/pending', async (req, res, next) => {
   try {
-    // Get appointments needing reminders with full details
-    const appointments = await reminderServicePrisma.getAppointmentsNeedingReminders();
+    // Calculate time window: now to +24 hours
+    const now = new Date();
+    const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    console.log(`📱 Mobile app: Looking for appointments from ${now.toISOString()} to ${next24Hours.toISOString()}`);
+
+    // Get all appointments within the next 24 hours
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        date: {
+          gte: now,
+          lte: next24Hours,
+        },
+        status: {
+          in: ['scheduled', 'confirmed'] as AppointmentStatus[]
+        },
+        reminderSent: false,
+      },
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+      orderBy: {
+        date: 'asc'
+      }
+    });
+
+    console.log(`📱 Found ${appointments.length} appointments in next 24 hours`);
 
     // Transform to mobile-friendly format with SMS message
     const pendingReminders = appointments
@@ -193,8 +220,10 @@ router.get('/mobile/pending', async (req, res, next) => {
           endTime: typeof apt.endTime === 'string' ? apt.endTime : apt.endTime.toISOString().split('T')[1].substring(0, 5),
           status: apt.status,
           reminderSent: apt.reminderSent,
+          appointmentDate: apt.date.toISOString(), // Full ISO date for logging
           customer: {
             id: apt.customer.id,
+            name: `${apt.customer.firstName} ${apt.customer.lastName}`,
             firstName: apt.customer.firstName,
             lastName: apt.customer.lastName,
             phone: apt.customer.phone,
@@ -215,6 +244,8 @@ router.get('/mobile/pending', async (req, res, next) => {
         },
         message: generateSMSMessage(apt),
       }));
+
+    console.log(`📱 Returning ${pendingReminders.length} reminders to mobile app (after GDPR filter)`);
 
     res.json(pendingReminders);
   } catch (error) {
