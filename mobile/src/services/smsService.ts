@@ -3,6 +3,7 @@
  */
 import { Platform, PermissionsAndroid, Linking } from 'react-native';
 import SmsAndroid from 'react-native-get-sms-android';
+import logger from '@/utils/logger';
 import type { PendingReminder, SMSResult } from '@/types';
 
 class SMSService {
@@ -61,43 +62,71 @@ class SMSService {
     message: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      logger.debug('SMS', `Preparing to send SMS to ${phoneNumber}`, {
+        phoneNumber,
+        messageLength: message.length,
+        platform: Platform.OS,
+      });
+
       // Check permission
       const hasPermission = await this.hasSMSPermission();
+      logger.debug('SMS', `SMS permission check: ${hasPermission}`);
+
       if (!hasPermission) {
+        logger.warn('SMS', 'SMS permission not granted, requesting...');
         const granted = await this.requestSMSPermission();
         if (!granted) {
+          logger.error('SMS', 'SMS permission denied by user');
           return {
             success: false,
             error: 'Permesso SMS non concesso',
           };
         }
+        logger.success('SMS', 'SMS permission granted');
       }
 
       // Normalize phone number (remove spaces and formatting)
       const normalizedPhone = this.normalizePhoneNumber(phoneNumber);
+      logger.debug('SMS', `Phone normalized: ${phoneNumber} → ${normalizedPhone}`);
 
-      console.log(`Sending SMS to ${normalizedPhone}: ${message}`);
+      logger.info('SMS', `📱 Sending SMS to ${normalizedPhone}`, {
+        originalPhone: phoneNumber,
+        normalizedPhone,
+        messagePreview: message.substring(0, 50) + (message.length > 50 ? '...' : ''),
+        messageLength: message.length,
+      });
 
-      // Send SMS using react-native-sms
+      // Send SMS using react-native-get-sms-android
       return new Promise((resolve) => {
         SmsAndroid.autoSend(
           normalizedPhone,
           message,
           (fail: string) => {
-            console.error('SMS send failed:', fail);
+            logger.error('SMS', `❌ SMS send failed: ${fail}`, {
+              phoneNumber: normalizedPhone,
+              failureReason: fail,
+              message,
+            });
             resolve({
               success: false,
               error: fail || 'Errore durante invio SMS',
             });
           },
           (success: string) => {
-            console.log('SMS sent successfully:', success);
+            logger.success('SMS', `✅ SMS sent successfully to ${normalizedPhone}`, {
+              phoneNumber: normalizedPhone,
+              successMessage: success,
+            });
             resolve({ success: true });
           }
         );
       });
     } catch (error: any) {
-      console.error('Error sending SMS:', error);
+      logger.error('SMS', `Exception during SMS send: ${error.message}`, {
+        phoneNumber,
+        error: error.message,
+        stack: error.stack,
+      });
       return {
         success: false,
         error: error.message || 'Errore sconosciuto',
@@ -128,7 +157,21 @@ class SMSService {
     const { appointment, message } = reminder;
     const { customer } = appointment;
 
+    logger.debug('SMS', `Processing reminder for appointment ${appointment.id}`, {
+      appointmentId: appointment.id,
+      customerName: customer.name,
+      customerPhone: customer.phone,
+      hasPhone: !!customer.phone,
+      hasConsent: customer.smsReminderConsent,
+    });
+
+    // Validation: Check phone number
     if (!customer.phone) {
+      logger.error('SMS', `Missing phone number for customer ${customer.name}`, {
+        appointmentId: appointment.id,
+        customerId: customer.id,
+        customerName: customer.name,
+      });
       return {
         success: false,
         appointmentId: appointment.id,
@@ -136,13 +179,26 @@ class SMSService {
       };
     }
 
+    // Validation: Check GDPR consent
     if (!customer.smsReminderConsent) {
+      logger.warn('SMS', `No SMS consent for customer ${customer.name}`, {
+        appointmentId: appointment.id,
+        customerId: customer.id,
+        customerName: customer.name,
+        phone: customer.phone,
+      });
       return {
         success: false,
         appointmentId: appointment.id,
         error: 'Cliente non ha dato consenso SMS (GDPR)',
       };
     }
+
+    // All validations passed, send SMS
+    logger.info('SMS', `Validations passed, sending SMS to ${customer.name}`, {
+      appointmentId: appointment.id,
+      phone: customer.phone,
+    });
 
     const result = await this.sendSMS(customer.phone, message);
 

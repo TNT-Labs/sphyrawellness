@@ -5,6 +5,7 @@ import apiClient from './apiClient';
 import smsService from './smsService';
 import { Storage } from '@/utils/storage';
 import { STORAGE_KEYS, ENDPOINTS } from '@/config/api';
+import logger from '@/utils/logger';
 import type { PendingReminder, SyncResult, SMSResult } from '@/types';
 
 class ReminderService {
@@ -13,14 +14,26 @@ class ReminderService {
    */
   async fetchPendingReminders(): Promise<PendingReminder[]> {
     try {
-      console.log('Fetching pending reminders from backend...');
+      logger.info('SYNC', 'Fetching pending reminders from backend...');
       const reminders = await apiClient.get<PendingReminder[]>(
         ENDPOINTS.PENDING_REMINDERS
       );
-      console.log(`Fetched ${reminders.length} pending reminders`);
+      logger.success('SYNC', `Fetched ${reminders.length} pending reminders`, {
+        count: reminders.length,
+        reminders: reminders.map(r => ({
+          appointmentId: r.appointment.id,
+          customerName: r.appointment.customer.name,
+          customerPhone: r.appointment.customer.phone,
+          appointmentDate: r.appointment.appointmentDate,
+        })),
+      });
       return reminders;
     } catch (error: any) {
-      console.error('Error fetching pending reminders:', error);
+      logger.error('SYNC', 'Error fetching pending reminders', {
+        error: error.message,
+        stack: error.stack,
+        response: error.response?.data,
+      });
       throw new Error('Impossibile recuperare i reminder dal server');
     }
   }
@@ -62,16 +75,18 @@ class ReminderService {
    */
   async syncAndSendReminders(): Promise<SyncResult> {
     try {
-      console.log('Starting reminder synchronization...');
+      logger.info('SYNC', '🔄 Starting reminder synchronization...');
 
       // 1. Fetch pending reminders
       const pendingReminders = await this.fetchPendingReminders();
 
       if (pendingReminders.length === 0) {
-        console.log('No pending reminders to send');
+        logger.info('SYNC', 'No pending reminders to send');
         await this.updateLastSync();
         return { total: 0, sent: 0, failed: 0, results: [] };
       }
+
+      logger.info('SYNC', `📤 Processing ${pendingReminders.length} reminders...`);
 
       // 2. Send SMS for each reminder
       const results: SMSResult[] = [];
@@ -79,9 +94,13 @@ class ReminderService {
       let failed = 0;
 
       for (const reminder of pendingReminders) {
-        console.log(
-          `Sending reminder for appointment ${reminder.appointment.id}...`
-        );
+        const { appointment, message } = reminder;
+        logger.info('SYNC', `Sending reminder ${sent + failed + 1}/${pendingReminders.length}`, {
+          appointmentId: appointment.id,
+          customerName: appointment.customer.name,
+          customerPhone: appointment.customer.phone,
+          messageLength: message.length,
+        });
 
         const result = await smsService.sendReminderSMS(reminder);
         results.push(result);
@@ -90,12 +109,21 @@ class ReminderService {
         if (result.success) {
           await this.markReminderSent(result.appointmentId);
           sent++;
+          logger.success('SYNC', `✅ SMS sent successfully to ${appointment.customer.name}`, {
+            appointmentId: result.appointmentId,
+            phone: appointment.customer.phone,
+          });
         } else {
           await this.markReminderFailed(
             result.appointmentId,
             result.error || 'Unknown error'
           );
           failed++;
+          logger.error('SYNC', `❌ SMS failed for ${appointment.customer.name}`, {
+            appointmentId: result.appointmentId,
+            phone: appointment.customer.phone,
+            error: result.error,
+          });
         }
 
         // Small delay between SMS
@@ -105,9 +133,18 @@ class ReminderService {
       // 4. Update last sync time
       await this.updateLastSync();
 
-      console.log(
-        `Sync complete: ${sent} sent, ${failed} failed out of ${pendingReminders.length} total`
-      );
+      // 5. Track when we last found reminders (for battery optimization)
+      if (pendingReminders.length > 0) {
+        await Storage.set(STORAGE_KEYS.LAST_REMINDER_FOUND, new Date().toISOString());
+      }
+
+      const summary = `Sync complete: ${sent} sent, ${failed} failed out of ${pendingReminders.length} total`;
+      logger.success('SYNC', summary, {
+        total: pendingReminders.length,
+        sent,
+        failed,
+        successRate: `${Math.round((sent / pendingReminders.length) * 100)}%`,
+      });
 
       return {
         total: pendingReminders.length,
@@ -116,7 +153,10 @@ class ReminderService {
         results,
       };
     } catch (error: any) {
-      console.error('Error during sync:', error);
+      logger.error('SYNC', 'Critical error during sync', {
+        error: error.message,
+        stack: error.stack,
+      });
       throw error;
     }
   }
