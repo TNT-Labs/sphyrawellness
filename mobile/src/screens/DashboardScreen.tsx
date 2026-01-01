@@ -22,12 +22,14 @@ interface DashboardScreenProps {
   user: User;
   onLogout: () => void;
   onShowSettings: () => void;
+  onShowLogs: () => void;
 }
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   user,
   onLogout,
   onShowSettings,
+  onShowLogs,
 }) => {
   const [pendingReminders, setPendingReminders] = useState<PendingReminder[]>([]);
   const [loading, setLoading] = useState(false);
@@ -222,6 +224,13 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               {autoSyncEnabled ? 'Ferma Auto-Sync' : 'Avvia Auto-Sync'}
             </Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonInfo]}
+            onPress={onShowLogs}>
+            <Text style={styles.actionButtonIcon}>📋</Text>
+            <Text style={styles.actionButtonText}>Visualizza Log</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Pending Reminders List */}
@@ -345,6 +354,9 @@ const styles = StyleSheet.create({
   },
   actionButtonActive: {
     backgroundColor: '#10b981',
+  },
+  actionButtonInfo: {
+    backgroundColor: '#3b82f6',
   },
   actionButtonDisabled: {
     opacity: 0.5,

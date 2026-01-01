@@ -12,11 +12,12 @@ import {
 import { LoginScreen } from './screens/LoginScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
 import { SettingsScreen } from './screens/SettingsScreen';
+import { LogViewerScreen } from './screens/LogViewerScreen';
 import authService from './services/authService';
 import apiClient from './services/apiClient';
 import type { User } from './types';
 
-type Screen = 'login' | 'dashboard' | 'settings';
+type Screen = 'login' | 'dashboard' | 'settings' | 'logs';
 
 const App: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>('login');
@@ -70,7 +71,19 @@ const App: React.FC = () => {
     setCurrentScreen('settings');
   };
 
+  const handleShowLogs = () => {
+    setCurrentScreen('logs');
+  };
+
   const handleBackFromSettings = () => {
+    if (user) {
+      setCurrentScreen('dashboard');
+    } else {
+      setCurrentScreen('login');
+    }
+  };
+
+  const handleBackFromLogs = () => {
     if (user) {
       setCurrentScreen('dashboard');
     } else {
@@ -102,11 +115,16 @@ const App: React.FC = () => {
           user={user}
           onLogout={handleLogout}
           onShowSettings={handleShowSettings}
+          onShowLogs={handleShowLogs}
         />
       )}
 
       {currentScreen === 'settings' && (
         <SettingsScreen onBack={handleBackFromSettings} />
+      )}
+
+      {currentScreen === 'logs' && (
+        <LogViewerScreen onBack={handleBackFromLogs} />
       )}
     </SafeAreaView>
   );
