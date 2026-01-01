@@ -334,7 +334,12 @@ function generateSMSMessage(appointment: AppointmentWithRelations): string {
 
   const dateStr = `${weekday} ${day} ${month} ${year}`;
 
-  return `Ciao ${customer.firstName}! Ti ricordiamo il tuo appuntamento per ${service.name} ${dateStr} alle ${startTime} con ${staff.firstName} ${staff.lastName}. A presto! - Sphyra Wellness Lab`;
+  // Format time (handle both string and Date object)
+  const timeStr = typeof startTime === 'string'
+    ? startTime
+    : startTime.toISOString().split('T')[1].substring(0, 5);
+
+  return `Ciao ${customer.firstName}! Ti ricordiamo il tuo appuntamento per ${service.name} ${dateStr} alle ${timeStr} con ${staff.firstName} ${staff.lastName}. A presto! - Sphyra Wellness Lab`;
 }
 
 export default router;
