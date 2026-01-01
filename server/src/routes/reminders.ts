@@ -322,16 +322,19 @@ router.post('/mobile/mark-failed', async (req, res, next) => {
 function generateSMSMessage(appointment: AppointmentWithRelations): string {
   const { customer, service, staff, date, startTime } = appointment;
 
-  // Format date in Italian
+  // Format date in Italian (without UTC references)
   const dateObj = new Date(date);
-  const dateStr = dateObj.toLocaleDateString('it-IT', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  const days = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato'];
+  const months = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'];
 
-  return `Ciao ${customer.firstName}! Ti ricordiamo il tuo appuntamento per ${service.name} ${dateStr} alle ${startTime} con ${staff.firstName} ${staff.lastName}. A presto! - Sphyra Wellness`;
+  const weekday = days[dateObj.getDay()];
+  const day = dateObj.getDate();
+  const month = months[dateObj.getMonth()];
+  const year = dateObj.getFullYear();
+
+  const dateStr = `${weekday} ${day} ${month} ${year}`;
+
+  return `Ciao ${customer.firstName}! Ti ricordiamo il tuo appuntamento per ${service.name} ${dateStr} alle ${startTime} con ${staff.firstName} ${staff.lastName}. A presto! - Sphyra Wellness Lab`;
 }
 
 export default router;
