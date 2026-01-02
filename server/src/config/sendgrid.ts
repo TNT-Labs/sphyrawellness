@@ -1,16 +1,19 @@
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
+import logger from '../utils/logger.js';
 
 dotenv.config();
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 
 if (!SENDGRID_API_KEY) {
-  console.warn('⚠️  SENDGRID_API_KEY not found in environment variables');
-  console.warn('   Email sending will be disabled. Please add SENDGRID_API_KEY to .env file');
+  logger.warn('SENDGRID_API_KEY not found in environment variables', {
+    status: 'Email sending disabled',
+    action: 'Add SENDGRID_API_KEY to .env file'
+  });
 } else {
   sgMail.setApiKey(SENDGRID_API_KEY);
-  console.log('✅ SendGrid configured successfully');
+  logger.info('SendGrid configured successfully');
 }
 
 export const sendGridConfig = {

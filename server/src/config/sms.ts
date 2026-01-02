@@ -23,15 +23,15 @@ const SMS_GATEWAY_PHONE = process.env.SMS_GATEWAY_PHONE; // Optional: phone numb
 const isConfigured = !!(SMS_GATEWAY_URL && SMS_GATEWAY_TOKEN);
 
 if (isConfigured) {
-  logger.info(`✅ SMS Gateway configured at ${SMS_GATEWAY_URL}`);
-  if (SMS_GATEWAY_PHONE) {
-    logger.info(`   Gateway Phone: ${SMS_GATEWAY_PHONE}`);
-  }
+  logger.info('SMS Gateway configured successfully', {
+    gatewayUrl: SMS_GATEWAY_URL,
+    gatewayPhone: SMS_GATEWAY_PHONE || 'not set'
+  });
 } else {
-  logger.warn('⚠️ SMS Gateway not configured. Set SMS_GATEWAY_URL and SMS_GATEWAY_TOKEN in .env to enable SMS reminders.');
-  logger.warn('   Example: SMS_GATEWAY_URL=http://192.168.1.100:8080');
-  logger.warn('   Example: SMS_GATEWAY_TOKEN=admin:your-password');
-  logger.warn('   See docs/SMS_GATEWAY_SETUP.md for complete setup instructions.');
+  logger.warn('SMS Gateway not configured. Set SMS_GATEWAY_URL and SMS_GATEWAY_TOKEN in .env to enable SMS reminders.', {
+    example: 'SMS_GATEWAY_URL=http://192.168.1.100:8080',
+    documentation: 'See docs/SMS_GATEWAY_SETUP.md for setup instructions'
+  });
 }
 
 export const smsConfig = {

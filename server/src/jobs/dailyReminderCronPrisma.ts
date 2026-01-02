@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import reminderService from '../services/reminderServicePrisma.js';
 import { prisma } from '../lib/prisma.js';
+import logger from '../utils/logger.js';
 
 const DEFAULT_REMINDER_HOUR = 10;
 const DEFAULT_REMINDER_MINUTE = 0;
@@ -45,7 +46,10 @@ export function initializeDailyReminderCron() {
         }
       } catch (error) {
         // Use defaults if settings don't exist or can't be read
-        console.log('⚠️ Could not load reminder settings, using defaults');
+        logger.warn('Could not load reminder settings, using defaults', {
+          reminderHour: DEFAULT_REMINDER_HOUR,
+          reminderMinute: DEFAULT_REMINDER_MINUTE
+        });
       }
 
       // Check if auto reminders are enabled
@@ -60,22 +64,30 @@ export function initializeDailyReminderCron() {
 
       // Check if it's time to send reminders
       if (currentHour === reminderHour && currentMinute === reminderMinute) {
-        console.log(`⏰ Daily reminder time reached: ${currentHour}:${String(currentMinute).padStart(2, '0')}`);
-        console.log('📧 Starting to send daily reminders...');
+        logger.info('Daily reminder time reached', {
+          time: `${currentHour}:${String(currentMinute).padStart(2, '0')}`,
+          reminderHour,
+          reminderMinute
+        });
 
         const result = await reminderService.sendAllDueReminders();
 
-        console.log(`✅ Daily reminder job completed:`);
-        console.log(`   - Total appointments: ${result.total}`);
-        console.log(`   - Successfully sent: ${result.sent}`);
-        console.log(`   - Failed: ${result.failed}`);
+        logger.info('Daily reminder job completed', {
+          total: result.total,
+          sent: result.sent,
+          failed: result.failed
+        });
       }
     } catch (error) {
-      console.error('❌ Error in daily reminder cron job:', error);
+      logger.error('Error in daily reminder cron job', error);
     }
   });
 
-  console.log('✅ Daily reminder cron job initialized (checking every minute)');
+  logger.info('Daily reminder cron job initialized', {
+    checkInterval: 'every minute',
+    defaultHour: DEFAULT_REMINDER_HOUR,
+    defaultMinute: DEFAULT_REMINDER_MINUTE
+  });
 
   return job;
 }
@@ -84,8 +96,8 @@ export function initializeDailyReminderCron() {
  * Manual trigger for testing
  */
 export async function triggerReminderJobManually() {
-  console.log('🔧 Manual reminder trigger activated');
+  logger.info('Manual reminder trigger activated');
   const result = await reminderService.sendAllDueReminders();
-  console.log('✅ Manual reminder job completed:', result);
+  logger.info('Manual reminder job completed', result);
   return result;
 }

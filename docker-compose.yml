@@ -18,7 +18,7 @@ services:
     networks:
       - sphyra-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sphyra_user} -d ${POSTGRES_DB:-sphyra_wellness}"]
+      test: ["CMD-SHELL", "pg_isready -U sphyra_user -d sphyra_wellness"]
       interval: 10s
       timeout: 5s
       retries: 5
