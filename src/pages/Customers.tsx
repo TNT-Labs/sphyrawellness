@@ -43,6 +43,7 @@ const Customers: React.FC = () => {
     dateOfBirth: '',
     notes: '',
     allergies: '',
+    privacyConsent: false,
     emailReminderConsent: false,
   });
 
@@ -102,6 +103,7 @@ const Customers: React.FC = () => {
         dateOfBirth: dateOfBirth,
         notes: customer.notes || '',
         allergies: customer.allergies || '',
+        privacyConsent: (customer as any).privacyConsent ?? false,
         emailReminderConsent: customer.emailReminderConsent || false,
       });
     } else {
@@ -114,6 +116,7 @@ const Customers: React.FC = () => {
         dateOfBirth: '',
         notes: '',
         allergies: '',
+        privacyConsent: false,
         emailReminderConsent: false,
       });
     }
