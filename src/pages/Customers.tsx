@@ -131,14 +131,20 @@ const Customers: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // At least one contact method is required
+    if (!formData.email?.trim() && !formData.phone?.trim()) {
+      showError('Inserisci almeno un metodo di contatto (email o telefono)');
+      return;
+    }
+
     // Validate email only if provided
-    if (formData.email && !isValidEmail(formData.email)) {
+    if (formData.email?.trim() && !isValidEmail(formData.email)) {
       showError('Inserisci un indirizzo email valido');
       return;
     }
 
     // Validate phone only if provided
-    if (formData.phone && !isValidPhone(formData.phone)) {
+    if (formData.phone?.trim() && !isValidPhone(formData.phone)) {
       showError('Inserisci un numero di telefono valido (es: +39 333 1234567)');
       return;
     }
@@ -146,8 +152,8 @@ const Customers: React.FC = () => {
     const customerData: Customer = {
       id: editingCustomer?.id || generateId(),
       ...formData,
-      email: formData.email || undefined,
-      phone: formData.phone ? formatPhoneNumber(formData.phone) : undefined,
+      email: formData.email?.trim() || undefined,
+      phone: formData.phone?.trim() ? formatPhoneNumber(formData.phone) : undefined,
       dateOfBirth: formData.dateOfBirth || undefined,
       notes: formData.notes || undefined,
       allergies: formData.allergies || undefined,
