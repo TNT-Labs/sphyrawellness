@@ -103,7 +103,7 @@ const Customers: React.FC = () => {
         dateOfBirth: dateOfBirth,
         notes: customer.notes || '',
         allergies: customer.allergies || '',
-        privacyConsent: (customer as any).privacyConsent ?? false,
+        privacyConsent: (customer as any).privacyConsent ?? true,
         emailReminderConsent: customer.emailReminderConsent || false,
       });
     } else {
