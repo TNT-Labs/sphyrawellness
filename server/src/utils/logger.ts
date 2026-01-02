@@ -1,35 +1,98 @@
 /**
- * Production-safe logger utility for backend
- * In production, debug and info logs are suppressed to avoid log pollution
- * Error logs are always displayed
+ * Enhanced production-grade logger using Winston
+ * Provides structured logging with different transports and formats
  */
+
+import winston from 'winston';
+import { format } from 'winston';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// Custom format for console output with colors
+const consoleFormat = format.combine(
+  format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+  format.errors({ stack: true }),
+  format.colorize(),
+  format.printf(({ timestamp, level, message, ...metadata }) => {
+    let msg = `${timestamp} [${level}]: ${message}`;
+
+    // Add metadata if present (excluding certain fields)
+    const meta = { ...metadata };
+    delete meta.timestamp;
+    delete meta.level;
+    delete meta.message;
+
+    if (Object.keys(meta).length > 0) {
+      msg += ` ${JSON.stringify(meta)}`;
+    }
+
+    return msg;
+  })
+);
+
+// JSON format for file output
+const fileFormat = format.combine(
+  format.timestamp(),
+  format.errors({ stack: true }),
+  format.json()
+);
+
+// Create Winston logger instance
+const winstonLogger = winston.createLogger({
+  level: isDevelopment ? 'debug' : 'info',
+  format: fileFormat,
+  defaultMeta: {
+    service: 'sphyra-wellness-api',
+    environment: process.env.NODE_ENV || 'development'
+  },
+  transports: [
+    // Write all logs to console
+    new winston.transports.Console({
+      format: consoleFormat,
+      level: isDevelopment ? 'debug' : 'info'
+    }),
+
+    // Write error logs to file in production
+    ...(isDevelopment ? [] : [
+      new winston.transports.File({
+        filename: 'logs/error.log',
+        level: 'error',
+        maxsize: 5242880, // 5MB
+        maxFiles: 5
+      }),
+      new winston.transports.File({
+        filename: 'logs/combined.log',
+        maxsize: 5242880, // 5MB
+        maxFiles: 5
+      })
+    ])
+  ],
+  exceptionHandlers: isDevelopment ? [] : [
+    new winston.transports.File({ filename: 'logs/exceptions.log' })
+  ],
+  rejectionHandlers: isDevelopment ? [] : [
+    new winston.transports.File({ filename: 'logs/rejections.log' })
+  ]
+});
+
+// In-memory log storage (for debugging and monitoring)
 export interface LogEntry {
   timestamp: string;
   level: 'log' | 'error' | 'warn' | 'info' | 'debug';
   message: string;
   details?: unknown[];
+  metadata?: Record<string, unknown>;
 }
 
 const MAX_LOGS = 1000;
 const logs: LogEntry[] = [];
 
-const addLog = (level: LogEntry['level'], args: unknown[]) => {
+const addLog = (level: LogEntry['level'], message: string, metadata?: Record<string, unknown>) => {
   const entry: LogEntry = {
     timestamp: new Date().toISOString(),
     level,
-    message: args.map(arg => {
-      if (typeof arg === 'string') return arg;
-      if (arg instanceof Error) return `${arg.name}: ${arg.message}`;
-      try {
-        return JSON.stringify(arg);
-      } catch {
-        return String(arg);
-      }
-    }).join(' '),
-    details: args.length > 1 ? args.slice(1) : undefined,
+    message,
+    metadata
   };
 
   logs.push(entry);
@@ -40,57 +103,96 @@ const addLog = (level: LogEntry['level'], args: unknown[]) => {
   }
 };
 
+// Enhanced logger interface with Winston
 export const logger = {
-  log: (...args: unknown[]) => {
-    addLog('log', args);
+  /**
+   * Log informational messages
+   */
+  info: (message: string, metadata?: Record<string, unknown>) => {
+    addLog('info', message, metadata);
+    winstonLogger.info(message, metadata);
+  },
+
+  /**
+   * Log error messages (always logged, even in production)
+   */
+  error: (message: string, error?: Error | unknown, metadata?: Record<string, unknown>) => {
+    const meta = { ...metadata };
+
+    if (error instanceof Error) {
+      meta.error = {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      };
+    } else if (error) {
+      meta.error = error;
+    }
+
+    addLog('error', message, meta);
+    winstonLogger.error(message, meta);
+  },
+
+  /**
+   * Log warning messages
+   */
+  warn: (message: string, metadata?: Record<string, unknown>) => {
+    addLog('warn', message, metadata);
+    winstonLogger.warn(message, metadata);
+  },
+
+  /**
+   * Log debug messages (only in development)
+   */
+  debug: (message: string, metadata?: Record<string, unknown>) => {
+    addLog('debug', message, metadata);
     if (isDevelopment) {
-      console.log(...args);
+      winstonLogger.debug(message, metadata);
     }
   },
 
-  error: (...args: unknown[]) => {
-    addLog('error', args);
-    // Always log errors, even in production
-    console.error(...args);
-    // In production, you might want to send errors to a monitoring service
-    // Example: sendToMonitoringService({ level: 'error', args });
+  /**
+   * Log general messages (alias for info)
+   */
+  log: (message: string, metadata?: Record<string, unknown>) => {
+    addLog('log', message, metadata);
+    winstonLogger.info(message, metadata);
   },
 
-  warn: (...args: unknown[]) => {
-    addLog('warn', args);
-    if (isDevelopment) {
-      console.warn(...args);
-    } else {
-      // In production, show warnings but with less detail
-      console.warn(args[0]);
-    }
+  /**
+   * Log HTTP requests
+   */
+  http: (message: string, metadata?: Record<string, unknown>) => {
+    winstonLogger.http?.(message, metadata);
   },
 
-  info: (...args: unknown[]) => {
-    addLog('info', args);
-    if (isDevelopment) {
-      console.info(...args);
-    }
-  },
-
-  debug: (...args: unknown[]) => {
-    addLog('debug', args);
-    if (isDevelopment) {
-      console.debug(...args);
-    }
-  },
-
+  /**
+   * Get stored logs
+   */
   getLogs: (): LogEntry[] => {
     return [...logs];
   },
 
+  /**
+   * Clear stored logs
+   */
   clearLogs: () => {
     logs.length = 0;
   },
 
+  /**
+   * Get logs count
+   */
   getLogsCount: () => {
     return logs.length;
   },
+
+  /**
+   * Create a child logger with additional default metadata
+   */
+  child: (defaultMetadata: Record<string, unknown>) => {
+    return winstonLogger.child(defaultMetadata);
+  }
 };
 
 // Export a default instance

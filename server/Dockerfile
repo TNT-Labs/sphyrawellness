@@ -50,6 +50,9 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Crea la directory uploads con la struttura necessaria
 RUN mkdir -p uploads/services uploads/staff
 
+# Crea la directory logs per Winston logging
+RUN mkdir -p logs
+
 # Cambia ownership dei file all'utente nodejs
 RUN chown -R nodejs:nodejs /app
 

@@ -153,18 +153,20 @@ export function logAuditEvent(
   const message = formatAuditMessage(entry);
 
   // Log based on severity
+  const metadata = entry as unknown as Record<string, unknown>;
+
   switch (entry.severity) {
     case AuditSeverity.CRITICAL:
-      logger.error(`🚨 [AUDIT-CRITICAL] ${message}`, entry);
+      logger.error(`[AUDIT-CRITICAL] ${message}`, undefined, metadata);
       break;
     case AuditSeverity.ERROR:
-      logger.error(`❌ [AUDIT-ERROR] ${message}`, entry);
+      logger.error(`[AUDIT-ERROR] ${message}`, undefined, metadata);
       break;
     case AuditSeverity.WARNING:
-      logger.warn(`⚠️  [AUDIT-WARNING] ${message}`, entry);
+      logger.warn(`[AUDIT-WARNING] ${message}`, metadata);
       break;
     default:
-      logger.info(`📝 [AUDIT] ${message}`, entry);
+      logger.info(`[AUDIT] ${message}`, metadata);
   }
 
   // TODO: In production, also send to external logging service

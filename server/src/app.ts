@@ -10,6 +10,7 @@ import { globalLimiter, strictLimiter } from './middleware/rateLimiter.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { authenticateToken } from './middleware/auth.js';
 import { prismaErrorHandler } from './middleware/prismaErrorHandler.js';
+import { requestLogger } from './middleware/requestLogger.js';
 
 // PostgreSQL REST API routes
 import authRouter from './routes/auth.js';
@@ -85,11 +86,11 @@ app.use(cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1) {
-      logger.info(`✅ CORS allowed: ${origin}`);
+      logger.debug('CORS request allowed', { origin });
       callback(null, true);
       return;
     }
-    logger.warn(`❌ CORS blocked: ${origin}`);
+    logger.warn('CORS request blocked', { origin, allowedOrigins });
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -108,11 +109,8 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Apply global rate limiting
 app.use(globalLimiter);
 
-// Request logging
-app.use((req, res, next) => {
-  logger.debug(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+// Request/Response logging
+app.use(requestLogger);
 
 // Health check
 app.get('/health', (req, res) => {

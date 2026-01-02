@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3001;
 // Initialize and start server
 async function startServer() {
   try {
-    logger.info('🚀 Starting Sphyra Wellness Lab Server...\n');
+    logger.info('Starting Sphyra Wellness Lab Server');
 
     // Initialize business hours with defaults if not present
     await settingsRepository.initializeBusinessHours();
@@ -22,25 +22,28 @@ async function startServer() {
 
     // Start Express server
     app.listen(PORT, () => {
-      logger.info('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      logger.info('✅ Sphyra Wellness Lab Server is running!');
-      logger.info(`📍 Server URL: http://localhost:${PORT}`);
-      logger.info(`🏥 Health check: http://localhost:${PORT}/health`);
-      logger.info(`📧 Reminders API: http://localhost:${PORT}/api/reminders`);
-      logger.info(`📅 Appointments API: http://localhost:${PORT}/api/appointments`);
-      logger.info(`⚙️  Settings API: http://localhost:${PORT}/api/settings`);
-      logger.info(`🌐 Public Booking API: http://localhost:${PORT}/api/public`);
-      logger.info(`📤 Upload API: http://localhost:${PORT}/api/upload`);
-      logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+      logger.info('Sphyra Wellness Lab Server started successfully', {
+        port: PORT,
+        environment: process.env.NODE_ENV || 'development',
+        endpoints: {
+          health: `/health`,
+          reminders: `/api/reminders`,
+          appointments: `/api/appointments`,
+          settings: `/api/settings`,
+          public: `/api/public`,
+          upload: `/api/upload`
+        }
+      });
 
-      logger.info('📝 Configuration:');
-      logger.info(`   - Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`   - Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-      logger.info(`   - SendGrid configured: ${process.env.SENDGRID_API_KEY ? '✅ Yes' : '❌ No'}`);
-      logger.info(`   - Reminder time: ${process.env.REMINDER_SEND_HOUR || '10'}:${String(process.env.REMINDER_SEND_MINUTE || '0').padStart(2, '0')}\n`);
+      logger.info('Server configuration', {
+        environment: process.env.NODE_ENV || 'development',
+        frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+        sendgridConfigured: !!process.env.SENDGRID_API_KEY,
+        reminderTime: `${process.env.REMINDER_SEND_HOUR || '10'}:${String(process.env.REMINDER_SEND_MINUTE || '0').padStart(2, '0')}`
+      });
     });
   } catch (error) {
-    logger.error('❌ Failed to start server:', error);
+    logger.error('Failed to start server', error instanceof Error ? error : new Error(String(error)));
     process.exit(1);
   }
 }
@@ -50,11 +53,11 @@ startServer();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  logger.info('👋 SIGTERM received, shutting down gracefully...');
+  logger.info('SIGTERM received, shutting down gracefully');
   process.exit(0);
 });
 
 process.on('SIGINT', () => {
-  logger.info('\n👋 SIGINT received, shutting down gracefully...');
+  logger.info('SIGINT received, shutting down gracefully');
   process.exit(0);
 });
