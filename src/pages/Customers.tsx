@@ -116,7 +116,7 @@ const Customers: React.FC = () => {
         dateOfBirth: '',
         notes: '',
         allergies: '',
-        privacyConsent: false,
+        privacyConsent: true,
         emailReminderConsent: false,
       });
     }
