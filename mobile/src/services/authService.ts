@@ -24,13 +24,34 @@ class AuthService {
       return response;
     } catch (error: any) {
       console.error('Login error:', error);
+      console.error('Login error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        config: {
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          method: error.config?.method,
+        }
+      });
 
       if (error.response?.status === 401) {
         throw new Error('Credenziali non valide');
       } else if (error.code === 'ECONNREFUSED') {
         throw new Error('Impossibile connettersi al server');
+      } else if (error.code === 'ETIMEDOUT') {
+        throw new Error('Timeout - server non risponde');
+      } else if (error.message?.includes('Network Error')) {
+        throw new Error('Errore di rete - verifica connessione internet');
+      } else if (error.response?.data?.error) {
+        // Return the specific error from backend
+        throw new Error(error.response.data.error);
       } else {
-        throw new Error('Errore durante il login');
+        // Include more details in the error message
+        const details = error.message || error.code || 'Sconosciuto';
+        throw new Error(`Errore durante il login: ${details}`);
       }
     }
   }

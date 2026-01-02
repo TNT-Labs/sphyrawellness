@@ -44,6 +44,18 @@ const app = express();
 // Trust proxy
 app.set('trust proxy', 1);
 
+// Early request logging - BEFORE any middleware that might reject requests
+// This ensures we see ALL requests, even those blocked by CORS or other middleware
+app.use((req, res, next) => {
+  logger.debug('Request received', {
+    method: req.method,
+    path: req.path,
+    origin: req.headers.origin || 'no-origin',
+    userAgent: req.headers['user-agent']?.substring(0, 50)
+  });
+  next();
+});
+
 // Security Headers - Helmet
 app.use(helmet({
   contentSecurityPolicy: {
@@ -84,13 +96,34 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (mobile apps, curl, Postman, etc.)
+    if (!origin) {
+      logger.debug('CORS: Request without origin header (mobile app/native client)', { allowed: true });
+      return callback(null, true);
+    }
+
+    // Allow mobile app origins (Capacitor, Ionic, React Native)
+    if (origin === 'null' ||
+        origin.startsWith('capacitor://') ||
+        origin.startsWith('ionic://') ||
+        origin.startsWith('file://')) {
+      logger.debug('CORS: Mobile app origin detected', { origin, allowed: true });
+      return callback(null, true);
+    }
+
+    // Check allowed origins list
     if (allowedOrigins.indexOf(origin) !== -1) {
-      logger.debug('CORS request allowed', { origin });
+      logger.debug('CORS: Allowed origin', { origin });
       callback(null, true);
       return;
     }
-    logger.warn('CORS request blocked', { origin, allowedOrigins });
+
+    // Block unknown origins
+    logger.warn('CORS: Request blocked - unknown origin', {
+      origin,
+      allowedOrigins,
+      hint: 'Add origin to ALLOWED_ORIGINS env var or check if mobile app is sending correct headers'
+    });
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -99,6 +132,29 @@ app.use(cors({
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
   maxAge: 600
 }));
+
+// CORS error handler - catch and log CORS errors
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err && err.message && err.message.includes('Not allowed by CORS')) {
+    logger.error('CORS error - request rejected', err, {
+      method: req.method,
+      path: req.path,
+      origin: req.headers.origin || 'no-origin',
+      userAgent: req.headers['user-agent'],
+      headers: {
+        origin: req.headers.origin,
+        referer: req.headers.referer,
+        host: req.headers.host
+      }
+    });
+    return res.status(403).json({
+      success: false,
+      error: 'CORS policy: Origin not allowed',
+      hint: 'This request was blocked by CORS. Check server logs for details.'
+    });
+  }
+  next(err);
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
