@@ -97,8 +97,8 @@ const Customers: React.FC = () => {
       setFormData({
         firstName: customer.firstName,
         lastName: customer.lastName,
-        email: customer.email,
-        phone: customer.phone,
+        email: customer.email || '',
+        phone: customer.phone || '',
         dateOfBirth: dateOfBirth,
         notes: customer.notes || '',
         allergies: customer.allergies || '',
