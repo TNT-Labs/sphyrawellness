@@ -66,8 +66,8 @@ const Customers: React.FC = () => {
       return (
         customer.firstName.toLowerCase().includes(searchLower) ||
         customer.lastName.toLowerCase().includes(searchLower) ||
-        customer.email.toLowerCase().includes(searchLower) ||
-        customer.phone.includes(debouncedSearchTerm)
+        (customer.email && customer.email.toLowerCase().includes(searchLower)) ||
+        (customer.phone && customer.phone.includes(debouncedSearchTerm))
       );
     });
   }, [customers, debouncedSearchTerm, filterToday, todayCustomerIds]);
@@ -338,14 +338,23 @@ const Customers: React.FC = () => {
               </div>
 
               <div className="space-y-2 mb-4">
-                <div className="flex items-center text-sm text-gray-600">
-                  <Mail size={16} className="mr-2 text-gray-400" />
-                  {customer.email}
-                </div>
-                <div className="flex items-center text-sm text-gray-600">
-                  <Phone size={16} className="mr-2 text-gray-400" />
-                  {customer.phone}
-                </div>
+                {customer.email && (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Mail size={16} className="mr-2 text-gray-400" />
+                    {customer.email}
+                  </div>
+                )}
+                {customer.phone && (
+                  <div className="flex items-center text-sm text-gray-600">
+                    <Phone size={16} className="mr-2 text-gray-400" />
+                    {customer.phone}
+                  </div>
+                )}
+                {!customer.email && !customer.phone && (
+                  <div className="text-sm text-gray-400 italic">
+                    Nessun contatto disponibile
+                  </div>
+                )}
               </div>
 
               {customer.allergies && (
@@ -506,10 +515,9 @@ const Customers: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="label">Email *</label>
+                    <label className="label">Email</label>
                     <input
                       type="email"
-                      required
                       value={formData.email}
                       onChange={(e) => {
                         const email = e.target.value;
@@ -525,10 +533,9 @@ const Customers: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="label">Telefono *</label>
+                    <label className="label">Telefono</label>
                     <input
                       type="tel"
-                      required
                       value={formData.phone}
                       onChange={(e) =>
                         setFormData({ ...formData, phone: e.target.value })

@@ -37,8 +37,8 @@ export interface Customer {
   id: string;
   firstName: string;
   lastName: string;
-  email: string;
-  phone: string;
+  email?: string;
+  phone?: string;
   dateOfBirth?: string;
   notes?: string;
   allergies?: string;
