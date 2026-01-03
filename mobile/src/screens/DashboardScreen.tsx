@@ -15,7 +15,7 @@ import {
 import authService from '@/services/authService';
 import reminderService from '@/services/reminderService';
 import smsService from '@/services/smsService';
-import backgroundServiceManager from '@/services/backgroundService';
+import workManagerService from '@/services/workManagerService';
 import type { User, PendingReminder } from '@/types';
 
 interface DashboardScreenProps {
@@ -63,8 +63,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       const lastSyncTime = await reminderService.getLastSync();
       setLastSync(lastSyncTime);
 
-      // Check if auto-sync is enabled
-      const isRunning = await backgroundServiceManager.isServiceRunning();
+      // Check if auto-sync is enabled (WorkManager)
+      const isRunning = await workManagerService.isServiceRunning();
       setAutoSyncEnabled(isRunning);
 
       // Fetch pending reminders
@@ -110,15 +110,21 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const handleToggleAutoSync = async () => {
     try {
       if (autoSyncEnabled) {
-        await backgroundServiceManager.stop();
+        await workManagerService.stop();
         setAutoSyncEnabled(false);
-        Alert.alert('Auto-Sync Disabilitato', 'Il servizio automatico è stato fermato');
+        Alert.alert(
+          'Auto-Sync Disabilitato',
+          'Il servizio WorkManager è stato fermato.\n\nLe ottimizzazioni batteria sono attive.'
+        );
       } else {
-        await backgroundServiceManager.start();
+        await workManagerService.start();
         setAutoSyncEnabled(true);
         Alert.alert(
           'Auto-Sync Abilitato',
-          'Il servizio automatico invierà SMS in background'
+          'WorkManager invierà SMS in background.\n\n' +
+          '✅ Ottimizzato per batteria\n' +
+          '✅ Rispetta Doze mode Android\n' +
+          '⏸️ Nessun SMS tra 20:00-09:00'
         );
       }
     } catch (error: any) {
@@ -135,9 +141,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         {
           text: 'Esci',
           onPress: async () => {
-            // Stop background service
+            // Stop WorkManager service
             if (autoSyncEnabled) {
-              await backgroundServiceManager.stop();
+              await workManagerService.stop();
             }
             await authService.logout();
             onLogout();

@@ -1,8 +1,10 @@
 /**
  * API Client for communicating with Sphyra backend
+ * Includes intelligent caching with ETag support for battery optimization
  */
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import { Storage } from '@/utils/storage';
+import { APICache } from '@/utils/apiCache';
 import { STORAGE_KEYS, DEFAULT_API_URL, API_TIMEOUT } from '@/config/api';
 
 class APIClient {
@@ -107,10 +109,57 @@ class APIClient {
   }
 
   /**
-   * Make GET request
+   * Make GET request with intelligent caching
    */
-  async get<T>(url: string, params?: any): Promise<T> {
+  async get<T>(url: string, params?: any, useCache: boolean = true): Promise<T> {
+    const cacheKey = `${url}${params ? '?' + new URLSearchParams(params).toString() : ''}`;
+
+    // Try cache first if enabled
+    if (useCache) {
+      const cached = await APICache.get(cacheKey);
+      if (cached) {
+        console.log(`📦 Cache hit for ${url}`);
+        return cached.data;
+      }
+
+      // Check if we have an ETag for conditional request
+      const etag = await APICache.getETag(cacheKey);
+      if (etag) {
+        try {
+          // Make conditional request with If-None-Match header
+          const response = await this.client.get<T>(url, {
+            params,
+            headers: { 'If-None-Match': etag },
+          });
+
+          // Server returned new data
+          const newEtag = response.headers['etag'];
+          await APICache.set(cacheKey, response.data, 5 * 60 * 1000, newEtag);
+
+          console.log(`🔄 Data updated for ${url}`);
+          return response.data;
+        } catch (error: any) {
+          // 304 Not Modified - use cached data
+          if (error.response?.status === 304 && cached) {
+            console.log(`✅ 304 Not Modified - using cache for ${url}`);
+            // Extend cache expiration
+            await APICache.set(cacheKey, cached.data, 5 * 60 * 1000, etag);
+            return cached.data;
+          }
+          // Other errors - fetch without cache
+        }
+      }
+    }
+
+    // Normal request without cache
     const response = await this.client.get<T>(url, { params });
+
+    // Save to cache if enabled
+    if (useCache) {
+      const etag = response.headers['etag'];
+      await APICache.set(cacheKey, response.data, 5 * 60 * 1000, etag);
+    }
+
     return response.data;
   }
 
