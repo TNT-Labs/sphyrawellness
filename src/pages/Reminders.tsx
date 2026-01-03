@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { Bell, CheckCircle, Clock, Mail, MessageSquare, Smartphone, Send, RefreshCw, XCircle, AlertCircle, ChevronDown, Search } from 'lucide-react';
 import { format, parseISO, addHours, startOfDay, endOfDay } from 'date-fns';
@@ -15,6 +15,16 @@ const Reminders: React.FC = () => {
   const { confirm, ConfirmationDialog } = useConfirm();
   const [sendingReminders, setSendingReminders] = useState<Set<string>>(new Set());
   const [sendingAll, setSendingAll] = useState(false);
+
+  // Auto-refresh ogni 30 secondi per sincronizzare con SMS mobile
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshAppointments();
+      refreshReminders();
+    }, 30000); // 30 secondi
+
+    return () => clearInterval(interval);
+  }, [refreshAppointments, refreshReminders]);
 
   // Stati per lo storico reminder
   const [historicExpanded, setHistoricExpanded] = useState(false);
@@ -73,7 +83,8 @@ const Reminders: React.FC = () => {
       const timeStr = format(parseISO(apt.startTime), 'HH:mm');
       const aptDateTime = parseISO(`${dateStr}T${timeStr}`);
       const reminderTime = addHours(new Date(), 24);
-      return aptDateTime <= reminderTime && aptDateTime > new Date();
+      // Esclude appuntamenti che hanno già avuto un reminder inviato
+      return aptDateTime <= reminderTime && aptDateTime > new Date() && !apt.reminderSent;
     } catch {
       return false;
     }
