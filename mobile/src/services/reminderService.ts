@@ -6,68 +6,82 @@ import smsService from './smsService';
 import { Storage } from '@/utils/storage';
 import { STORAGE_KEYS, ENDPOINTS } from '@/config/api';
 import logger from '@/utils/logger';
+import { retryWithBackoff, NETWORK_RETRY_OPTIONS, CRITICAL_RETRY_OPTIONS } from '@/utils/retry';
 import type { PendingReminder, SyncResult, SMSResult } from '@/types';
 
 class ReminderService {
   /**
-   * Fetch pending reminders from backend
+   * Fetch pending reminders from backend with retry logic
    */
   async fetchPendingReminders(): Promise<PendingReminder[]> {
-    try {
-      logger.info('SYNC', 'Fetching pending reminders from backend...');
-      const reminders = await apiClient.get<PendingReminder[]>(
-        ENDPOINTS.PENDING_REMINDERS
-      );
-      logger.success('SYNC', `Fetched ${reminders.length} pending reminders`, {
-        count: reminders.length,
-        reminders: reminders.map(r => ({
-          appointmentId: r.appointment.id,
-          customerName: r.appointment.customer.name,
-          customerPhone: r.appointment.customer.phone,
-          appointmentDate: r.appointment.appointmentDate,
-        })),
-      });
-      return reminders;
-    } catch (error: any) {
-      logger.error('SYNC', 'Error fetching pending reminders', {
-        error: error.message,
-        stack: error.stack,
-        response: error.response?.data,
-      });
-      throw new Error('Impossibile recuperare i reminder dal server');
-    }
+    return retryWithBackoff(
+      async () => {
+        try {
+          logger.info('SYNC', 'Fetching pending reminders from backend...');
+          const reminders = await apiClient.get<PendingReminder[]>(
+            ENDPOINTS.PENDING_REMINDERS
+          );
+          logger.success('SYNC', `Fetched ${reminders.length} pending reminders`, {
+            count: reminders.length,
+            reminders: reminders.map(r => ({
+              appointmentId: r.appointment.id,
+              customerName: r.appointment.customer.name,
+              customerPhone: r.appointment.customer.phone,
+              appointmentDate: r.appointment.appointmentDate,
+            })),
+          });
+          return reminders;
+        } catch (error: any) {
+          logger.error('SYNC', 'Error fetching pending reminders', {
+            error: error.message,
+            stack: error.stack,
+            response: error.response?.data,
+          });
+          throw error; // Let retry logic handle it
+        }
+      },
+      CRITICAL_RETRY_OPTIONS
+    ).catch((error) => {
+      throw new Error('Impossibile recuperare i reminder dal server dopo diversi tentativi');
+    });
   }
 
   /**
-   * Mark reminder as sent on backend
+   * Mark reminder as sent on backend with retry logic
    */
   async markReminderSent(appointmentId: string): Promise<void> {
-    try {
-      await apiClient.post(ENDPOINTS.MARK_SENT, { appointmentId });
-      console.log(`Reminder marked as sent for appointment ${appointmentId}`);
-    } catch (error) {
-      console.error('Error marking reminder as sent:', error);
+    return retryWithBackoff(
+      async () => {
+        await apiClient.post(ENDPOINTS.MARK_SENT, { appointmentId });
+        console.log(`Reminder marked as sent for appointment ${appointmentId}`);
+      },
+      NETWORK_RETRY_OPTIONS
+    ).catch((error) => {
+      console.error('Failed to mark reminder as sent after retries:', error);
       throw error;
-    }
+    });
   }
 
   /**
-   * Mark reminder as failed on backend
+   * Mark reminder as failed on backend with retry logic
    */
   async markReminderFailed(
     appointmentId: string,
     errorMessage: string
   ): Promise<void> {
-    try {
-      await apiClient.post(ENDPOINTS.MARK_FAILED, {
-        appointmentId,
-        errorMessage,
-      });
-      console.log(`Reminder marked as failed for appointment ${appointmentId}`);
-    } catch (error) {
-      console.error('Error marking reminder as failed:', error);
+    return retryWithBackoff(
+      async () => {
+        await apiClient.post(ENDPOINTS.MARK_FAILED, {
+          appointmentId,
+          errorMessage,
+        });
+        console.log(`Reminder marked as failed for appointment ${appointmentId}`);
+      },
+      NETWORK_RETRY_OPTIONS
+    ).catch((error) => {
+      console.error('Failed to mark reminder as failed after retries:', error);
       // Don't throw - this is a non-critical error
-    }
+    });
   }
 
   /**

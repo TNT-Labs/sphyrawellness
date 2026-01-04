@@ -141,17 +141,15 @@ export class BatteryOptimizer {
     skip: boolean;
     reason?: string;
   }> {
-    // For now, we never skip - just optimize intervals
-    // Could add logic here to skip sync during deep sleep hours (e.g., 2 AM - 6 AM)
-
     const now = new Date();
     const currentHour = now.getHours();
 
-    // Skip sync between 2 AM and 6 AM (deep sleep hours)
-    if (currentHour >= 2 && currentHour < 6) {
+    // Skip sync between 20:00 (8 PM) and 9:00 (9 AM) - deep sleep hours
+    // This covers night time: 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8
+    if (currentHour >= 20 || currentHour < 9) {
       return {
         skip: true,
-        reason: 'Orario di sonno profondo (2:00-6:00)',
+        reason: 'Orario di sonno profondo (20:00-9:00)',
       };
     }
 
