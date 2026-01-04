@@ -54,7 +54,17 @@ if (!content.includes('import java.util.Random;')) {
   );
 }
 
-// Replace PendingIntent creation with FLAG_IMMUTABLE support
+// Replace SENT/DELIVERED identifiers first (defines requestCode)
+content = content.replace(
+  `String SENT = "SMS_SENT";
+            String DELIVERED = "SMS_DELIVERED";`,
+  `// Use unique identifiers to avoid broadcast conflicts
+            int requestCode = new Random().nextInt(1000000);
+            String SENT = "SMS_SENT_" + requestCode;
+            String DELIVERED = "SMS_DELIVERED_" + requestCode;`
+);
+
+// Then replace PendingIntent creation (uses already-defined requestCode)
 const oldPendingIntent = `PendingIntent sentPI = PendingIntent.getBroadcast(context, 0, new Intent(SENT), 0);
             PendingIntent deliveredPI = PendingIntent.getBroadcast(context, 0, new Intent(DELIVERED), 0);`;
 
@@ -64,23 +74,10 @@ const newPendingIntent = `// Android 12 (API 31) and above requires FLAG_IMMUTAB
                 flags = PendingIntent.FLAG_IMMUTABLE;
             }
 
-            // Use unique request codes to avoid conflicts
-            int requestCode = new Random().nextInt(1000000);
-
             PendingIntent sentPI = PendingIntent.getBroadcast(context, requestCode, new Intent(SENT), flags);
             PendingIntent deliveredPI = PendingIntent.getBroadcast(context, requestCode + 1, new Intent(DELIVERED), flags);`;
 
 content = content.replace(oldPendingIntent, newPendingIntent);
-
-// Also fix unique SENT/DELIVERED identifiers
-content = content.replace(
-  `String SENT = "SMS_SENT";
-            String DELIVERED = "SMS_DELIVERED";`,
-  `// Use unique identifiers to avoid broadcast conflicts
-            int requestCode = new Random().nextInt(1000000);
-            String SENT = "SMS_SENT_" + requestCode;
-            String DELIVERED = "SMS_DELIVERED_" + requestCode;`
-);
 
 // Write patched file
 fs.writeFileSync(SMS_MODULE_PATH, content, 'utf8');
