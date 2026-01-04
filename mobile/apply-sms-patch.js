@@ -1,6 +1,7 @@
 /**
  * Manual patch for react-native-get-sms-android
  * Fixes Android 12+ (API 31+) PendingIntent FLAG_IMMUTABLE requirement
+ * Fixes Android 13+ (API 33+) BroadcastReceiver RECEIVER_NOT_EXPORTED requirement
  *
  * Run this after npm install if patch-package fails on Windows
  */
@@ -32,12 +33,12 @@ if (!fs.existsSync(SMS_MODULE_PATH)) {
 let content = fs.readFileSync(SMS_MODULE_PATH, 'utf8');
 
 // Check if already patched
-if (content.includes('FLAG_IMMUTABLE') || content.includes('Build.VERSION.SDK_INT >= Build.VERSION_CODES.S')) {
+if (content.includes('FLAG_IMMUTABLE') && content.includes('RECEIVER_NOT_EXPORTED')) {
   console.log('✅ Patch already applied!');
   process.exit(0);
 }
 
-console.log('📝 Applying Android 12+ PendingIntent fix...');
+console.log('📝 Applying Android 12+ PendingIntent and Android 13+ BroadcastReceiver fixes...');
 
 // Add imports
 if (!content.includes('import android.os.Build;')) {
@@ -79,9 +80,67 @@ const newPendingIntent = `// Android 12 (API 31) and above requires FLAG_IMMUTAB
 
 content = content.replace(oldPendingIntent, newPendingIntent);
 
+// Fix BroadcastReceiver registration for Android 13+ (SENT receiver)
+const oldSentReceiver = `context.registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context arg0, Intent arg1) {`;
+
+const newSentReceiver = `// Create receiver for SENT broadcast
+            final BroadcastReceiver sentReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context arg0, Intent arg1) {`;
+
+content = content.replace(oldSentReceiver, newSentReceiver);
+
+// Find the closing of the SENT receiver and add registration with Android 13+ flags
+const oldSentReceiverEnd = `}
+            }, new IntentFilter(SENT));`;
+
+const newSentReceiverEnd = `}
+            };
+
+            // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED flag
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(sentReceiver, new IntentFilter(SENT), Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                context.registerReceiver(sentReceiver, new IntentFilter(SENT));
+            }`;
+
+content = content.replace(oldSentReceiverEnd, newSentReceiverEnd);
+
+// Fix BroadcastReceiver registration for Android 13+ (DELIVERED receiver)
+const oldDeliveredReceiver = `context.registerReceiver(new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context arg0, Intent arg1) {`;
+
+const newDeliveredReceiver = `// Create receiver for DELIVERED broadcast
+            final BroadcastReceiver deliveredReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context arg0, Intent arg1) {`;
+
+content = content.replace(oldDeliveredReceiver, newDeliveredReceiver);
+
+// Find the closing of the DELIVERED receiver and add registration with Android 13+ flags
+const oldDeliveredReceiverEnd = `}
+            }, new IntentFilter(DELIVERED));`;
+
+const newDeliveredReceiverEnd = `}
+            };
+
+            // Android 13+ requires explicit RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED flag
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(deliveredReceiver, new IntentFilter(DELIVERED), Context.RECEIVER_NOT_EXPORTED);
+            } else {
+                context.registerReceiver(deliveredReceiver, new IntentFilter(DELIVERED));
+            }`;
+
+content = content.replace(oldDeliveredReceiverEnd, newDeliveredReceiverEnd);
+
 // Write patched file
 fs.writeFileSync(SMS_MODULE_PATH, content, 'utf8');
 
 console.log('✅ Patch applied successfully!');
-console.log('   Android 12+ PendingIntent FLAG_IMMUTABLE added');
+console.log('   ✓ Android 12+ PendingIntent FLAG_IMMUTABLE added');
+console.log('   ✓ Android 13+ BroadcastReceiver RECEIVER_NOT_EXPORTED added');
 console.log('   You can now build the APK');
+
