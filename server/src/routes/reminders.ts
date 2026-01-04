@@ -232,16 +232,34 @@ router.get('/mobile/pending', async (req, res, next) => {
 
     const appointmentsWithSentReminders = new Set(existingReminders.map(r => r.appointmentId));
 
+    console.log(`📱 Found ${existingReminders.length} appointments with existing SMS reminders sent`);
+    if (existingReminders.length > 0) {
+      console.log(`📱 Appointments with sent reminders: ${Array.from(appointmentsWithSentReminders).join(', ')}`);
+    }
+
     // Transform to mobile-friendly format with SMS message
     const pendingReminders = appointments
       .filter((apt: AppointmentWithRelations) => {
         // Skip if already has sent SMS reminder
         if (appointmentsWithSentReminders.has(apt.id)) {
-          console.log(`📱 Skipping appointment ${apt.id} - SMS reminder already sent`);
+          console.log(`📱 Skipping appointment ${apt.id} - SMS reminder already sent (found in Reminder table)`);
+          return false;
+        }
+        // Additional safety check: skip if reminderSent flag is somehow true (should not happen due to initial query)
+        if (apt.reminderSent) {
+          console.log(`📱 Skipping appointment ${apt.id} - reminderSent flag is true (inconsistency detected)`);
           return false;
         }
         // Apply GDPR filters
-        return apt.customer.smsReminderConsent && apt.customer.phone;
+        if (!apt.customer.smsReminderConsent) {
+          console.log(`📱 Skipping appointment ${apt.id} - customer has not given SMS consent`);
+          return false;
+        }
+        if (!apt.customer.phone) {
+          console.log(`📱 Skipping appointment ${apt.id} - customer has no phone number`);
+          return false;
+        }
+        return true;
       })
       .map((apt: AppointmentWithRelations) => ({
         appointment: {

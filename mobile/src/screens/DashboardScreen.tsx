@@ -96,6 +96,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         `SMS inviati: ${result.sent}\nFalliti: ${result.failed}\nTotale: ${result.total}`
       );
 
+      // Small delay to ensure DB is fully updated before refreshing
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       // Refresh
       await fetchPendingReminders();
       const lastSyncTime = await reminderService.getLastSync();
