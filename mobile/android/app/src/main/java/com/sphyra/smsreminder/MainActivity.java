@@ -1,5 +1,7 @@
 package com.sphyra.smsreminder;
 
+import android.content.Intent;
+import android.os.Bundle;
 import com.facebook.react.ReactActivity;
 import com.facebook.react.ReactActivityDelegate;
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
@@ -14,6 +16,24 @@ public class MainActivity extends ReactActivity {
   @Override
   protected String getMainComponentName() {
     return "SphyraSMSReminder";
+  }
+
+  /**
+   * Handle intent extras - used by BootReceiver to signal auto-start
+   */
+  @Override
+  protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+
+    Intent intent = getIntent();
+    if (intent != null && intent.hasExtra("autoStartService")) {
+      boolean autoStart = intent.getBooleanExtra("autoStartService", false);
+      if (autoStart) {
+        // Signal to React Native that service should auto-start
+        // This will be handled in App.tsx via Linking.getInitialURL()
+        android.util.Log.d("MainActivity", "Auto-start service requested after boot");
+      }
+    }
   }
 
   /**

@@ -173,11 +173,15 @@ export class BatteryOptimizer {
     skip: boolean;
     reason?: string;
   }> {
-    // Check if we're in night hours (20:00 - 09:00)
-    if (this.isNightHours()) {
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    // Skip sync between 20:00 (8 PM) and 9:00 (9 AM) - deep sleep hours
+    // This covers night time: 20, 21, 22, 23, 0, 1, 2, 3, 4, 5, 6, 7, 8
+    if (currentHour >= 20 || currentHour < 9) {
       return {
         skip: true,
-        reason: 'Orario notturno (20:00-09:00) - nessun SMS inviato',
+        reason: 'Orario di sonno profondo (20:00-9:00)',
       };
     }
 

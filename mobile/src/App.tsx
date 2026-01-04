@@ -8,6 +8,7 @@ import {
   StyleSheet,
   View,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { LoginScreen } from './screens/LoginScreen';
 import { DashboardScreen } from './screens/DashboardScreen';
@@ -15,6 +16,9 @@ import { SettingsScreen } from './screens/SettingsScreen';
 import { LogViewerScreen } from './screens/LogViewerScreen';
 import authService from './services/authService';
 import apiClient from './services/apiClient';
+import backgroundServiceManager from './services/backgroundService';
+import { Storage } from './utils/storage';
+import { STORAGE_KEYS } from './config/api';
 import type { User } from './types';
 
 type Screen = 'login' | 'dashboard' | 'settings' | 'logs';
@@ -26,6 +30,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     initializeApp();
+    checkAutoStartService();
   }, []);
 
   const initializeApp = async () => {
@@ -54,6 +59,47 @@ const App: React.FC = () => {
       setCurrentScreen('login');
     } finally {
       setLoading(false);
+    }
+  };
+
+  /**
+   * Check if app was launched by BootReceiver to auto-start background service
+   */
+  const checkAutoStartService = async () => {
+    try {
+      // Check if launched from boot with auto-start intent
+      const initialUrl = await Linking.getInitialURL();
+
+      // Also check if auto-sync was enabled before potential reboot
+      const autoSyncEnabled = await Storage.get<boolean>(STORAGE_KEYS.AUTO_SYNC_ENABLED);
+
+      if (autoSyncEnabled) {
+        console.log('Auto-sync was enabled - checking if service is running');
+
+        // Check if service is already running
+        const isRunning = await backgroundServiceManager.isServiceRunning();
+
+        if (!isRunning) {
+          console.log('Service not running - attempting to restart');
+
+          // Wait for authentication to complete
+          setTimeout(async () => {
+            const isAuth = await authService.isAuthenticated();
+            if (isAuth) {
+              try {
+                await backgroundServiceManager.start();
+                console.log('Background service auto-started successfully after boot');
+              } catch (error) {
+                console.error('Failed to auto-start background service:', error);
+              }
+            }
+          }, 3000); // Wait 3 seconds for auth to complete
+        } else {
+          console.log('Background service already running');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking auto-start service:', error);
     }
   };
 
