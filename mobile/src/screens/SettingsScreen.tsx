@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import apiClient from '@/services/apiClient';
-import backgroundServiceManager from '@/services/backgroundService';
+import workManagerService from '@/services/workManagerService';
 import { Storage } from '@/utils/storage';
 import { STORAGE_KEYS, DEFAULT_API_URL, DEFAULT_SYNC_INTERVAL } from '@/config/api';
 
@@ -56,8 +56,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
     }
 
     const intervalNum = parseInt(syncInterval);
-    if (isNaN(intervalNum) || intervalNum < 1) {
-      Alert.alert('Errore', 'Intervallo deve essere almeno 1 minuto');
+    if (isNaN(intervalNum) || intervalNum < 15) {
+      Alert.alert('Errore', 'Intervallo deve essere almeno 15 minuti (limite WorkManager)');
       return;
     }
 
@@ -67,8 +67,8 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
       // Save API URL
       await apiClient.setApiUrl(apiUrl);
 
-      // Save sync interval
-      await backgroundServiceManager.setSyncInterval(intervalNum);
+      // Save sync interval (WorkManager)
+      await workManagerService.setSyncInterval(intervalNum);
 
       Alert.alert('Successo', 'Impostazioni salvate correttamente');
       onBack();
@@ -169,8 +169,10 @@ export const SettingsScreen: React.FC<SettingsScreenProps> = ({ onBack }) => {
             keyboardType="number-pad"
           />
           <Text style={styles.hint}>
-            Frequenza con cui l'app controllerà nuovi reminder da inviare.
-            {'\n'}Minimo: 1 minuto. Raccomandato: 30 minuti.
+            Frequenza con cui WorkManager controllerà nuovi reminder.
+            {'\n'}Minimo: 15 minuti (limite Android). Raccomandato: 60 minuti.
+            {'\n'}⚡ L'intervallo viene ottimizzato automaticamente in base a batteria e orario.
+            {'\n'}🌙 Nessun controllo tra 20:00-09:00.
           </Text>
         </View>
 
