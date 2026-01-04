@@ -18,8 +18,10 @@ class ReminderService {
       async () => {
         try {
           logger.info('SYNC', 'Fetching pending reminders from backend...');
+          // Add timestamp to force cache bypass
+          const timestamp = new Date().getTime();
           const reminders = await apiClient.get<PendingReminder[]>(
-            ENDPOINTS.PENDING_REMINDERS
+            `${ENDPOINTS.PENDING_REMINDERS}?_t=${timestamp}`
           );
           logger.success('SYNC', `Fetched ${reminders.length} pending reminders`, {
             count: reminders.length,

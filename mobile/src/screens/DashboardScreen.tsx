@@ -91,13 +91,16 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     try {
       const result = await reminderService.syncAndSendReminders();
 
+      // Clear current reminders immediately to show progress
+      setPendingReminders([]);
+
       Alert.alert(
         'Sincronizzazione Completata',
         `SMS inviati: ${result.sent}\nFalliti: ${result.failed}\nTotale: ${result.total}`
       );
 
-      // Small delay to ensure DB is fully updated before refreshing
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Longer delay to ensure DB is fully updated before refreshing (2 seconds)
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
       // Refresh
       await fetchPendingReminders();
@@ -105,6 +108,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
       setLastSync(lastSyncTime);
     } catch (error: any) {
       Alert.alert('Errore', error.message || 'Errore durante la sincronizzazione');
+      // Reload on error too
+      await fetchPendingReminders();
     } finally {
       setSyncing(false);
     }
