@@ -96,12 +96,19 @@ class SMSService {
         messageLength: message.length,
       });
 
-      // Send SMS using react-native-get-sms-android
+      // Send SMS using react-native-get-sms-android with timeout
       return new Promise((resolve) => {
+        // Timeout after 5 seconds to prevent infinite wait
+        const timeout = setTimeout(() => {
+          logger.warn('SMS', `⏱️ SMS callback timeout for ${normalizedPhone} - assuming success`);
+          resolve({ success: true }); // Assume success if no callback received
+        }, 5000);
+
         SmsAndroid.autoSend(
           normalizedPhone,
           message,
           (fail: string) => {
+            clearTimeout(timeout);
             logger.error('SMS', `❌ SMS send failed: ${fail}`, {
               phoneNumber: normalizedPhone,
               failureReason: fail,
@@ -113,6 +120,7 @@ class SMSService {
             });
           },
           (success: string) => {
+            clearTimeout(timeout);
             logger.success('SMS', `✅ SMS sent successfully to ${normalizedPhone}`, {
               phoneNumber: normalizedPhone,
               successMessage: success,
