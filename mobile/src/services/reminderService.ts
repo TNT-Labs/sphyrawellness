@@ -50,39 +50,68 @@ class ReminderService {
 
   /**
    * Mark reminder as sent on backend with retry logic
+   * Non-blocking: fires and forgets to avoid UI freezing
    */
   async markReminderSent(appointmentId: string): Promise<void> {
-    return retryWithBackoff(
+    // Fire and forget - don't await, don't block
+    retryWithBackoff(
       async () => {
         await apiClient.post(ENDPOINTS.MARK_SENT, { appointmentId });
-        console.log(`Reminder marked as sent for appointment ${appointmentId}`);
+        console.log(`✅ Reminder marked as sent for appointment ${appointmentId}`);
       },
-      NETWORK_RETRY_OPTIONS
+      {
+        maxAttempts: 2, // Only 2 attempts for non-critical operation
+        initialDelayMs: 500,
+        maxDelayMs: 2000,
+        backoffMultiplier: 2,
+        shouldRetry: (error: any) => {
+          // Don't retry on client errors (4xx)
+          const status = error.response?.status;
+          if (status >= 400 && status < 500) {
+            return false;
+          }
+          return true;
+        }
+      }
     ).catch((error) => {
-      console.error('Failed to mark reminder as sent after retries:', error);
-      throw error;
+      console.error('⚠️ Failed to mark reminder as sent:', error.message);
+      // Don't throw - SMS was already sent successfully
     });
   }
 
   /**
    * Mark reminder as failed on backend with retry logic
+   * Non-blocking: fires and forgets
    */
   async markReminderFailed(
     appointmentId: string,
     errorMessage: string
   ): Promise<void> {
-    return retryWithBackoff(
+    // Fire and forget - don't await, don't block
+    retryWithBackoff(
       async () => {
         await apiClient.post(ENDPOINTS.MARK_FAILED, {
           appointmentId,
           errorMessage,
         });
-        console.log(`Reminder marked as failed for appointment ${appointmentId}`);
+        console.log(`✅ Reminder marked as failed for appointment ${appointmentId}`);
       },
-      NETWORK_RETRY_OPTIONS
+      {
+        maxAttempts: 2,
+        initialDelayMs: 500,
+        maxDelayMs: 2000,
+        backoffMultiplier: 2,
+        shouldRetry: (error: any) => {
+          const status = error.response?.status;
+          if (status >= 400 && status < 500) {
+            return false;
+          }
+          return true;
+        }
+      }
     ).catch((error) => {
-      console.error('Failed to mark reminder as failed after retries:', error);
-      // Don't throw - this is a non-critical error
+      console.error('⚠️ Failed to mark reminder as failed:', error.message);
+      // Don't throw - this is non-critical
     });
   }
 
@@ -121,19 +150,19 @@ class ReminderService {
         const result = await smsService.sendReminderSMS(reminder);
         results.push(result);
 
-        // 3. Update backend based on result
+        // 3. Update backend based on result (non-blocking)
         if (result.success) {
-          await this.markReminderSent(result.appointmentId);
+          this.markReminderSent(result.appointmentId); // No await - fire and forget
           sent++;
           logger.success('SYNC', `✅ SMS sent successfully to ${appointment.customer.name}`, {
             appointmentId: result.appointmentId,
             phone: appointment.customer.phone,
           });
         } else {
-          await this.markReminderFailed(
+          this.markReminderFailed(
             result.appointmentId,
             result.error || 'Unknown error'
-          );
+          ); // No await - fire and forget
           failed++;
           logger.error('SYNC', `❌ SMS failed for ${appointment.customer.name}`, {
             appointmentId: result.appointmentId,
