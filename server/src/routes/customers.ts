@@ -89,21 +89,65 @@ const updateConsentsSchema = z.object({
   marketingConsent: z.boolean().optional(),
 });
 
-// GET /api/customers - Get all customers
+// GET /api/customers - Get all customers (with optional pagination)
 router.get('/', async (req, res, next) => {
   try {
-    const { search } = req.query;
+    const { search, page, limit } = req.query;
+
+    // Parse pagination params
+    const pageNum = page ? parseInt(page as string, 10) : undefined;
+    const limitNum = limit ? parseInt(limit as string, 10) : undefined;
+
+    // Validate pagination params
+    if ((pageNum !== undefined && (isNaN(pageNum) || pageNum < 1)) ||
+        (limitNum !== undefined && (isNaN(limitNum) || limitNum < 1 || limitNum > 100))) {
+      return res.status(400).json({
+        error: 'Invalid pagination parameters. page >= 1, limit between 1 and 100'
+      });
+    }
 
     let customers;
+    let total: number | undefined;
+
     if (search && typeof search === 'string') {
       customers = await customerRepository.search(search);
+      total = customers.length;
+
+      // Apply pagination to search results
+      if (pageNum && limitNum) {
+        const skip = (pageNum - 1) * limitNum;
+        customers = customers.slice(skip, skip + limitNum);
+      }
     } else {
+      // For findAll, we'd need to add pagination to the repository
+      // For now, just return all (TODO: add pagination to repository method)
       customers = await customerRepository.findAll();
+      total = customers.length;
+
+      // Apply pagination in-memory (temporary solution)
+      if (pageNum && limitNum) {
+        const skip = (pageNum - 1) * limitNum;
+        customers = customers.slice(skip, skip + limitNum);
+      }
     }
 
     // Transform customers to include consents object
     const transformedCustomers = customers.map(transformCustomerWithConsents);
-    res.json(transformedCustomers);
+
+    // Return with pagination metadata if pagination was requested
+    if (pageNum && limitNum) {
+      res.json({
+        data: transformedCustomers,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: total ? Math.ceil(total / limitNum) : 0,
+        },
+      });
+    } else {
+      res.json(transformedCustomers);
+    }
   } catch (error) {
     next(error);
   }
@@ -211,22 +255,41 @@ router.put('/:id', async (req, res, next) => {
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
     };
 
-    // Update consent dates only when consent is being granted (true) and was previously false/undefined
-    if (data.privacyConsent !== undefined && data.privacyConsent && !existing.privacyConsent) {
-      updateData.privacyConsentDate = now;
-      updateData.privacyConsentVersion = data.privacyConsentVersion || '1.0';
+    // Update consent dates whenever consent value changes (GDPR compliance)
+    // Track ALL consent changes, not just false→true transitions
+    if (data.privacyConsent !== undefined && data.privacyConsent !== existing.privacyConsent) {
+      if (data.privacyConsent) {
+        updateData.privacyConsentDate = now;
+        updateData.privacyConsentVersion = data.privacyConsentVersion || '1.0';
+      } else {
+        // When revoking consent, clear the date
+        updateData.privacyConsentDate = null;
+        updateData.privacyConsentVersion = null;
+      }
     }
 
-    if (data.emailReminderConsent !== undefined && data.emailReminderConsent && !existing.emailReminderConsent) {
-      updateData.emailReminderConsentDate = now;
+    if (data.emailReminderConsent !== undefined && data.emailReminderConsent !== existing.emailReminderConsent) {
+      if (data.emailReminderConsent) {
+        updateData.emailReminderConsentDate = now;
+      } else {
+        updateData.emailReminderConsentDate = null;
+      }
     }
 
-    if (data.smsReminderConsent !== undefined && data.smsReminderConsent && !existing.smsReminderConsent) {
-      updateData.smsReminderConsentDate = now;
+    if (data.smsReminderConsent !== undefined && data.smsReminderConsent !== existing.smsReminderConsent) {
+      if (data.smsReminderConsent) {
+        updateData.smsReminderConsentDate = now;
+      } else {
+        updateData.smsReminderConsentDate = null;
+      }
     }
 
-    if (data.healthDataConsent !== undefined && data.healthDataConsent && !existing.healthDataConsent) {
-      updateData.healthDataConsentDate = now;
+    if (data.healthDataConsent !== undefined && data.healthDataConsent !== existing.healthDataConsent) {
+      if (data.healthDataConsent) {
+        updateData.healthDataConsentDate = now;
+      } else {
+        updateData.healthDataConsentDate = null;
+      }
     }
 
     const customer = await customerRepository.update(id, updateData);

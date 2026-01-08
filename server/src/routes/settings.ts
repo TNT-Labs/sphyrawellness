@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma.js';
 import { z } from 'zod';
 import { UserRole } from '@prisma/client';
 import logger from '../utils/logger.js';
+import { refreshSettingsCache } from '../jobs/dailyReminderCronPrisma.js';
 
 const router = Router();
 
@@ -120,6 +121,13 @@ router.put('/', async (req, res, next) => {
 
     const updated = await settingRepository.getAllAsObject();
 
+    // Refresh cron job settings cache if reminder-related settings were updated
+    const reminderKeys = ['reminderSendHour', 'reminderSendMinute', 'enableAutoReminders'];
+    if (settingsArray.some(s => reminderKeys.includes(s.key))) {
+      await refreshSettingsCache();
+      logger.info('Cron job settings cache refreshed after settings update');
+    }
+
     res.json({ success: true, data: updated });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -159,6 +167,13 @@ router.put('/:key', async (req, res, next) => {
     const userId = (req as any).user?.id;
 
     const setting = await settingRepository.upsert(key, value, userId);
+
+    // Refresh cron job settings cache if reminder-related setting was updated
+    const reminderKeys = ['reminderSendHour', 'reminderSendMinute', 'enableAutoReminders'];
+    if (reminderKeys.includes(key)) {
+      await refreshSettingsCache();
+      logger.info('Cron job settings cache refreshed after setting update', { key });
+    }
 
     res.json(setting);
   } catch (error) {
