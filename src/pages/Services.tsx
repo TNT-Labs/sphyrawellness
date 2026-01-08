@@ -49,6 +49,9 @@ const Services: React.FC = () => {
     color: '#ec4899',
   });
 
+  // Track initial form data to detect unsaved changes
+  const initialFormDataRef = useRef(formData);
+
   // Filter only active categories
   const activeCategories = serviceCategories.filter(c => c.isActive);
 
@@ -90,37 +93,50 @@ const Services: React.FC = () => {
   }, [debouncedSearchTerm, filterToday]);
 
   const handleOpenModal = (service?: Service) => {
+    let newFormData;
     if (service) {
       setEditingService(service);
-      setFormData({
+      newFormData = {
         name: service.name,
         description: service.description,
         duration: service.duration,
         price: service.price,
         category: service.category,
         color: service.color || '#ec4899',
-      });
+      };
       // Set image preview if service has an image
       if (service.imageUrl) {
         setImagePreview(getImageUrl(service.imageUrl) || null);
       }
     } else {
       setEditingService(null);
-      setFormData({
+      newFormData = {
         name: '',
         description: '',
         duration: 60,
         price: 0,
         category: '',
         color: '#ec4899',
-      });
+      };
       setSelectedImage(null);
       setImagePreview(null);
     }
+    setFormData(newFormData);
+    initialFormDataRef.current = newFormData;
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    // Check for unsaved changes (excluding image changes for simplicity)
+    const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current) || selectedImage !== null;
+
+    if (hasUnsavedChanges) {
+      const shouldClose = window.confirm('Ci sono modifiche non salvate. Sei sicuro di voler chiudere?');
+      if (!shouldClose) {
+        return;
+      }
+    }
+
     setIsModalOpen(false);
     setEditingService(null);
     setSelectedImage(null);

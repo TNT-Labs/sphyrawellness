@@ -44,7 +44,16 @@ export interface Customer {
   allergies?: string;
 
   // GDPR Consents (direct fields matching Prisma schema)
+  privacyConsent?: boolean;
+  privacyConsentDate?: string;
+  privacyConsentVersion?: string;
   emailReminderConsent?: boolean;
+  emailReminderConsentDate?: string;
+  smsReminderConsent?: boolean;
+  smsReminderConsentDate?: string;
+  healthDataConsent?: boolean;
+  healthDataConsentDate?: string;
+  marketingConsent?: boolean;
 
   // GDPR Consents - Optional for backward compatibility with existing customers
   consents?: CustomerConsents;
