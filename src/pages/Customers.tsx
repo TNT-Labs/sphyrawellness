@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
@@ -48,6 +48,9 @@ const Customers: React.FC = () => {
     emailReminderConsent: false,
   });
 
+  // Track initial form data to detect unsaved changes
+  const initialFormDataRef = useRef(formData);
+
   // Get customer IDs with appointments today
   const todayCustomerIds = useMemo(() => {
     if (!filterToday) return null;
@@ -87,6 +90,7 @@ const Customers: React.FC = () => {
   }, [debouncedSearchTerm, filterToday]);
 
   const handleOpenModal = (customer?: Customer) => {
+    let newFormData;
     if (customer) {
       setEditingCustomer(customer);
 
@@ -96,7 +100,7 @@ const Customers: React.FC = () => {
         dateOfBirth = dateOfBirth.split('T')[0];
       }
 
-      setFormData({
+      newFormData = {
         firstName: customer.firstName,
         lastName: customer.lastName,
         email: customer.email || '',
@@ -106,10 +110,10 @@ const Customers: React.FC = () => {
         allergies: customer.allergies || '',
         privacyConsent: (customer as any).privacyConsent ?? true,
         emailReminderConsent: customer.emailReminderConsent || false,
-      });
+      };
     } else {
       setEditingCustomer(null);
-      setFormData({
+      newFormData = {
         firstName: '',
         lastName: '',
         email: '',
@@ -119,12 +123,24 @@ const Customers: React.FC = () => {
         allergies: '',
         privacyConsent: true,
         emailReminderConsent: false,
-      });
+      };
     }
+    setFormData(newFormData);
+    initialFormDataRef.current = newFormData;
     setIsModalOpen(true);
   };
 
   const handleCloseModal = () => {
+    // Check for unsaved changes
+    const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
+
+    if (hasUnsavedChanges) {
+      const shouldClose = window.confirm('Ci sono modifiche non salvate. Sei sicuro di voler chiudere?');
+      if (!shouldClose) {
+        return;
+      }
+    }
+
     setIsModalOpen(false);
     setEditingCustomer(null);
   };
