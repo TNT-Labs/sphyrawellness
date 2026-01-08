@@ -315,3 +315,19 @@ model Setting {
 
   @@map("settings")
 }
+
+// ============================================================================
+// CRON LOCKS - Distributed locking for scheduled jobs
+// ============================================================================
+
+model CronLock {
+  id         String    @id @default(uuid())
+  jobName    String    @unique @map("job_name") @db.VarChar(100)
+  lockedAt   DateTime  @map("locked_at")
+  lockedBy   String    @map("locked_by") @db.VarChar(255) // Instance identifier
+  expiresAt  DateTime  @map("expires_at")
+  lastRunAt  DateTime? @map("last_run_at")
+
+  @@index([jobName, expiresAt])
+  @@map("cron_locks")
+}
