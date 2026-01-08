@@ -108,7 +108,7 @@ const Customers: React.FC = () => {
         dateOfBirth: dateOfBirth,
         notes: customer.notes || '',
         allergies: customer.allergies || '',
-        privacyConsent: (customer as any).privacyConsent ?? true,
+        privacyConsent: customer.privacyConsent ?? true,
         emailReminderConsent: customer.emailReminderConsent || false,
       };
     } else {
