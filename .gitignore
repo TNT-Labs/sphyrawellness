@@ -47,3 +47,6 @@ backups/
 
 # PWA
 dev-dist
+
+# Build-generated version info
+public/version.json
