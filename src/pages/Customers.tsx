@@ -12,10 +12,11 @@ import { useEscapeKey } from '../hooks/useEscapeKey';
 import { logger } from '../utils/logger';
 import AppointmentModal from '../components/calendar/AppointmentModal';
 import ConsentManagement from '../components/ConsentManagement';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { customersApi } from '../api/customers';
 
 const Customers: React.FC = () => {
-  const { customers, addCustomer, updateCustomer, deleteCustomer, appointments } = useApp();
+  const { customers, addCustomer, updateCustomer, deleteCustomer, appointments, isLoading } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -292,8 +293,12 @@ const Customers: React.FC = () => {
         </div>
       </div>
 
-      {/* Customers Grid */}
-      {filteredCustomers.length === 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <LoadingSpinner size="lg" message="Caricamento clienti..." />
+      ) : (
+        /* Customers Grid */
+        filteredCustomers.length === 0 ? (
         <div className="card text-center py-12">
           <User size={48} className="mx-auto mb-3 text-gray-400" />
           <p className="text-gray-500">
@@ -469,6 +474,7 @@ const Customers: React.FC = () => {
           </div>
         )}
         </>
+        )
       )}
 
       {/* Modal */}
