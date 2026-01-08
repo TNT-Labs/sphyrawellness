@@ -3,6 +3,8 @@ import { sendGridConfig } from '../config/sendgrid.js';
 import { generateReminderEmailHTML, generateReminderEmailText } from '../templates/reminderEmail.js';
 import { generateConfirmationEmailHTML, generateConfirmationEmailText } from '../templates/confirmationEmail.js';
 import { getErrorMessage } from '../utils/response.js';
+import { withRetry, RetryPresets, isRetryableSendGridError } from '../utils/retry.js';
+import logger from '../utils/logger.js';
 import type { ReminderEmailData } from '../types/index.js';
 
 export class EmailService {
@@ -46,9 +48,20 @@ export class EmailService {
         ];
       }
 
-      const response = await sgMail.send(msg);
+      const response = await withRetry(
+        () => sgMail.send(msg),
+        {
+          ...RetryPresets.standardAPI,
+          isRetryableError: isRetryableSendGridError,
+          onRetry: (error, attempt, delay) => {
+            logger.warn(`📧 Retrying email send to ${recipientEmail} (attempt ${attempt}) after ${delay}ms`, {
+              error: getErrorMessage(error)
+            });
+          }
+        }
+      );
 
-      console.log(`✅ Email sent successfully to ${recipientEmail}`);
+      logger.info(`✅ Email sent successfully to ${recipientEmail}`);
 
       return {
         success: true,
@@ -128,9 +141,20 @@ export class EmailService {
         ];
       }
 
-      const response = await sgMail.send(msg);
+      const response = await withRetry(
+        () => sgMail.send(msg),
+        {
+          ...RetryPresets.standardAPI,
+          isRetryableError: isRetryableSendGridError,
+          onRetry: (error, attempt, delay) => {
+            logger.warn(`📧 Retrying confirmation email send to ${recipientEmail} (attempt ${attempt}) after ${delay}ms`, {
+              error: getErrorMessage(error)
+            });
+          }
+        }
+      );
 
-      console.log(`✅ Confirmation email sent successfully to ${recipientEmail}`);
+      logger.info(`✅ Confirmation email sent successfully to ${recipientEmail}`);
 
       return {
         success: true,
@@ -193,8 +217,19 @@ export class EmailService {
         html: '<p>This is a test email from <strong>Sphyra Wellness Lab</strong> reminder system.</p>'
       };
 
-      await sgMail.send(msg);
-      console.log(`✅ Test email sent successfully to ${recipientEmail}`);
+      await withRetry(
+        () => sgMail.send(msg),
+        {
+          ...RetryPresets.standardAPI,
+          isRetryableError: isRetryableSendGridError,
+          onRetry: (error, attempt, delay) => {
+            logger.warn(`📧 Retrying test email send to ${recipientEmail} (attempt ${attempt}) after ${delay}ms`, {
+              error: getErrorMessage(error)
+            });
+          }
+        }
+      );
+      logger.info(`✅ Test email sent successfully to ${recipientEmail}`);
 
       return { success: true };
     } catch (error) {

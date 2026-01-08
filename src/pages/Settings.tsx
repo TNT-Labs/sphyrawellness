@@ -13,13 +13,14 @@ import { logger, LogEntry } from '../utils/logger';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 import UserManagementCard from '../components/settings/UserManagementCard';
 import BusinessHoursSettings from '../components/BusinessHoursSettings';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 type SettingsTab = 'general' | 'configuration' | 'advanced' | 'users';
 
 const Settings: React.FC = () => {
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
-  const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory } = useApp();
+  const { staffRoles, addStaffRole, updateStaffRole, deleteStaffRole, serviceCategories, addServiceCategory, updateServiceCategory, deleteServiceCategory, isLoading } = useApp();
   const { canModifySettings } = useAuth();
   const [idleTimeout, setIdleTimeout] = useState<number>(5);
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
@@ -450,6 +451,9 @@ const Settings: React.FC = () => {
         )}
 
         {/* Tab Content */}
+        {isLoading ? (
+          <LoadingSpinner size="lg" message="Caricamento impostazioni..." />
+        ) : (
         <div className="space-y-6">
           {/* Standard users only see logs */}
           {isStandardUser ? (
@@ -1072,6 +1076,7 @@ const Settings: React.FC = () => {
             </>
           )}
         </div>
+        )}
       </div>
     </>
   );

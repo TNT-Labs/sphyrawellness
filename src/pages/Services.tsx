@@ -12,10 +12,11 @@ import { logger } from '../utils/logger';
 import { formatPrice } from '../utils/currency';
 import { isToday, parseISO } from 'date-fns';
 import AppointmentModal from '../components/calendar/AppointmentModal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { uploadServiceImage, deleteServiceImage, getImageUrl } from '../services/uploadService';
 
 const Services: React.FC = () => {
-  const { services, addService, updateService, deleteService, serviceCategories, appointments } = useApp();
+  const { services, addService, updateService, deleteService, serviceCategories, appointments, isLoading } = useApp();
   const { showSuccess, showError } = useToast();
   const { confirm, ConfirmationDialog } = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -347,8 +348,12 @@ const Services: React.FC = () => {
         </div>
       </div>
 
-      {/* Services Grid */}
-      {filteredServices.length === 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <LoadingSpinner size="lg" message="Caricamento servizi..." />
+      ) : (
+        /* Services Grid */
+        filteredServices.length === 0 ? (
         <div className="card text-center py-12">
           <Scissors size={48} className="mx-auto mb-3 text-gray-400" />
           <p className="text-gray-500">
@@ -517,6 +522,7 @@ const Services: React.FC = () => {
           </div>
         )}
         </>
+        )
       )}
 
       {/* Modal */}
