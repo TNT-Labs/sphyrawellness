@@ -64,6 +64,38 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+// GET /api/payments/stats/revenue - Get revenue statistics (MUST be before /:id route)
+router.get('/stats/revenue', async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        error: 'startDate and endDate are required',
+      });
+    }
+
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+
+    const [total, byMethod] = await Promise.all([
+      paymentRepository.getTotalRevenue(start, end),
+      paymentRepository.getRevenueByMethod(start, end),
+    ]);
+
+    res.json({
+      total,
+      byMethod,
+      period: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // GET /api/payments/:id - Get payment by ID
 router.get('/:id', async (req, res, next) => {
   try {
@@ -226,38 +258,6 @@ router.delete('/:id', requireRole('RESPONSABILE'), async (req: AuthRequest, res,
     });
 
     res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// GET /api/payments/stats/revenue - Get revenue statistics
-router.get('/stats/revenue', async (req, res, next) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        error: 'startDate and endDate are required',
-      });
-    }
-
-    const start = new Date(startDate as string);
-    const end = new Date(endDate as string);
-
-    const [total, byMethod] = await Promise.all([
-      paymentRepository.getTotalRevenue(start, end),
-      paymentRepository.getRevenueByMethod(start, end),
-    ]);
-
-    res.json({
-      total,
-      byMethod: byMethod.map((item) => ({
-        method: item.method,
-        total: Number(item._sum.amount || 0),
-        count: item._count.id,
-      })),
-    });
   } catch (error) {
     next(error);
   }

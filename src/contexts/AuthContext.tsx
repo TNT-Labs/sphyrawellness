@@ -3,7 +3,7 @@
  * Manages user authentication with JWT tokens
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { User, UserRole } from '../types';
 import { authApi } from '../api';
 import { logger } from '../utils/logger';
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
   /**
    * Login with username and password
    */
-  const login = async (
+  const login = useCallback(async (
     username: string,
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
@@ -90,12 +90,12 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
 
       return { success: false, error: errorMessage };
     }
-  };
+  }, []);
 
   /**
    * Logout
    */
-  const logout = () => {
+  const logout = useCallback(() => {
     try {
       // Call logout endpoint (optional - just clears server-side if needed)
       authApi.logout().catch(() => {
@@ -109,31 +109,34 @@ export function AuthProvider({ children }: AuthProviderProps): JSX.Element {
       setCurrentUser(null);
       logger.info('User logged out');
     }
-  };
+  }, []);
 
   /**
    * Check if user has specific role
    */
-  const hasRole = (role: UserRole): boolean => {
+  const hasRole = useCallback((role: UserRole): boolean => {
     return currentUser?.role === role;
-  };
+  }, [currentUser]);
 
   /**
    * Check if user can modify settings
    */
-  const canModifySettings = (): boolean => {
+  const canModifySettings = useCallback((): boolean => {
     return currentUser?.role === 'RESPONSABILE';
-  };
+  }, [currentUser]);
 
-  const value: AuthContextType = {
-    currentUser,
-    isAuthenticated: !!currentUser,
-    isLoading,
-    login,
-    logout,
-    hasRole,
-    canModifySettings,
-  };
+  const value: AuthContextType = useMemo(
+    () => ({
+      currentUser,
+      isAuthenticated: !!currentUser,
+      isLoading,
+      login,
+      logout,
+      hasRole,
+      canModifySettings,
+    }),
+    [currentUser, isLoading, login, logout, hasRole, canModifySettings]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
