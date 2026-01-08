@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { paymentRepository } from '../repositories/paymentRepository.js';
 import { z } from 'zod';
 import type { AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { logAuditEvent, AuditAction, AuditSeverity } from '../utils/auditLog.js';
 import type { Payment } from '@prisma/client';
 
@@ -189,8 +190,8 @@ router.post('/:id/refund', async (req: AuthRequest, res, next) => {
   }
 });
 
-// DELETE /api/payments/:id - Delete payment (hard delete - use with caution)
-router.delete('/:id', async (req: AuthRequest, res, next) => {
+// DELETE /api/payments/:id - Delete payment (hard delete - use with caution, RESPONSABILE only)
+router.delete('/:id', requireRole('RESPONSABILE'), async (req: AuthRequest, res, next) => {
   try {
     const { id } = req.params;
 

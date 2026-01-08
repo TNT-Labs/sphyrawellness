@@ -195,6 +195,72 @@ export class AppointmentRepository {
     });
   }
 
+  /**
+   * Create appointment with conflict check (atomic operation)
+   * Prevents race conditions by using transaction with serializable isolation
+   */
+  async createWithConflictCheck(
+    data: Prisma.AppointmentCreateInput,
+    staffId: string,
+    date: Date,
+    startTime: Date,
+    endTime: Date
+  ): Promise<Appointment> {
+    return prisma.$transaction(async (tx) => {
+      // Check for conflicts within transaction
+      const conflictingAppointments = await tx.appointment.findMany({
+        where: {
+          staffId,
+          date: {
+            gte: startOfDay(date),
+            lte: endOfDay(date),
+          },
+          status: {
+            in: ['scheduled', 'confirmed'],
+          },
+          OR: [
+            {
+              AND: [
+                { startTime: { lte: startTime } },
+                { endTime: { gt: startTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { lt: endTime } },
+                { endTime: { gte: endTime } },
+              ],
+            },
+            {
+              AND: [
+                { startTime: { gte: startTime } },
+                { endTime: { lte: endTime } },
+              ],
+            },
+          ],
+        },
+      });
+
+      if (conflictingAppointments.length > 0) {
+        throw new Error('Time slot conflict detected');
+      }
+
+      // Create appointment if no conflict
+      return tx.appointment.create({
+        data,
+        include: {
+          customer: true,
+          service: true,
+          staff: true,
+        },
+      });
+    }, {
+      isolationLevel: 'Serializable', // Highest isolation level to prevent race conditions
+      maxWait: 5000, // 5 seconds max wait
+      timeout: 10000, // 10 seconds timeout
+    });
+  }
+
   async update(id: string, data: Prisma.AppointmentUpdateInput): Promise<Appointment> {
     return prisma.appointment.update({
       where: { id },

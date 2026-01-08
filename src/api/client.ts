@@ -15,14 +15,24 @@ export const apiClient = axios.create({
 });
 
 /**
- * Request interceptor - Add JWT token to all requests
+ * Request interceptor - Add JWT token and CSRF token to all requests
  */
 apiClient.interceptors.request.use(
   (config) => {
+    // Add JWT token
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Add CSRF token for state-changing requests (if available)
+    if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
+      const csrfToken = sessionStorage.getItem('csrf_token');
+      if (csrfToken) {
+        config.headers['X-CSRF-Token'] = csrfToken;
+      }
+    }
+
     return config;
   },
   (error) => {
@@ -31,10 +41,17 @@ apiClient.interceptors.request.use(
 );
 
 /**
- * Response interceptor - Handle errors globally
+ * Response interceptor - Extract CSRF token and handle errors globally
  */
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Extract and store CSRF token from response headers (if present)
+    const csrfToken = response.headers['x-csrf-token'];
+    if (csrfToken) {
+      sessionStorage.setItem('csrf_token', csrfToken);
+    }
+    return response;
+  },
   (error) => {
     // Handle 401 Unauthorized - Token expired or invalid
     if (error.response?.status === 401) {

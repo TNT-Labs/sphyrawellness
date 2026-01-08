@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { staffRepository, staffRoleRepository } from '../repositories/staffRepository.js';
 import { z } from 'zod';
+import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -139,8 +140,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/staff/:id - Delete staff
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/staff/:id - Delete staff (RESPONSABILE only)
+router.delete('/:id', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -239,8 +240,8 @@ router.put('/roles/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/staff/roles/:id - Delete role
-router.delete('/roles/:id', async (req, res, next) => {
+// DELETE /api/staff/roles/:id - Delete role (RESPONSABILE only)
+router.delete('/roles/:id', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const { id } = req.params;
 

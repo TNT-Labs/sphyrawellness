@@ -66,3 +66,30 @@ export function authenticateToken(
     return res.status(403).json(response);
   }
 }
+
+/**
+ * Middleware to check if user has required role(s)
+ * Use after authenticateToken middleware
+ * @param allowedRoles - Array of roles that are allowed to access the route
+ */
+export function requireRole(...allowedRoles: string[]) {
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Authentication required'
+      };
+      return res.status(401).json(response);
+    }
+
+    if (!allowedRoles.includes(req.user.role)) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Insufficient permissions'
+      };
+      return res.status(403).json(response);
+    }
+
+    next();
+  };
+}

@@ -71,30 +71,27 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createAppointmentSchema.parse(req.body);
 
-    // Check for conflicts
-    const hasConflict = await appointmentRepository.hasConflict(
+    // Create appointment with atomic conflict check (prevents race conditions)
+    const dateObj = new Date(`${data.date}T12:00:00Z`);
+    const startTimeObj = new Date(`1970-01-01T${data.startTime}:00Z`);
+    const endTimeObj = new Date(`1970-01-01T${data.endTime}:00Z`);
+
+    const appointment = await appointmentRepository.createWithConflictCheck(
+      {
+        customer: { connect: { id: data.customerId } },
+        service: { connect: { id: data.serviceId } },
+        staff: { connect: { id: data.staffId } },
+        date: dateObj,
+        startTime: startTimeObj,
+        endTime: endTimeObj,
+        status: data.status,
+        notes: data.notes,
+      },
       data.staffId,
-      new Date(`${data.date}T12:00:00Z`),
-      new Date(`1970-01-01T${data.startTime}:00Z`),
-      new Date(`1970-01-01T${data.endTime}:00Z`)
+      dateObj,
+      startTimeObj,
+      endTimeObj
     );
-
-    if (hasConflict) {
-      return res.status(409).json({
-        error: 'Time slot conflict with existing appointment',
-      });
-    }
-
-    const appointment = await appointmentRepository.create({
-      customer: { connect: { id: data.customerId } },
-      service: { connect: { id: data.serviceId } },
-      staff: { connect: { id: data.staffId } },
-      date: new Date(`${data.date}T12:00:00Z`), // Noon UTC per evitare problemi timezone
-      startTime: new Date(`1970-01-01T${data.startTime}:00Z`), // Epoch per @db.Time
-      endTime: new Date(`1970-01-01T${data.endTime}:00Z`),
-      status: data.status,
-      notes: data.notes,
-    });
 
     // Generate confirmation token immediately
     const confirmationToken = uuidv4() + uuidv4();
