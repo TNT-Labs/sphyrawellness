@@ -60,7 +60,7 @@ export class CustomerRepository {
   }
 
   /**
-   * Update customer consents
+   * Update customer consents (GDPR compliant - tracks all consent changes)
    */
   async updateConsents(
     id: string,
@@ -72,34 +72,50 @@ export class CustomerRepository {
       marketingConsent: boolean;
     }>
   ): Promise<Customer> {
+    // Get existing customer to compare consent changes
+    const existing = await this.findById(id);
+    if (!existing) {
+      throw new Error('Customer not found');
+    }
+
     const now = new Date();
     const updateData: Prisma.CustomerUpdateInput = {};
 
-    if (consents.privacyConsent !== undefined) {
+    // Update consent dates when consent value CHANGES (not just when granted)
+    // This ensures proper GDPR compliance by tracking all consent state transitions
+    if (consents.privacyConsent !== undefined && consents.privacyConsent !== existing.privacyConsent) {
       updateData.privacyConsent = consents.privacyConsent;
       if (consents.privacyConsent) {
         updateData.privacyConsentDate = now;
+      } else {
+        updateData.privacyConsentDate = null;
       }
     }
 
-    if (consents.emailReminderConsent !== undefined) {
+    if (consents.emailReminderConsent !== undefined && consents.emailReminderConsent !== existing.emailReminderConsent) {
       updateData.emailReminderConsent = consents.emailReminderConsent;
       if (consents.emailReminderConsent) {
         updateData.emailReminderConsentDate = now;
+      } else {
+        updateData.emailReminderConsentDate = null;
       }
     }
 
-    if (consents.smsReminderConsent !== undefined) {
+    if (consents.smsReminderConsent !== undefined && consents.smsReminderConsent !== existing.smsReminderConsent) {
       updateData.smsReminderConsent = consents.smsReminderConsent;
       if (consents.smsReminderConsent) {
         updateData.smsReminderConsentDate = now;
+      } else {
+        updateData.smsReminderConsentDate = null;
       }
     }
 
-    if (consents.healthDataConsent !== undefined) {
+    if (consents.healthDataConsent !== undefined && consents.healthDataConsent !== existing.healthDataConsent) {
       updateData.healthDataConsent = consents.healthDataConsent;
       if (consents.healthDataConsent) {
         updateData.healthDataConsentDate = now;
+      } else {
+        updateData.healthDataConsentDate = null;
       }
     }
 

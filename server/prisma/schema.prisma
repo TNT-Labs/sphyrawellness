@@ -46,6 +46,9 @@ model Customer {
   @@index([email])
   @@index([phone])
   @@index([createdAt])
+  @@index([privacyConsent])
+  @@index([emailReminderConsent])
+  @@index([smsReminderConsent])
   @@map("customers")
 }
 
@@ -186,6 +189,8 @@ model Appointment {
   @@index([serviceId, status])
   @@index([confirmationToken])
   @@index([date])
+  @@index([reminderSent])
+  @@index([status])
   @@map("appointments")
 }
 
@@ -232,6 +237,7 @@ model Payment {
   @@index([appointmentId])
   @@index([date])
   @@index([status])
+  @@index([method])
   @@map("payments")
 }
 

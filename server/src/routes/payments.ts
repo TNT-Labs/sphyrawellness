@@ -40,10 +40,18 @@ const refundPaymentSchema = z.object({
   reason: z.string().min(1, 'Refund reason is required').max(500),
 });
 
-// GET /api/payments - Get all payments
+// GET /api/payments - Get all payments (with optional pagination)
 router.get('/', async (req, res, next) => {
   try {
-    const { startDate, endDate, appointmentId } = req.query;
+    const { startDate, endDate, appointmentId, page, limit } = req.query;
+    const pageNum = page ? parseInt(page as string, 10) : undefined;
+    const limitNum = limit ? parseInt(limit as string, 10) : undefined;
+
+    // Validate pagination
+    if ((pageNum !== undefined && (isNaN(pageNum) || pageNum < 1)) ||
+        (limitNum !== undefined && (isNaN(limitNum) || limitNum < 1 || limitNum > 100))) {
+      return res.status(400).json({ error: 'Invalid pagination parameters' });
+    }
 
     let payments;
 
@@ -58,7 +66,25 @@ router.get('/', async (req, res, next) => {
       payments = await paymentRepository.findAll();
     }
 
-    res.json(serializePayments(payments));
+    const total = payments.length;
+
+    // Apply pagination in-memory
+    if (pageNum && limitNum) {
+      const skip = (pageNum - 1) * limitNum;
+      payments = payments.slice(skip, skip + limitNum);
+
+      res.json({
+        data: serializePayments(payments),
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } else {
+      res.json(serializePayments(payments));
+    }
   } catch (error) {
     next(error);
   }

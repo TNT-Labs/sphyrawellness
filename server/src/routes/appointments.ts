@@ -20,10 +20,18 @@ const createAppointmentSchema = z.object({
 
 const updateAppointmentSchema = createAppointmentSchema.partial();
 
-// GET /api/appointments
+// GET /api/appointments (with optional pagination)
 router.get('/', async (req, res, next) => {
   try {
-    const { startDate, endDate, status, customerId, staffId, serviceId } = req.query;
+    const { startDate, endDate, status, customerId, staffId, serviceId, page, limit } = req.query;
+    const pageNum = page ? parseInt(page as string, 10) : undefined;
+    const limitNum = limit ? parseInt(limit as string, 10) : undefined;
+
+    // Validate pagination
+    if ((pageNum !== undefined && (isNaN(pageNum) || pageNum < 1)) ||
+        (limitNum !== undefined && (isNaN(limitNum) || limitNum < 1 || limitNum > 100))) {
+      return res.status(400).json({ error: 'Invalid pagination parameters' });
+    }
 
     let appointments;
 
@@ -44,7 +52,25 @@ router.get('/', async (req, res, next) => {
       appointments = await appointmentRepository.findAll();
     }
 
-    res.json(appointments);
+    const total = appointments.length;
+
+    // Apply pagination in-memory
+    if (pageNum && limitNum) {
+      const skip = (pageNum - 1) * limitNum;
+      appointments = appointments.slice(skip, skip + limitNum);
+
+      res.json({
+        data: appointments,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+        },
+      });
+    } else {
+      res.json(appointments);
+    }
   } catch (error) {
     next(error);
   }
