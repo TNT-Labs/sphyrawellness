@@ -1,6 +1,7 @@
 import smsConfig from '../config/sms.js';
 import logger from '../utils/logger.js';
 import { getErrorMessage } from '../utils/response.js';
+import { withRetry, RetryPresets, isRetryableSMSError } from '../utils/retry.js';
 import type { ReminderSMSData } from '../templates/smsTemplate.js';
 import { generateReminderSMSText, generateConfirmationSMSText, generateCancellationSMSText } from '../templates/smsTemplate.js';
 
@@ -83,41 +84,60 @@ export class SMSService {
       // SMS_GATEWAY_TOKEN should be in format "username:password"
       const basicAuth = Buffer.from(smsConfig.gatewayToken).toString('base64');
 
-      // Send HTTP POST request to SMS gateway
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), smsConfig.timeout);
-
+      // Send HTTP POST request to SMS gateway with retry logic
       try {
-        const response = await fetch(`${smsConfig.gatewayUrl}/message`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${basicAuth}`
+        const responseData = await withRetry(
+          async () => {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), smsConfig.timeout);
+
+            try {
+              const response = await fetch(`${smsConfig.gatewayUrl}/message`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Basic ${basicAuth}`
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+              });
+
+              clearTimeout(timeoutId);
+
+              // Check response status
+              if (!response.ok) {
+                const errorText = await response.text().catch(() => 'Unknown error');
+                const error: any = new Error(`Gateway error: ${response.status} ${response.statusText}`);
+                error.response = { status: response.status };
+                error.statusText = response.statusText;
+                throw error;
+              }
+
+              // Parse response (most gateways return JSON)
+              let responseData: any;
+              try {
+                responseData = await response.json();
+              } catch (e) {
+                // Some gateways might return plain text success message
+                responseData = { success: true, message: await response.text() };
+              }
+
+              return responseData;
+            } catch (fetchError: any) {
+              clearTimeout(timeoutId);
+              throw fetchError;
+            }
           },
-          body: JSON.stringify(payload),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-
-        // Check response status
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => 'Unknown error');
-          logger.error(`❌ SMS gateway returned error: ${response.status} ${response.statusText} - ${errorText}`);
-          return {
-            success: false,
-            error: `Gateway error: ${response.status} ${response.statusText}`
-          };
-        }
-
-        // Parse response (most gateways return JSON)
-        let responseData: any;
-        try {
-          responseData = await response.json();
-        } catch (e) {
-          // Some gateways might return plain text success message
-          responseData = { success: true, message: await response.text() };
-        }
+          {
+            ...RetryPresets.standardAPI,
+            isRetryableError: isRetryableSMSError,
+            onRetry: (error, attempt, delay) => {
+              logger.warn(`📱 Retrying SMS send to ${normalizedPhone.normalized} (attempt ${attempt}) after ${delay}ms`, {
+                error: getErrorMessage(error)
+              });
+            }
+          }
+        );
 
         logger.info(`✅ SMS sent successfully via gateway. Response:`, responseData);
 
@@ -125,10 +145,8 @@ export class SMSService {
           success: true,
           messageId: responseData.id || responseData.messageId || `gateway-${Date.now()}`
         };
-      } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-
-        if (fetchError.name === 'AbortError') {
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
           logger.error(`❌ SMS gateway request timed out after ${smsConfig.timeout}ms`);
           return {
             success: false,
@@ -136,7 +154,7 @@ export class SMSService {
           };
         }
 
-        throw fetchError;
+        throw error;
       }
     } catch (error: any) {
       const errorMessage = getErrorMessage(error);
