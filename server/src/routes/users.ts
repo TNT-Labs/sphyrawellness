@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { userRepository } from '../repositories/userRepository.js';
 import { z } from 'zod';
 import { validatePassword } from '../utils/passwordPolicy.js';
+import { requireRole, type AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -67,8 +68,8 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
-// POST /api/users - Create new user
-router.post('/', async (req, res, next) => {
+// POST /api/users - Create new user (RESPONSABILE only)
+router.post('/', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const data = createUserSchema.parse(req.body);
 
@@ -101,8 +102,8 @@ router.post('/', async (req, res, next) => {
   }
 });
 
-// PUT /api/users/:id - Update user
-router.put('/:id', async (req, res, next) => {
+// PUT /api/users/:id - Update user (RESPONSABILE only)
+router.put('/:id', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const { id } = req.params;
     const data = updateUserSchema.parse(req.body);
@@ -126,10 +127,11 @@ router.put('/:id', async (req, res, next) => {
 });
 
 // PATCH /api/users/:id/password - Change password
-router.patch('/:id/password', async (req, res, next) => {
+router.patch('/:id/password', async (req: AuthRequest, res, next) => {
   try {
     const { id } = req.params;
     const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
+    const currentUserId = req.user?.id;
 
     // Validate password strength
     const passwordValidation = validatePassword(newPassword);
@@ -146,8 +148,19 @@ router.patch('/:id/password', async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify current password only if provided (admin reset doesn't require it)
-    if (currentPassword) {
+    // Check permissions: users can change their own password, or RESPONSABILE can change any password
+    const isOwnPassword = id === currentUserId;
+    const isResponsabile = req.user?.role === 'RESPONSABILE';
+
+    if (!isOwnPassword && !isResponsabile) {
+      return res.status(403).json({ error: 'Insufficient permissions' });
+    }
+
+    // For own password or when current password is provided, verify it
+    if (isOwnPassword || currentPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password required' });
+      }
       const isValid = await userRepository.verifyPassword(user, currentPassword);
       if (!isValid) {
         return res.status(401).json({ error: 'Current password is incorrect' });
@@ -165,8 +178,8 @@ router.patch('/:id/password', async (req, res, next) => {
   }
 });
 
-// DELETE /api/users/:id - Delete user
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/users/:id - Delete user (RESPONSABILE only)
+router.delete('/:id', requireRole('RESPONSABILE'), async (req: AuthRequest, res, next) => {
   try {
     const { id } = req.params;
 
@@ -175,11 +188,11 @@ router.delete('/:id', async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Prevent deleting yourself (optional - require user from JWT)
-    // const currentUserId = (req as any).user?.id;
-    // if (id === currentUserId) {
-    //   return res.status(409).json({ error: 'Cannot delete yourself' });
-    // }
+    // Prevent deleting yourself
+    const currentUserId = req.user?.id;
+    if (id === currentUserId) {
+      return res.status(409).json({ error: 'Cannot delete yourself' });
+    }
 
     await userRepository.delete(id);
 

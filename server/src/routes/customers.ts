@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { customerRepository } from '../repositories/customerRepository.js';
 import { z } from 'zod';
 import type { Customer } from '@prisma/client';
+import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -266,8 +267,8 @@ router.patch('/:id/consents', async (req, res, next) => {
   }
 });
 
-// DELETE /api/customers/:id - Delete customer
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/customers/:id - Delete customer (RESPONSABILE only)
+router.delete('/:id', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const { id } = req.params;
 

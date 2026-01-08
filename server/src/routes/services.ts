@@ -4,6 +4,7 @@ import {
   serviceCategoryRepository,
 } from '../repositories/serviceRepository.js';
 import { z } from 'zod';
+import { requireRole } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -121,8 +122,8 @@ router.put('/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/services/:id - Delete service
-router.delete('/:id', async (req, res, next) => {
+// DELETE /api/services/:id - Delete service (RESPONSABILE only)
+router.delete('/:id', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const { id } = req.params;
 
@@ -223,8 +224,8 @@ router.put('/categories/:id', async (req, res, next) => {
   }
 });
 
-// DELETE /api/services/categories/:id - Delete category
-router.delete('/categories/:id', async (req, res, next) => {
+// DELETE /api/services/categories/:id - Delete category (RESPONSABILE only)
+router.delete('/categories/:id', requireRole('RESPONSABILE'), async (req, res, next) => {
   try {
     const { id } = req.params;
 

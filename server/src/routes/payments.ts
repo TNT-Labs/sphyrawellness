@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { paymentRepository } from '../repositories/paymentRepository.js';
 import { z } from 'zod';
 import type { AuthRequest } from '../middleware/auth.js';
+import { requireRole } from '../middleware/auth.js';
 import { logAuditEvent, AuditAction, AuditSeverity } from '../utils/auditLog.js';
 import type { Payment } from '@prisma/client';
 
@@ -58,6 +59,38 @@ router.get('/', async (req, res, next) => {
     }
 
     res.json(serializePayments(payments));
+  } catch (error) {
+    next(error);
+  }
+});
+
+// GET /api/payments/stats/revenue - Get revenue statistics (MUST be before /:id route)
+router.get('/stats/revenue', async (req, res, next) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        error: 'startDate and endDate are required',
+      });
+    }
+
+    const start = new Date(startDate as string);
+    const end = new Date(endDate as string);
+
+    const [total, byMethod] = await Promise.all([
+      paymentRepository.getTotalRevenue(start, end),
+      paymentRepository.getRevenueByMethod(start, end),
+    ]);
+
+    res.json({
+      total,
+      byMethod,
+      period: {
+        start: start.toISOString(),
+        end: end.toISOString(),
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -189,8 +222,8 @@ router.post('/:id/refund', async (req: AuthRequest, res, next) => {
   }
 });
 
-// DELETE /api/payments/:id - Delete payment (hard delete - use with caution)
-router.delete('/:id', async (req: AuthRequest, res, next) => {
+// DELETE /api/payments/:id - Delete payment (hard delete - use with caution, RESPONSABILE only)
+router.delete('/:id', requireRole('RESPONSABILE'), async (req: AuthRequest, res, next) => {
   try {
     const { id } = req.params;
 
@@ -225,38 +258,6 @@ router.delete('/:id', async (req: AuthRequest, res, next) => {
     });
 
     res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-});
-
-// GET /api/payments/stats/revenue - Get revenue statistics
-router.get('/stats/revenue', async (req, res, next) => {
-  try {
-    const { startDate, endDate } = req.query;
-
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        error: 'startDate and endDate are required',
-      });
-    }
-
-    const start = new Date(startDate as string);
-    const end = new Date(endDate as string);
-
-    const [total, byMethod] = await Promise.all([
-      paymentRepository.getTotalRevenue(start, end),
-      paymentRepository.getRevenueByMethod(start, end),
-    ]);
-
-    res.json({
-      total,
-      byMethod: byMethod.map((item) => ({
-        method: item.method,
-        total: Number(item._sum.amount || 0),
-        count: item._count.id,
-      })),
-    });
   } catch (error) {
     next(error);
   }

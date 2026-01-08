@@ -6,7 +6,7 @@
  * Tutti i dati provengono da API REST
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import {
   Customer,
   Service,
@@ -138,12 +138,12 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       // User is not authenticated, stop loading
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshData]);
 
   /**
    * Refresh all data from API
    */
-  const refreshData = async () => {
+  const refreshData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -190,7 +190,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []); // Empty deps - only uses stable setState functions
 
   // ============================================================================
   // CUSTOMER OPERATIONS
@@ -321,16 +321,16 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     setAppointments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const refreshAppointments = async (): Promise<void> => {
+  const refreshAppointments = useCallback(async (): Promise<void> => {
     try {
       const appointmentsData = await appointmentsApi.getAll();
       setAppointments(appointmentsData);
     } catch (err: any) {
       logger.error('Failed to refresh appointments:', err);
     }
-  };
+  }, []);
 
-  const refreshReminders = async (): Promise<void> => {
+  const refreshReminders = useCallback(async (): Promise<void> => {
     try {
       const fetchedReminders = await remindersApi.getAll();
       setReminders(fetchedReminders);
@@ -339,7 +339,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       logger.error('Failed to refresh reminders:', err);
       setReminders([]); // Set empty array on error
     }
-  };
+  }, []);
 
   // ============================================================================
   // PAYMENT OPERATIONS
@@ -406,52 +406,71 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   };
 
   // ============================================================================
-  // CONTEXT VALUE
+  // CONTEXT VALUE - Memoized to prevent unnecessary re-renders
   // ============================================================================
 
-  const value: AppContextType = {
-    customers,
-    services,
-    serviceCategories,
-    staff,
-    staffRoles,
-    appointments,
-    payments,
-    users,
-    reminders,
-    settings,
-    isLoading,
-    error,
-    addCustomer,
-    updateCustomer,
-    deleteCustomer,
-    addService,
-    updateService,
-    deleteService,
-    addServiceCategory,
-    updateServiceCategory,
-    deleteServiceCategory,
-    addStaff,
-    updateStaff,
-    deleteStaff,
-    addStaffRole,
-    updateStaffRole,
-    deleteStaffRole,
-    addAppointment,
-    updateAppointment,
-    deleteAppointment,
-    addPayment,
-    updatePayment,
-    deletePayment,
-    refundPayment,
-    addUser,
-    updateUser,
-    deleteUser,
-    updateSettings,
-    refreshData,
-    refreshAppointments,
-    refreshReminders,
-  };
+  const value: AppContextType = useMemo(
+    () => ({
+      customers,
+      services,
+      serviceCategories,
+      staff,
+      staffRoles,
+      appointments,
+      payments,
+      users,
+      reminders,
+      settings,
+      isLoading,
+      error,
+      addCustomer,
+      updateCustomer,
+      deleteCustomer,
+      addService,
+      updateService,
+      deleteService,
+      addServiceCategory,
+      updateServiceCategory,
+      deleteServiceCategory,
+      addStaff,
+      updateStaff,
+      deleteStaff,
+      addStaffRole,
+      updateStaffRole,
+      deleteStaffRole,
+      addAppointment,
+      updateAppointment,
+      deleteAppointment,
+      addPayment,
+      updatePayment,
+      deletePayment,
+      refundPayment,
+      addUser,
+      updateUser,
+      deleteUser,
+      updateSettings,
+      refreshData,
+      refreshAppointments,
+      refreshReminders,
+    }),
+    [
+      customers,
+      services,
+      serviceCategories,
+      staff,
+      staffRoles,
+      appointments,
+      payments,
+      users,
+      reminders,
+      settings,
+      isLoading,
+      error,
+      refreshData,
+      refreshAppointments,
+      refreshReminders,
+    ]
+  );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }

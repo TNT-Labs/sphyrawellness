@@ -11,6 +11,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { authenticateToken } from './middleware/auth.js';
 import { prismaErrorHandler } from './middleware/prismaErrorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { csrfProtection, attachCsrfToken } from './middleware/csrf.js';
 
 // PostgreSQL REST API routes
 import authRouter from './routes/auth.js';
@@ -128,8 +129,8 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range', 'X-CSRF-Token'],
   maxAge: 600
 }));
 
@@ -168,6 +169,13 @@ app.use(globalLimiter);
 // Request/Response logging
 app.use(requestLogger);
 
+// Attach CSRF token to all responses (enable with ENABLE_CSRF=true)
+const enableCSRF = process.env.ENABLE_CSRF === 'true';
+if (enableCSRF) {
+  app.use(attachCsrfToken);
+  logger.info('CSRF protection enabled');
+}
+
 // Health check
 app.get('/health', (req, res) => {
   const response: ApiResponse = {
@@ -203,18 +211,23 @@ app.get('/api/settings/business-hours', async (req, res, next) => {
   }
 });
 
-// Protected routes (require authentication)
-app.use('/api/customers', authenticateToken, customersRouter);
-app.use('/api/services', authenticateToken, servicesRouter);
-app.use('/api/staff', authenticateToken, staffRouter);
-app.use('/api/appointments', authenticateToken, appointmentsRouter);
-app.use('/api/payments', authenticateToken, paymentsRouter);
-app.use('/api/reminders', authenticateToken, remindersRouter);
-app.use('/api/users', authenticateToken, usersRouter);
-app.use('/api/settings', authenticateToken, settingsRouter);
+// Protected routes (require authentication + optional CSRF)
+// CSRF protection is applied conditionally based on ENABLE_CSRF env variable
+const protectedMiddleware = enableCSRF
+  ? [authenticateToken, csrfProtection]
+  : [authenticateToken];
+
+app.use('/api/customers', ...protectedMiddleware, customersRouter);
+app.use('/api/services', ...protectedMiddleware, servicesRouter);
+app.use('/api/staff', ...protectedMiddleware, staffRouter);
+app.use('/api/appointments', ...protectedMiddleware, appointmentsRouter);
+app.use('/api/payments', ...protectedMiddleware, paymentsRouter);
+app.use('/api/reminders', ...protectedMiddleware, remindersRouter);
+app.use('/api/users', ...protectedMiddleware, usersRouter);
+app.use('/api/settings', ...protectedMiddleware, settingsRouter);
 
 // Upload (keep existing - may need auth)
-app.use('/api/upload', authenticateToken, uploadRouter);
+app.use('/api/upload', ...protectedMiddleware, uploadRouter);
 
 // Root route
 app.get('/', (req, res) => {

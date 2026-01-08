@@ -379,31 +379,25 @@ router.post('/appointments', async (req, res, next) => {
     // Calculate end time
     const startTime = new Date(`2000-01-01T${data.startTime}`);
     const endTime = addMinutes(startTime, service.duration);
+    const dateObj = new Date(data.date);
+    const endTimeObj = new Date(`2000-01-01T${endTime.toTimeString().substring(0, 5)}`);
 
-    // Check for conflicts
-    const hasConflict = await appointmentRepository.hasConflict(
+    // Create appointment with atomic conflict check (prevents race conditions)
+    const appointment = await appointmentRepository.createWithConflictCheck(
+      {
+        customer: { connect: { id: customer.id } },
+        service: { connect: { id: data.serviceId } },
+        staff: { connect: { id: data.staffId } },
+        date: dateObj,
+        startTime,
+        endTime: endTimeObj,
+        status: 'scheduled',
+      },
       data.staffId,
-      new Date(data.date),
+      dateObj,
       startTime,
-      endTime
+      endTimeObj
     );
-
-    if (hasConflict) {
-      return res.status(409).json({
-        error: 'Time slot no longer available',
-      });
-    }
-
-    // Create appointment
-    const appointment = await appointmentRepository.create({
-      customer: { connect: { id: customer.id } },
-      service: { connect: { id: data.serviceId } },
-      staff: { connect: { id: data.staffId } },
-      date: new Date(data.date),
-      startTime,
-      endTime: new Date(`2000-01-01T${endTime.toTimeString().substring(0, 5)}`),
-      status: 'scheduled',
-    });
 
     // Generate confirmation token (so customer can confirm later)
     const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
@@ -614,21 +608,27 @@ router.post('/bookings', async (req, res, next) => {
       }
     }
 
-    // 5. Create appointment with ISO datetime strings
+    // 5. Create appointment with ISO datetime strings (atomic operation to prevent race conditions)
     const startTimeISO = new Date(`1970-01-01T${data.startTime}:00.000Z`);
     const endTimeStr = `${String(slotEnd.getHours()).padStart(2, '0')}:${String(slotEnd.getMinutes()).padStart(2, '0')}`;
     const endTimeISO = new Date(`1970-01-01T${endTimeStr}:00.000Z`);
 
-    const appointment = await appointmentRepository.create({
-      customer: { connect: { id: customer.id } },
-      service: { connect: { id: data.serviceId } },
-      staff: { connect: { id: availableStaffId } },
-      date: appointmentDate,
-      startTime: startTimeISO,
-      endTime: endTimeISO,
-      status: 'scheduled',
-      notes: data.notes || undefined,
-    });
+    const appointment = await appointmentRepository.createWithConflictCheck(
+      {
+        customer: { connect: { id: customer.id } },
+        service: { connect: { id: data.serviceId } },
+        staff: { connect: { id: availableStaffId } },
+        date: appointmentDate,
+        startTime: startTimeISO,
+        endTime: endTimeISO,
+        status: 'scheduled',
+        notes: data.notes || undefined,
+      },
+      availableStaffId,
+      appointmentDate,
+      startTimeISO,
+      endTimeISO
+    );
 
     // Generate confirmation token immediately (so customer can confirm later)
     const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
