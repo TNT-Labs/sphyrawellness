@@ -10,9 +10,13 @@ RUN apk add --no-cache curl bash
 # IMPORTANTE: NON montare in /usr/local/bin perché sovrascrive certbot!
 RUN mkdir -p /opt/certbot-hooks
 
-# Il container userà gli script montati come volume in /opt/certbot-hooks:
-# - duckdns-auth.sh: Autenticazione DNS-01
-# - duckdns-cleanup.sh: Pulizia record TXT
+# Copia gli script hook nell'immagine
+# Questo è più affidabile del volume mount su Windows
+COPY scripts/duckdns-auth.sh /opt/certbot-hooks/duckdns-auth.sh
+COPY scripts/duckdns-cleanup.sh /opt/certbot-hooks/duckdns-cleanup.sh
+
+# Rendi gli script eseguibili
+RUN chmod +x /opt/certbot-hooks/duckdns-auth.sh /opt/certbot-hooks/duckdns-cleanup.sh
 
 # Usa il percorso completo per eseguire certbot con il suo shebang Python
 # Verificato con: docker run --rm --entrypoint sh certbot/certbot:latest -c "which certbot"
