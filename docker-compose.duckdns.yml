@@ -63,16 +63,13 @@ services:
   # ========================================
   certbot:
     build:
-      context: ./docker/certbot
-      dockerfile: Dockerfile.duckdns
+      context: .
+      dockerfile: docker/certbot/Dockerfile.duckdns
     container_name: sphyra-certbot
     restart: unless-stopped
     volumes:
       # Let's Encrypt configuration e certificati
       - ./certbot/conf:/etc/letsencrypt
-      # Script di autenticazione DuckDNS
-      - ./scripts/duckdns-auth.sh:/opt/certbot-hooks/duckdns-auth.sh:ro
-      - ./scripts/duckdns-cleanup.sh:/opt/certbot-hooks/duckdns-cleanup.sh:ro
     environment:
       - DOMAIN=${DOMAIN}
       - EMAIL=${EMAIL}
