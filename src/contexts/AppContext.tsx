@@ -17,6 +17,7 @@ import {
   Payment,
   User,
   Reminder,
+  AppSettings,
 } from '../types';
 import {
   customersApi,
@@ -42,7 +43,7 @@ interface AppContextType {
   payments: Payment[];
   users: User[];
   reminders: Reminder[];
-  settings: Record<string, any>;
+  settings: AppSettings;
 
   // Loading state
   isLoading: boolean;
@@ -90,7 +91,7 @@ interface AppContextType {
   deleteUser: (id: string) => Promise<void>;
 
   // Settings operations
-  updateSettings: (settings: Record<string, any>) => Promise<void>;
+  updateSettings: (settings: AppSettings) => Promise<void>;
 
   // Refresh data
   refreshData: () => Promise<void>;
@@ -125,7 +126,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [settings, setSettings] = useState<Record<string, any>>({});
+  const [settings, setSettings] = useState<AppSettings>({ idleTimeout: 5 });
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -174,7 +175,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       setReminders(remindersData);
 
       logger.info('Data loaded successfully');
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to load data:', err);
       setError('Errore durante il caricamento dei dati');
     } finally {
@@ -325,7 +326,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
     try {
       const appointmentsData = await appointmentsApi.getAll();
       setAppointments(appointmentsData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to refresh appointments:', err);
     }
   }, []);
@@ -335,7 +336,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       const fetchedReminders = await remindersApi.getAll();
       setReminders(fetchedReminders);
       logger.info('Reminders refreshed:', fetchedReminders.length);
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error('Failed to refresh reminders:', err);
       setReminders([]); // Set empty array on error
     }
@@ -400,7 +401,7 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   // SETTINGS OPERATIONS
   // ============================================================================
 
-  const updateSettings = async (newSettings: Record<string, any>): Promise<void> => {
+  const updateSettings = async (newSettings: AppSettings): Promise<void> => {
     const updated = await settingsApi.updateAll(newSettings);
     setSettings(updated);
   };

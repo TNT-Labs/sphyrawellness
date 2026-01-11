@@ -39,6 +39,10 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
+  // Generate unique IDs for ARIA attributes
+  const listboxId = useRef(`listbox-${Math.random().toString(36).substr(2, 9)}`).current;
+  const labelId = useRef(`label-${Math.random().toString(36).substr(2, 9)}`).current;
+
   const debouncedSearchTerm = useDebounce(searchTerm, 150);
 
   // Filtra le opzioni in base al termine di ricerca
@@ -143,7 +147,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   return (
     <div className={className}>
       {label && (
-        <label className="label">
+        <label id={labelId} className="label">
           {label} {required && '*'}
         </label>
       )}
@@ -163,6 +167,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
             <input
               ref={inputRef}
               type="text"
+              role="combobox"
+              aria-labelledby={label ? labelId : undefined}
+              aria-label={!label ? placeholder : undefined}
+              aria-expanded={isOpen}
+              aria-controls={listboxId}
+              aria-activedescendant={isOpen && filteredOptions[highlightedIndex] ? `option-${filteredOptions[highlightedIndex].id}` : undefined}
+              aria-autocomplete="list"
               value={isOpen ? searchTerm : selectedOption?.label || ''}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -188,6 +199,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                   onClick={handleClear}
                   className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                   tabIndex={-1}
+                  aria-label="Cancella selezione"
                 >
                   <X size={16} className="text-gray-400" />
                 </button>
@@ -210,10 +222,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
                 {noOptionsMessage}
               </div>
             ) : (
-              <ul ref={listRef} className="py-1">
+              <ul ref={listRef} className="py-1" role="listbox" id={listboxId}>
                 {filteredOptions.map((option, index) => (
                   <li
                     key={option.id}
+                    id={`option-${option.id}`}
+                    role="option"
+                    aria-selected={value === option.id}
                     onClick={() => handleSelect(option.id)}
                     onMouseEnter={() => setHighlightedIndex(index)}
                     className={`px-4 py-2 cursor-pointer transition-colors ${

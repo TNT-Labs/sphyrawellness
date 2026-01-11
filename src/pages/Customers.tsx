@@ -4,6 +4,7 @@ import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { Customer, CustomerConsents } from '../types';
 import { Plus, Search, Edit, Trash2, Phone, Mail, User, Calendar, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, isToday, parseISO } from 'date-fns';
@@ -50,6 +51,9 @@ const Customers: React.FC = () => {
 
   // Track initial form data to detect unsaved changes
   const initialFormDataRef = useRef(formData);
+
+  // Focus trap for modal accessibility
+  const modalRef = useFocusTrap(isModalOpen);
 
   // Get customer IDs with appointments today
   const todayCustomerIds = useMemo(() => {
@@ -400,6 +404,7 @@ const Customers: React.FC = () => {
                 <button
                   onClick={() => handleOpenAppointmentModal(customer.id)}
                   className="w-full px-3 py-2 bg-primary-50 text-primary-600 rounded-md hover:bg-primary-100 transition-colors text-sm font-semibold touch-manipulation"
+                  aria-label={`Nuovo appuntamento per ${customer.firstName} ${customer.lastName}`}
                 >
                   <Calendar size={16} className="inline mr-1" />
                   Nuovo Appuntamento
@@ -408,6 +413,7 @@ const Customers: React.FC = () => {
                   <button
                     onClick={() => handleOpenModal(customer)}
                     className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
+                    aria-label={`Modifica ${customer.firstName} ${customer.lastName}`}
                   >
                     <Edit size={16} className="inline mr-1" />
                     Modifica
@@ -415,6 +421,7 @@ const Customers: React.FC = () => {
                   <button
                     onClick={() => handleDelete(customer)}
                     className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
+                    aria-label={`Elimina ${customer.firstName} ${customer.lastName}`}
                   >
                     <Trash2 size={16} className="inline mr-1" />
                     Elimina
@@ -495,10 +502,18 @@ const Customers: React.FC = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden">
-          <div className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="customer-modal-title"
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
+          >
             <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              <h2 id="customer-modal-title" className="text-2xl font-bold text-gray-900 mb-6">
                 {editingCustomer ? 'Modifica Cliente' : 'Nuovo Cliente'}
               </h2>
 

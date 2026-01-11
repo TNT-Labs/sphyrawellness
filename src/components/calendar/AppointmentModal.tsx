@@ -5,6 +5,7 @@ import { Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { generateId, calculateEndTime } from '../../utils/helpers';
 import { useEscapeKey } from '../../hooks/useEscapeKey';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useCalendarLogic } from '../../hooks/useCalendarLogic';
@@ -116,6 +117,9 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   useEscapeKey(onClose, isOpen);
 
+  // Focus trap for modal accessibility
+  const modalRef = useFocusTrap(isOpen);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -204,10 +208,18 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden">
-        <div className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="appointment-modal-title"
+      >
+        <div
+          ref={modalRef}
+          className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
+        >
           <div className="p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+            <h2 id="appointment-modal-title" className="text-2xl font-bold text-gray-900 mb-6">
               {editingAppointment
                 ? 'Modifica Appuntamento'
                 : 'Nuovo Appuntamento'}
