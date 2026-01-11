@@ -4,6 +4,7 @@ import { useApp } from '../contexts/AppContext';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { useDebounce } from '../hooks/useDebounce';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 import { Service } from '../types';
 import { Plus, Search, Edit, Trash2, Scissors, Clock, Euro, Calendar, X, Upload, Image as ImageIcon, ChevronLeft, ChevronRight } from 'lucide-react';
 import { generateId, validateAmount, validateDuration } from '../utils/helpers';
@@ -51,6 +52,9 @@ const Services: React.FC = () => {
 
   // Track initial form data to detect unsaved changes
   const initialFormDataRef = useRef(formData);
+
+  // Focus trap for modal accessibility
+  const modalRef = useFocusTrap(isModalOpen);
 
   // Filter only active categories
   const activeCategories = serviceCategories.filter(c => c.isActive);
@@ -447,6 +451,7 @@ const Services: React.FC = () => {
                 <button
                   onClick={() => handleOpenAppointmentModal(service.id)}
                   className="w-full px-3 py-2 bg-primary-50 text-primary-600 rounded-md hover:bg-primary-100 transition-colors text-sm font-semibold touch-manipulation"
+                  aria-label={`Nuovo appuntamento per ${service.name}`}
                 >
                   <Calendar size={16} className="inline mr-1" />
                   Nuovo Appuntamento
@@ -455,6 +460,7 @@ const Services: React.FC = () => {
                   <button
                     onClick={() => handleOpenModal(service)}
                     className="flex-1 px-3 py-2 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-sm font-semibold touch-manipulation"
+                    aria-label={`Modifica ${service.name}`}
                   >
                     <Edit size={16} className="inline mr-1" />
                     Modifica
@@ -462,6 +468,7 @@ const Services: React.FC = () => {
                   <button
                     onClick={() => handleDelete(service)}
                     className="flex-1 px-3 py-2 bg-red-50 text-red-600 rounded-md hover:bg-red-100 transition-colors text-sm font-semibold touch-manipulation"
+                    aria-label={`Elimina ${service.name}`}
                   >
                     <Trash2 size={16} className="inline mr-1" />
                     Elimina
@@ -543,10 +550,18 @@ const Services: React.FC = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden">
-          <div className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden">
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-x-hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="service-modal-title"
+        >
+          <div
+            ref={modalRef}
+            className="bg-white rounded-lg w-full max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden"
+          >
             <div className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              <h2 id="service-modal-title" className="text-2xl font-bold text-gray-900 mb-6">
                 {editingService ? 'Modifica Servizio' : 'Nuovo Servizio'}
               </h2>
 
