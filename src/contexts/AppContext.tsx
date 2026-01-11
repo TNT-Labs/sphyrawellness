@@ -130,16 +130,6 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Load all data when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      refreshData();
-    } else {
-      // User is not authenticated, stop loading
-      setIsLoading(false);
-    }
-  }, [isAuthenticated, refreshData]);
-
   /**
    * Refresh all data from API
    */
@@ -191,6 +181,16 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
       setIsLoading(false);
     }
   }, []); // Empty deps - only uses stable setState functions
+
+  // Load all data when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshData();
+    } else {
+      // User is not authenticated, stop loading
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, refreshData]);
 
   // ============================================================================
   // CUSTOMER OPERATIONS
