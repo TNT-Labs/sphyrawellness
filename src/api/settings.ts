@@ -1,20 +1,21 @@
 import { apiClient } from './client';
+import { AppSettings } from '../types';
 
 export const settingsApi = {
   /**
    * Get all settings
    */
-  getAll: async (): Promise<Record<string, any>> => {
+  getAll: async (): Promise<AppSettings> => {
     const { data } = await apiClient.get('/settings');
-    return data;
+    return data as AppSettings;
   },
 
   /**
    * Update settings (bulk)
    */
-  updateAll: async (settings: Record<string, any>): Promise<Record<string, any>> => {
+  updateAll: async (settings: AppSettings): Promise<AppSettings> => {
     const { data } = await apiClient.put('/settings', settings);
-    return data;
+    return data as AppSettings;
   },
 
   /**
