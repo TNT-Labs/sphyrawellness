@@ -4,6 +4,7 @@ import reminderServicePrisma from '../services/reminderServicePrisma.js';
 import { prisma } from '../lib/prisma.js';
 import type { Appointment, Customer, Service, Staff, AppointmentStatus } from '@prisma/client';
 import { z } from 'zod';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -140,7 +141,7 @@ router.post('/send/:appointmentId', async (req, res, next) => {
       reminderId: result.reminderId
     });
   } catch (error) {
-    console.error('Error sending reminder:', error);
+    logger.error('Error sending reminder:', error);
     next(error);
   }
 });
@@ -155,7 +156,7 @@ router.post('/send-all', async (req, res, next) => {
       ...result
     });
   } catch (error) {
-    console.error('Error sending all reminders:', error);
+    logger.error('Error sending all reminders:', error);
     next(error);
   }
 });
@@ -189,7 +190,7 @@ router.get('/mobile/pending', async (req, res, next) => {
     const now = new Date();
     const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-    console.log(`📱 Mobile app: Looking for appointments from ${now.toISOString()} to ${next24Hours.toISOString()}`);
+    logger.info(`📱 Mobile app: Looking for appointments from ${now.toISOString()} to ${next24Hours.toISOString()}`);
 
     // Get all appointments within the next 24 hours
     const appointments = await prisma.appointment.findMany({
@@ -213,7 +214,7 @@ router.get('/mobile/pending', async (req, res, next) => {
       }
     });
 
-    console.log(`📱 Found ${appointments.length} appointments in next 24 hours`);
+    logger.info(`📱 Found ${appointments.length} appointments in next 24 hours`);
 
     // Get all appointment IDs to check for existing SMS reminders
     const appointmentIds = appointments.map(apt => apt.id);
@@ -232,9 +233,9 @@ router.get('/mobile/pending', async (req, res, next) => {
 
     const appointmentsWithSentReminders = new Set(existingReminders.map(r => r.appointmentId));
 
-    console.log(`📱 Found ${existingReminders.length} appointments with existing SMS reminders sent`);
+    logger.info(`📱 Found ${existingReminders.length} appointments with existing SMS reminders sent`);
     if (existingReminders.length > 0) {
-      console.log(`📱 Appointments with sent reminders: ${Array.from(appointmentsWithSentReminders).join(', ')}`);
+      logger.info(`📱 Appointments with sent reminders: ${Array.from(appointmentsWithSentReminders).join(', ')}`);
     }
 
     // Transform to mobile-friendly format with SMS message
@@ -242,21 +243,21 @@ router.get('/mobile/pending', async (req, res, next) => {
       .filter((apt: AppointmentWithRelations) => {
         // Skip if already has sent SMS reminder
         if (appointmentsWithSentReminders.has(apt.id)) {
-          console.log(`📱 Skipping appointment ${apt.id} - SMS reminder already sent (found in Reminder table)`);
+          logger.info(`📱 Skipping appointment ${apt.id} - SMS reminder already sent (found in Reminder table)`);
           return false;
         }
         // Additional safety check: skip if reminderSent flag is somehow true (should not happen due to initial query)
         if (apt.reminderSent) {
-          console.log(`📱 Skipping appointment ${apt.id} - reminderSent flag is true (inconsistency detected)`);
+          logger.info(`📱 Skipping appointment ${apt.id} - reminderSent flag is true (inconsistency detected)`);
           return false;
         }
         // Apply GDPR filters
         if (!apt.customer.smsReminderConsent) {
-          console.log(`📱 Skipping appointment ${apt.id} - customer has not given SMS consent`);
+          logger.info(`📱 Skipping appointment ${apt.id} - customer has not given SMS consent`);
           return false;
         }
         if (!apt.customer.phone) {
-          console.log(`📱 Skipping appointment ${apt.id} - customer has no phone number`);
+          logger.info(`📱 Skipping appointment ${apt.id} - customer has no phone number`);
           return false;
         }
         return true;
@@ -297,11 +298,11 @@ router.get('/mobile/pending', async (req, res, next) => {
         message: generateSMSMessage(apt),
       }));
 
-    console.log(`📱 Returning ${pendingReminders.length} reminders to mobile app (after GDPR filter)`);
+    logger.info(`📱 Returning ${pendingReminders.length} reminders to mobile app (after GDPR filter)`);
 
     res.json(pendingReminders);
   } catch (error) {
-    console.error('Error fetching mobile pending reminders:', error);
+    logger.error('Error fetching mobile pending reminders:', error);
     next(error);
   }
 });
@@ -325,7 +326,7 @@ router.post('/mobile/mark-sent', async (req, res, next) => {
     }
 
     if (appointment.reminderSent) {
-      console.log(`⚠️ Reminder for appointment ${appointmentId} already marked as sent`);
+      logger.info(`⚠️ Reminder for appointment ${appointmentId} already marked as sent`);
       return res.json({ success: true, alreadySent: true });
     }
 
@@ -334,7 +335,7 @@ router.post('/mobile/mark-sent', async (req, res, next) => {
     const existingSmsReminder = existingReminders.find(r => r.type === 'sms' && r.sent);
 
     if (existingSmsReminder) {
-      console.log(`⚠️ SMS reminder already exists for appointment ${appointmentId}`);
+      logger.info(`⚠️ SMS reminder already exists for appointment ${appointmentId}`);
       // Update appointment flag if not already set
       await prisma.appointment.update({
         where: { id: appointmentId },
@@ -358,11 +359,11 @@ router.post('/mobile/mark-sent', async (req, res, next) => {
       data: { reminderSent: true }
     });
 
-    console.log(`✅ Marked SMS reminder as sent for appointment ${appointmentId}`);
+    logger.info(`✅ Marked SMS reminder as sent for appointment ${appointmentId}`);
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error marking reminder as sent:', error);
+    logger.error('Error marking reminder as sent:', error);
     next(error);
   }
 });
@@ -387,7 +388,7 @@ router.post('/mobile/mark-failed', async (req, res, next) => {
 
     res.json({ success: true });
   } catch (error) {
-    console.error('Error marking reminder as failed:', error);
+    logger.error('Error marking reminder as failed:', error);
     next(error);
   }
 });

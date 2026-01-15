@@ -119,15 +119,19 @@ router.get('/', async (req, res, next) => {
         customers = customers.slice(skip, skip + limitNum);
       }
     } else {
-      // For findAll, we'd need to add pagination to the repository
-      // For now, just return all (TODO: add pagination to repository method)
-      customers = await customerRepository.findAll();
-      total = customers.length;
-
-      // Apply pagination in-memory (temporary solution)
+      // Use database-level pagination for better performance
       if (pageNum && limitNum) {
         const skip = (pageNum - 1) * limitNum;
-        customers = customers.slice(skip, skip + limitNum);
+
+        // Fetch paginated data and total count in parallel
+        [customers, total] = await Promise.all([
+          customerRepository.findAllPaginated({ skip, take: limitNum }),
+          customerRepository.count(),
+        ]);
+      } else {
+        // No pagination - fetch all
+        customers = await customerRepository.findAll();
+        total = customers.length;
       }
     }
 

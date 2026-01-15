@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { authLimiter } from '../middleware/rateLimiter.js';
 import { logLoginSuccess, logLoginFailure } from '../utils/auditLog.js';
+import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.js';
 
 const router = Router();
 
@@ -11,9 +12,6 @@ const loginSchema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
 });
-
-const JWT_SECRET: string = process.env.JWT_SECRET || 'development-secret-key';
-const JWT_EXPIRES_IN: string = process.env.JWT_EXPIRES_IN || '7d';
 
 // POST /api/auth/login
 router.post('/login', authLimiter, async (req, res, next) => {

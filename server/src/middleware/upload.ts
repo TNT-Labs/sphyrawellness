@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import type { Request, Response, NextFunction } from 'express';
 import { isValidImage } from '../utils/fileValidation.js';
+import { logger } from '../utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -90,7 +91,7 @@ export const deleteImageFile = (imageUrl: string) => {
       fs.unlinkSync(filePath);
     }
   } catch (error) {
-    console.error('Error deleting image file:', error);
+    logger.error('Error deleting image file:', error);
   }
 };
 
@@ -123,7 +124,7 @@ export const validateUploadedImage = async (
     }
 
     // File is valid, log for audit
-    console.log(`✅ Image validated: ${req.file.filename} (${validation.detectedType})`);
+    logger.info(`✅ Image validated: ${req.file.filename} (${validation.detectedType})`);
 
     next();
   } catch (error) {
@@ -132,7 +133,7 @@ export const validateUploadedImage = async (
       fs.unlinkSync(req.file.path);
     }
 
-    console.error('Error validating uploaded image:', error);
+    logger.error('Error validating uploaded image:', error);
     return res.status(500).json({
       success: false,
       error: 'Error validating uploaded file',

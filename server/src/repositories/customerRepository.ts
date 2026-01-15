@@ -14,6 +14,37 @@ export class CustomerRepository {
   }
 
   /**
+   * Find customers with pagination at database level
+   * @param skip - Number of records to skip
+   * @param take - Number of records to return
+   * @param where - Optional where clause for filtering
+   * @returns Array of customers
+   */
+  async findAllPaginated(options: {
+    skip?: number;
+    take?: number;
+    where?: Prisma.CustomerWhereInput;
+  }): Promise<Customer[]> {
+    return prisma.customer.findMany({
+      where: options.where,
+      skip: options.skip,
+      take: options.take,
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Count customers matching the where clause
+   * @param where - Optional where clause for filtering
+   * @returns Total count
+   */
+  async count(where?: Prisma.CustomerWhereInput): Promise<number> {
+    return prisma.customer.count({ where });
+  }
+
+  /**
    * Get customer by ID
    */
   async findById(id: string): Promise<Customer | null> {

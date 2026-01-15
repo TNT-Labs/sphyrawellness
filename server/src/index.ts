@@ -3,9 +3,13 @@ import app from './app.js';
 import { initializeDailyReminderCron } from './jobs/dailyReminderCronPrisma.js';
 import { settingsRepository } from './repositories/settingsRepository.js';
 import logger from './utils/logger.js';
+import { validateSecurityConfig } from './config/security.js';
 
 // Load environment variables
 dotenv.config();
+
+// Validate security configuration (fails fast if issues in production)
+validateSecurityConfig();
 
 const PORT = process.env.PORT || 3001;
 

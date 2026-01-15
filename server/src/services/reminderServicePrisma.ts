@@ -7,6 +7,7 @@ import emailService from './emailService.js';
 import smsService from './smsService.js';
 import calendarService from './calendarService.js';
 import { getErrorMessage } from '../utils/response.js';
+import { logger } from '../utils/logger.js';
 import type { Appointment, Customer, Service, Staff, Reminder, AppointmentStatus } from '@prisma/client';
 
 const SALT_ROUNDS = 12; // bcrypt salt rounds
@@ -54,13 +55,13 @@ export class ReminderServicePrisma {
           daysBefore = settings.value;
         }
       } catch (error) {
-        console.log('⚠️ Could not load reminder settings, using default (1 day before)');
+        logger.info('⚠️ Could not load reminder settings, using default (1 day before)');
       }
 
       const targetDate = addDays(new Date(), daysBefore);
       const targetDateStr = format(targetDate, 'yyyy-MM-dd');
 
-      console.log(`📅 Looking for appointments on ${targetDateStr} (${daysBefore} days from now)`);
+      logger.info(`📅 Looking for appointments on ${targetDateStr} (${daysBefore} days from now)`);
 
       const appointments = await prisma.appointment.findMany({
         where: {
@@ -79,7 +80,7 @@ export class ReminderServicePrisma {
 
       return appointments as AppointmentWithRelations[];
     } catch (error) {
-      console.error('❌ Error fetching appointments needing reminders:', error);
+      logger.error('❌ Error fetching appointments needing reminders:', error);
       throw error;
     }
   }
@@ -117,34 +118,34 @@ export class ReminderServicePrisma {
       // GDPR COMPLIANCE & VALIDATION: Check based on reminder type
       if (type === 'email') {
         if (!customer.email) {
-          console.error(`Customer ${customer.id} has no email address`);
+          logger.error(`Customer ${customer.id} has no email address`);
           return { success: false, error: `Customer email not found (${customer.firstName} ${customer.lastName})` };
         }
 
         if (!customer.emailReminderConsent) {
-          console.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.email}) has not consented to email reminders - skipping`);
+          logger.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.email}) has not consented to email reminders - skipping`);
           return {
             success: false,
             error: `Customer has not consented to email reminders (GDPR)`
           };
         }
 
-        console.log(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
+        logger.info(`✓ Related data fetched: Customer=${customer.email}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
       } else if (type === 'sms') {
         if (!customer.phone) {
-          console.error(`Customer ${customer.id} has no phone number`);
+          logger.error(`Customer ${customer.id} has no phone number`);
           return { success: false, error: `Customer phone not found (${customer.firstName} ${customer.lastName})` };
         }
 
         if (!customer.smsReminderConsent) {
-          console.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.phone}) has not consented to SMS reminders - skipping`);
+          logger.warn(`⚠️ Customer ${customer.firstName} ${customer.lastName} (${customer.phone}) has not consented to SMS reminders - skipping`);
           return {
             success: false,
             error: `Customer has not consented to SMS reminders (GDPR)`
           };
         }
 
-        console.log(`✓ Related data fetched: Customer=${customer.phone}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
+        logger.info(`✓ Related data fetched: Customer=${customer.phone}, Service=${service.name}, Staff=${staff.firstName} ${staff.lastName}`);
       }
 
       // 2. Generate confirmation token if not exists or if expired
@@ -201,7 +202,7 @@ export class ReminderServicePrisma {
 
       // 4. Generate confirmation link
       const confirmationLink = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/confirm-appointment/${appointmentId}/${confirmationToken}`;
-      console.log(`🔗 Generated confirmation link: ${confirmationLink}`);
+      logger.info(`🔗 Generated confirmation link: ${confirmationLink}`);
 
       // 5. Send reminder based on type
       let sendResult: { success: boolean; messageId?: string; error?: string };
@@ -243,7 +244,7 @@ export class ReminderServicePrisma {
           confirmationLink
         };
 
-        console.log(`Sending reminder email to ${customer.email} for appointment on ${commonData.appointmentDate}...`);
+        logger.info(`Sending reminder email to ${customer.email} for appointment on ${commonData.appointmentDate}...`);
         sendResult = await emailService.sendReminderEmail(customer.email!, emailData);
       } else if (type === 'sms') {
         // Prepare SMS data with confirmation link
@@ -252,7 +253,7 @@ export class ReminderServicePrisma {
           confirmationLink
         };
 
-        console.log(`Sending reminder SMS to ${customer.phone} for appointment on ${commonData.appointmentDate}...`);
+        logger.info(`Sending reminder SMS to ${customer.phone} for appointment on ${commonData.appointmentDate}...`);
         sendResult = await smsService.sendReminderSMS(customer.phone!, smsData);
       } else {
         return {
@@ -264,7 +265,7 @@ export class ReminderServicePrisma {
       // 6. Handle send failure
       if (!sendResult.success) {
         const recipient = type === 'email' ? customer.email : customer.phone;
-        console.error(`Failed to send reminder ${type} to ${recipient}:`, sendResult.error);
+        logger.error(`Failed to send reminder ${type} to ${recipient}:`, sendResult.error);
 
         // Create failed reminder record
         const failedReminder = await prisma.reminder.create({
@@ -303,17 +304,17 @@ export class ReminderServicePrisma {
         }
       });
 
-      console.log(`✅ Reminder ${type} sent for appointment ${appointmentId}`);
+      logger.info(`✅ Reminder ${type} sent for appointment ${appointmentId}`);
 
       return {
         success: true,
         reminderId: reminder.id
       };
     } catch (error) {
-      console.error('❌ Error sending reminder for appointment:', appointmentId, error);
+      logger.error('❌ Error sending reminder for appointment:', appointmentId, error);
 
       const errorMessage = getErrorMessage(error);
-      console.error('Final error:', errorMessage);
+      logger.error('Final error:', errorMessage);
 
       return {
         success: false,
@@ -335,7 +336,7 @@ export class ReminderServicePrisma {
     try {
       const appointments = await this.getAppointmentsNeedingReminders();
 
-      console.log(`📧 Found ${appointments.length} appointments needing reminders`);
+      logger.info(`📧 Found ${appointments.length} appointments needing reminders`);
 
       if (appointments.length === 0) {
         return { total: 0, sent: 0, failed: 0, results: [] };
@@ -362,7 +363,7 @@ export class ReminderServicePrisma {
         }
       }
 
-      console.log(`✅ Reminders sent: ${sent} successful, ${failed} failed`);
+      logger.info(`✅ Reminders sent: ${sent} successful, ${failed} failed`);
 
       return {
         total: appointments.length,
@@ -371,7 +372,7 @@ export class ReminderServicePrisma {
         results
       };
     } catch (error) {
-      console.error('❌ Error sending due reminders:', error);
+      logger.error('❌ Error sending due reminders:', error);
       throw error;
     }
   }
@@ -451,7 +452,7 @@ export class ReminderServicePrisma {
         }
       });
 
-      console.log(`✅ Appointment ${appointmentId} confirmed by customer`);
+      logger.info(`✅ Appointment ${appointmentId} confirmed by customer`);
 
       return {
         success: true,
@@ -459,7 +460,7 @@ export class ReminderServicePrisma {
         message: 'Appointment confirmed successfully'
       };
     } catch (error) {
-      console.error('❌ Error confirming appointment:', error);
+      logger.error('❌ Error confirming appointment:', error);
       return {
         success: false,
         error: getErrorMessage(error)

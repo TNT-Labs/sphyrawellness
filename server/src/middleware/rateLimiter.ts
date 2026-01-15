@@ -1,5 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import type { Request, Response } from 'express';
+import { logger } from '../utils/logger.js';
 
 /**
  * Global rate limiter
@@ -21,7 +22,7 @@ export const globalLimiter = rateLimit({
   },
   // Custom handler for rate limit exceeded
   handler: (req: Request, res: Response) => {
-    console.warn(`⚠️ Rate limit exceeded for IP: ${req.ip} on ${req.path}`);
+    logger.warn(`⚠️ Rate limit exceeded for IP: ${req.ip} on ${req.path}`);
     res.status(429).json({
       success: false,
       error: 'Too many requests, please try again later.',
@@ -44,7 +45,7 @@ export const strictLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
-    console.warn(`🚨 Strict rate limit exceeded for IP: ${req.ip} on ${req.path}`);
+    logger.warn(`🚨 Strict rate limit exceeded for IP: ${req.ip} on ${req.path}`);
     res.status(429).json({
       success: false,
       error: 'Rate limit exceeded for this operation. Please try again later.',
@@ -67,7 +68,7 @@ export const emailLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
-    console.error(`🚨 Email rate limit exceeded for IP: ${req.ip} on ${req.path}`);
+    logger.error(`🚨 Email rate limit exceeded for IP: ${req.ip} on ${req.path}`);
     res.status(429).json({
       success: false,
       error: 'You have exceeded the email sending limit. Please try again in 1 hour.',

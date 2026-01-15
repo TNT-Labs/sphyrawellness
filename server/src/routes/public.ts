@@ -12,6 +12,7 @@ import bcrypt from 'bcrypt';
 import { z } from 'zod';
 import { startOfDay, endOfDay, setHours, setMinutes, addMinutes, format as formatDate, getDay } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { logger } from '../utils/logger.js';
 
 const router = Router();
 
@@ -270,7 +271,7 @@ router.get('/available-slots', async (req, res, next) => {
       }
     });
   } catch (error) {
-    console.error('Error getting available slots:', error);
+    logger.error('Error getting available slots:', error);
     res.status(500).json({
       success: false,
       error: 'Internal server error'
@@ -456,14 +457,14 @@ router.post('/appointments', async (req, res, next) => {
         });
 
         if (emailResult.success) {
-          console.log(`✅ Confirmation email sent to ${customer.email}`);
+          logger.info(`✅ Confirmation email sent to ${customer.email}`);
         } else {
-          console.error(`⚠️ Failed to send confirmation email: ${emailResult.error}`);
+          logger.error(`⚠️ Failed to send confirmation email: ${emailResult.error}`);
         }
       }
     } catch (emailError) {
       // Log error but don't fail the appointment creation
-      console.error('⚠️ Error sending confirmation email:', emailError);
+      logger.error('⚠️ Error sending confirmation email:', emailError);
     }
 
     res.status(201).json({
@@ -642,7 +643,7 @@ router.post('/bookings', async (req, res, next) => {
       tokenExpiresAt,
     });
 
-    console.log(`✅ Public booking created: ${customer.firstName} ${customer.lastName} - ${service.name} on ${data.date} at ${data.startTime}`);
+    logger.info(`✅ Public booking created: ${customer.firstName} ${customer.lastName} - ${service.name} on ${data.date} at ${data.startTime}`);
 
     // Send confirmation email (async, non-blocking)
     try {
@@ -689,14 +690,14 @@ router.post('/bookings', async (req, res, next) => {
         });
 
         if (emailResult.success) {
-          console.log(`✅ Confirmation email sent to ${customer.email}`);
+          logger.info(`✅ Confirmation email sent to ${customer.email}`);
         } else {
-          console.error(`⚠️ Failed to send confirmation email: ${emailResult.error}`);
+          logger.error(`⚠️ Failed to send confirmation email: ${emailResult.error}`);
         }
       }
     } catch (emailError) {
       // Log error but don't fail the appointment creation
-      console.error('⚠️ Error sending confirmation email:', emailError);
+      logger.error('⚠️ Error sending confirmation email:', emailError);
     }
 
     // 6. Return success response
@@ -719,7 +720,7 @@ router.post('/bookings', async (req, res, next) => {
         details: error.errors
       });
     }
-    console.error('Error creating public booking:', error);
+    logger.error('Error creating public booking:', error);
     next(error);
   }
 });
