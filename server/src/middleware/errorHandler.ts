@@ -3,6 +3,52 @@ import type { ApiResponse } from '../types/index.js';
 import logger from '../utils/logger.js';
 
 /**
+ * Sanitize sensitive data from objects before logging
+ * Removes passwords, tokens, and other sensitive fields
+ */
+function sanitizeSensitiveData(data: any): any {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const sanitized = { ...data };
+  const sensitiveFields = [
+    'password',
+    'passwordHash',
+    'newPassword',
+    'oldPassword',
+    'currentPassword',
+    'token',
+    'accessToken',
+    'refreshToken',
+    'confirmationToken',
+    'confirmationTokenHash',
+    'authorization',
+    'apiKey',
+    'secret',
+    'privateKey',
+    'creditCard',
+    'cvv',
+    'ssn',
+  ];
+
+  for (const field of sensitiveFields) {
+    if (field in sanitized) {
+      sanitized[field] = '***REDACTED***';
+    }
+  }
+
+  // Recursively sanitize nested objects
+  for (const key in sanitized) {
+    if (sanitized[key] && typeof sanitized[key] === 'object') {
+      sanitized[key] = sanitizeSensitiveData(sanitized[key]);
+    }
+  }
+
+  return sanitized;
+}
+
+/**
  * Global error handler middleware
  */
 export function errorHandler(
@@ -11,13 +57,13 @@ export function errorHandler(
   res: Response,
   _next: NextFunction
 ) {
-  // Log full error details for debugging (server-side only)
+  // Log error details with sanitized request data (prevent sensitive data leakage)
   logger.error('Unhandled error', error, {
     method: req.method,
     url: req.url,
     path: req.path,
-    query: req.query,
-    body: req.body,
+    query: sanitizeSensitiveData(req.query),
+    body: sanitizeSensitiveData(req.body),
     userId: (req as any).user?.id
   });
 

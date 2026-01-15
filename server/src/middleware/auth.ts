@@ -29,8 +29,17 @@ export function authenticateToken(
     return res.status(401).json(response);
   }
 
+  // Explicit check for JWT_SECRET (defense in depth - should never happen due to startup validation)
+  if (!JWT_SECRET) {
+    const response: ApiResponse = {
+      success: false,
+      error: 'Server configuration error'
+    };
+    return res.status(500).json(response);
+  }
+
   try {
-    const decoded = jwt.verify(token, JWT_SECRET!);
+    const decoded = jwt.verify(token, JWT_SECRET);
     const user = decoded as unknown as { id: string; role: string };
     req.user = user;
     next();

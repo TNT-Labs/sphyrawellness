@@ -33,23 +33,24 @@ router.get('/', async (req, res, next) => {
       return res.status(400).json({ error: 'Invalid pagination parameters' });
     }
 
-    let appointments;
-
+    // Handle date range query separately (no pagination for date ranges)
     if (startDate && endDate) {
-      appointments = await appointmentRepository.findByDateRange(
+      const appointments = await appointmentRepository.findByDateRange(
         new Date(startDate as string),
         new Date(endDate as string)
       );
-    } else {
-      // Build where clause for efficient filtering at database level
-      const where: any = {};
-      if (customerId) where.customerId = customerId as string;
-      if (staffId) where.staffId = staffId as string;
-      if (serviceId) where.serviceId = serviceId as string;
-      if (status) where.status = status;
+      return res.json(appointments);
+    }
 
-      // Apply pagination at database level (efficient - no in-memory loading)
-      if (pageNum && limitNum) {
+    // Build where clause for efficient filtering at database level
+    const where: any = {};
+    if (customerId) where.customerId = customerId as string;
+    if (staffId) where.staffId = staffId as string;
+    if (serviceId) where.serviceId = serviceId as string;
+    if (status) where.status = status;
+
+    // Apply pagination at database level (efficient - no in-memory loading)
+    if (pageNum && limitNum) {
         const skip = (pageNum - 1) * limitNum;
 
         // Fetch paginated data and total count in parallel for better performance
@@ -62,7 +63,7 @@ router.get('/', async (req, res, next) => {
           appointmentRepository.count(Object.keys(where).length > 0 ? where : undefined),
         ]);
 
-        res.json({
+        return res.json({
           data: appointments,
           pagination: {
             page: pageNum,
@@ -71,14 +72,13 @@ router.get('/', async (req, res, next) => {
             totalPages: Math.ceil(total / limitNum),
           },
         });
-      } else {
-        // No pagination - fetch all (keep for backward compatibility)
-        const appointments = await appointmentRepository.findAllPaginated({
-          where: Object.keys(where).length > 0 ? where : undefined
-        });
-        res.json(appointments);
       }
-    }
+
+      // No pagination - fetch all (keep for backward compatibility)
+      const appointments = await appointmentRepository.findAllPaginated({
+        where: Object.keys(where).length > 0 ? where : undefined
+      });
+      return res.json(appointments);
   } catch (error) {
     next(error);
   }
