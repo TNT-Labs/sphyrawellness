@@ -85,9 +85,40 @@ validateJWTConfig();
 export const JWT_SECRET = getJWTSecret();
 
 /**
+ * Validate JWT_EXPIRES_IN format
+ * Valid formats: '7d', '24h', '60m', '3600s', etc.
+ */
+function validateExpiresIn(value: string): boolean {
+  // Valid format: number followed by time unit (s, m, h, d)
+  const expiresInRegex = /^\d+[smhd]$/;
+  return expiresInRegex.test(value);
+}
+
+/**
  * JWT Token Expiration
  */
-export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+function getJWTExpiresIn(): string {
+  const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
+
+  // Validate format
+  if (!validateExpiresIn(expiresIn)) {
+    if (isProduction) {
+      logger.error(`❌ FATAL: Invalid JWT_EXPIRES_IN format: "${expiresIn}"`);
+      logger.error('   Valid formats: "7d", "24h", "60m", "3600s"');
+      logger.error('   Using default: "7d"');
+      return '7d';
+    } else {
+      logger.warn(`⚠️  WARNING: Invalid JWT_EXPIRES_IN format: "${expiresIn}"`);
+      logger.warn('   Valid formats: "7d", "24h", "60m", "3600s"');
+      logger.warn('   Using default: "7d"');
+      return '7d';
+    }
+  }
+
+  return expiresIn;
+}
+
+export const JWT_EXPIRES_IN = getJWTExpiresIn();
 
 /**
  * Log configuration on startup
