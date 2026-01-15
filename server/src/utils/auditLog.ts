@@ -169,9 +169,20 @@ export function logAuditEvent(
       logger.info(`[AUDIT] ${message}`, metadata);
   }
 
-  // TODO: In production, also send to external logging service
-  // Examples: Datadog, Sentry, CloudWatch, etc.
-  // sendToExternalLogging(entry);
+  // FUTURE ENHANCEMENT: External logging service integration
+  // For production deployments, consider integrating with:
+  // - Sentry (error tracking & performance)
+  // - DataDog (monitoring & analytics)
+  // - Logtail (centralized logging)
+  // - AWS CloudWatch / Azure Monitor (cloud-native logging)
+  //
+  // Implementation guide:
+  // 1. Install chosen service SDK (e.g., @sentry/node)
+  // 2. Initialize in server/src/config/
+  // 3. Add async calls here to send audit events
+  // 4. Ensure non-blocking (don't await external service calls)
+  //
+  // Example: sendToExternalLogging(entry);
 }
 
 /**

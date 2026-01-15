@@ -96,8 +96,9 @@ router.get('/staff', async (req, res, next) => {
 
     const staff = await staffRepository.findActive();
 
-    // TODO: Filter by service specialization if needed
-    // For now, return all active staff
+    // NOTE: Staff filtering by service specialization not yet implemented
+    // Future enhancement: Filter staff based on their specializations matching the requested service
+    // For now, return all active staff (frontend handles staff selection based on availability)
 
     res.json(staff);
   } catch (error) {
@@ -429,11 +430,16 @@ router.post('/appointments', publicBookingLimiter, async (req, res, next) => {
       return res.status(404).json({ error: 'Service not found' });
     }
 
-    // Calculate end time
-    const startTime = new Date(`2000-01-01T${data.startTime}`);
-    const endTime = addMinutes(startTime, service.duration);
+    // Parse start time and calculate end time (standardized method using date-fns)
+    const [startHours, startMinutes] = data.startTime.split(':').map(Number);
     const dateObj = new Date(data.date);
-    const endTimeObj = new Date(`2000-01-01T${endTime.toTimeString().substring(0, 5)}`);
+    const startTimeDate = setMinutes(setHours(new Date(), startHours), startMinutes);
+    const endTimeDate = addMinutes(startTimeDate, service.duration);
+
+    // Create ISO time strings for database storage
+    const startTime = new Date(`1970-01-01T${data.startTime}:00.000Z`);
+    const endTimeStr = `${String(endTimeDate.getHours()).padStart(2, '0')}:${String(endTimeDate.getMinutes()).padStart(2, '0')}`;
+    const endTimeObj = new Date(`1970-01-01T${endTimeStr}:00.000Z`);
 
     // Create appointment with atomic conflict check (prevents race conditions)
     const appointment = await appointmentRepository.createWithConflictCheck(
@@ -475,7 +481,7 @@ router.post('/appointments', publicBookingLimiter, async (req, res, next) => {
             id: appointment.id,
             date: data.date,
             startTime: data.startTime,
-            endTime: endTime.toTimeString().substring(0, 5)
+            endTime: endTimeStr
           } as any,
           customer: {
             firstName: customer.firstName,
