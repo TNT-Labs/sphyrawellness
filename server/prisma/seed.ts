@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { getAdminInitialPassword } from '../src/config/security.js';
 
 const prisma = new PrismaClient();
 
@@ -328,7 +329,14 @@ async function main() {
   // ============================================================================
   console.log('🔐 Creating users...');
 
-  const passwordHash = await bcrypt.hash('admin123', 12);
+  // Get admin password from config (validates strength or generates secure one)
+  const adminPassword = getAdminInitialPassword();
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
+
+  // For demo user, use a generated secure password in production
+  const demoPassword = process.env.NODE_ENV === 'production'
+    ? require('crypto').randomBytes(16).toString('base64')
+    : 'user123-demo-only';
 
   const users = await Promise.all([
     prisma.user.create({
@@ -345,7 +353,7 @@ async function main() {
     prisma.user.create({
       data: {
         username: 'user',
-        passwordHash: await bcrypt.hash('user123', 12),
+        passwordHash: await bcrypt.hash(demoPassword, 12),
         role: 'UTENTE',
         firstName: 'User',
         lastName: 'Demo',
@@ -357,12 +365,15 @@ async function main() {
 
   console.log(`✅ Created ${users.length} users`);
   console.log('');
-  console.log('   📝 Admin credentials: admin / admin123');
-  console.log('   📝 User credentials: user / user123');
-  console.log('');
-  console.log('   ⚠️  WARNING: DEFAULT PASSWORDS IN USE!');
-  console.log('   ⚠️  CHANGE THESE IMMEDIATELY AFTER FIRST LOGIN!');
-  console.log('   ⚠️  Go to Settings → Users → Change Password');
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('   📝 Admin credentials: admin / [see above for password]');
+    console.log(`   📝 User credentials: user / ${demoPassword}`);
+    console.log('');
+    console.log('   ⚠️  NOTE: Passwords are auto-generated or from VITE_ADMIN_INITIAL_PASSWORD');
+    console.log('   ⚠️  Set VITE_ADMIN_INITIAL_PASSWORD in .env for a permanent admin password');
+  } else {
+    console.log('   ✅ Production mode: Secure passwords configured');
+  }
   console.log('');
 
   // ============================================================================

@@ -40,36 +40,44 @@ router.get('/', async (req, res, next) => {
         new Date(startDate as string),
         new Date(endDate as string)
       );
-    } else if (customerId) {
-      appointments = await appointmentRepository.findByCustomer(customerId as string);
-    } else if (staffId) {
-      appointments = await appointmentRepository.findByStaff(staffId as string);
-    } else if (serviceId) {
-      appointments = await appointmentRepository.findByService(serviceId as string);
-    } else if (status) {
-      appointments = await appointmentRepository.findByStatus(status as any);
     } else {
-      appointments = await appointmentRepository.findAll();
-    }
+      // Build where clause for efficient filtering at database level
+      const where: any = {};
+      if (customerId) where.customerId = customerId as string;
+      if (staffId) where.staffId = staffId as string;
+      if (serviceId) where.serviceId = serviceId as string;
+      if (status) where.status = status;
 
-    const total = appointments.length;
+      // Apply pagination at database level (efficient - no in-memory loading)
+      if (pageNum && limitNum) {
+        const skip = (pageNum - 1) * limitNum;
 
-    // Apply pagination in-memory
-    if (pageNum && limitNum) {
-      const skip = (pageNum - 1) * limitNum;
-      appointments = appointments.slice(skip, skip + limitNum);
+        // Fetch paginated data and total count in parallel for better performance
+        const [appointments, total] = await Promise.all([
+          appointmentRepository.findAllPaginated({
+            skip,
+            take: limitNum,
+            where: Object.keys(where).length > 0 ? where : undefined
+          }),
+          appointmentRepository.count(Object.keys(where).length > 0 ? where : undefined),
+        ]);
 
-      res.json({
-        data: appointments,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum),
-        },
-      });
-    } else {
-      res.json(appointments);
+        res.json({
+          data: appointments,
+          pagination: {
+            page: pageNum,
+            limit: limitNum,
+            total,
+            totalPages: Math.ceil(total / limitNum),
+          },
+        });
+      } else {
+        // No pagination - fetch all (keep for backward compatibility)
+        const appointments = await appointmentRepository.findAllPaginated({
+          where: Object.keys(where).length > 0 ? where : undefined
+        });
+        res.json(appointments);
+      }
     }
   } catch (error) {
     next(error);
@@ -97,6 +105,13 @@ router.post('/', async (req, res, next) => {
   try {
     const data = createAppointmentSchema.parse(req.body);
 
+    // Generate confirmation token BEFORE creating appointment (prevents race condition)
+    // This ensures token is included in the atomic creation transaction
+    const confirmationToken = uuidv4() + uuidv4();
+    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48);
+
     // Create appointment with atomic conflict check (prevents race conditions)
     const dateObj = new Date(`${data.date}T12:00:00Z`);
     const startTimeObj = new Date(`1970-01-01T${data.startTime}:00Z`);
@@ -112,6 +127,9 @@ router.post('/', async (req, res, next) => {
         endTime: endTimeObj,
         status: data.status,
         notes: data.notes,
+        // Include confirmation token in initial creation (atomic operation)
+        confirmationTokenHash,
+        tokenExpiresAt,
       },
       data.staffId,
       dateObj,
@@ -119,18 +137,7 @@ router.post('/', async (req, res, next) => {
       endTimeObj
     );
 
-    // Generate confirmation token immediately
-    const confirmationToken = uuidv4() + uuidv4();
-    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
-    const tokenExpiresAt = new Date();
-    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48);
-
-    // Update appointment with confirmation token
-    await appointmentRepository.update(appointment.id, {
-      confirmationTokenHash,
-      tokenExpiresAt,
-    });
-
+    // No separate update needed - token is already in the appointment
     res.status(201).json(appointment);
   } catch (error) {
     if (error instanceof z.ZodError) {

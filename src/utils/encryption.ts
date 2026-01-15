@@ -1,6 +1,52 @@
 /**
  * Encryption utilities for sensitive data
- * Uses Web Crypto API for secure encryption/decryption
+ * Uses Web Crypto API for encryption/decryption
+ *
+ * ⚠️  SECURITY NOTICE - IMPORTANT LIMITATIONS:
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ * This encryption implementation provides OBFUSCATION, not true security:
+ *
+ * 1. ❌ KEY STORAGE: The encryption key is stored in localStorage in plain text.
+ *    Any JavaScript code (including XSS attacks) can read it.
+ *
+ * 2. ❌ XSS VULNERABILITY: If an attacker achieves XSS, they can:
+ *    - Read the encryption key from localStorage
+ *    - Read all encrypted data
+ *    - Decrypt everything with the stolen key
+ *
+ * 3. ❌ BROWSER DEVELOPER TOOLS: Users with browser access can:
+ *    - Open DevTools → Application → Local Storage
+ *    - Copy the encryption key
+ *    - Manually decrypt any data
+ *
+ * 4. ❌ SHARED COMPUTERS: On shared devices, anyone with browser access
+ *    to the same profile can access the encryption key.
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ * RECOMMENDATION:
+ * - DO NOT use this for truly sensitive data (medical records, SSN, etc.)
+ * - USE backend encryption for sensitive data instead
+ * - This is acceptable for: UI preferences, non-critical cached data
+ *
+ * BETTER ALTERNATIVES:
+ * 1. Store sensitive data ONLY on backend
+ * 2. Use backend API for encryption/decryption
+ * 3. Never store decryption keys in browser
+ *
+ * This implementation protects against:
+ * ✅ Casual viewing of localStorage
+ * ✅ Simple automated scrapers
+ * ✅ Non-technical users
+ *
+ * This does NOT protect against:
+ * ❌ Determined attackers
+ * ❌ XSS attacks
+ * ❌ Technical users with browser access
+ * ❌ Malicious browser extensions
+ *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  */
 
 import { logger } from './logger';
@@ -59,14 +105,24 @@ function getDeviceSalt(): Uint8Array {
  * Get cryptographically secure master key
  * Generates a random key on first use and persists it in localStorage
  *
- * Security improvements:
+ * ⚠️  CRITICAL SECURITY WARNING:
+ * This key is stored in localStorage in PLAIN TEXT. This means:
+ * - Any JavaScript code can read it (including XSS attacks)
+ * - Browser DevTools can access it
+ * - It provides OBFUSCATION, not real security
+ *
+ * Technical properties:
  * - Uses crypto.getRandomValues() for cryptographically secure random generation
  * - 32 bytes (256 bits) of entropy
  * - Persistent across sessions
  * - No predictable device fingerprinting
  *
- * Note: If the key is lost (e.g., localStorage cleared), previously encrypted
- * data cannot be recovered. This is by design for security.
+ * Data recovery:
+ * If the key is lost (e.g., localStorage cleared), previously encrypted
+ * data CANNOT be recovered. This is intentional - but remember that the
+ * data was never truly "secure" to begin with.
+ *
+ * For truly sensitive data: Use backend encryption instead!
  */
 function getMasterKey(): string {
   const MASTER_KEY_STORAGE = 'sphyra_master_encryption_key';

@@ -193,11 +193,6 @@ export type BusinessHours = Record<DayOfWeek, DaySchedule>;
 export interface AppSettings {
   idleTimeout: number; // in minutes (0 = disabled)
   businessHours?: BusinessHours; // Orari di apertura per giorno della settimana
-  // Legacy fields kept for backward compatibility - will be removed in future version
-  syncEnabled?: boolean; // @deprecated - sync functionality removed
-  couchdbUrl?: string; // @deprecated - CouchDB no longer used
-  couchdbUsername?: string; // @deprecated - CouchDB no longer used
-  couchdbPassword?: string; // @deprecated - CouchDB no longer used
 }
 
 export interface SyncStatus {

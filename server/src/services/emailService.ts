@@ -16,7 +16,7 @@ export class EmailService {
     data: ReminderEmailData
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     if (!sendGridConfig.isConfigured) {
-      console.error('❌ SendGrid is not configured. Cannot send email.');
+      logger.error('❌ SendGrid is not configured. Cannot send email.');
       return {
         success: false,
         error: 'SendGrid API key not configured'
@@ -68,14 +68,14 @@ export class EmailService {
         messageId: response[0].headers['x-message-id'] as string
       };
     } catch (error) {
-      console.error('❌ Error sending email:', error);
+      logger.error('❌ Error sending email:', error);
 
       // SendGrid specific error handling
       let errorMessage = getErrorMessage(error);
 
       const err = error as any;
       if (err.response) {
-        console.error('SendGrid Error Response:', err.response.body);
+        logger.error('SendGrid Error Response:', err.response.body);
 
         // Extract detailed error information from SendGrid response
         const responseBody = err.response.body;
@@ -92,7 +92,7 @@ export class EmailService {
         }
       }
 
-      console.error('Final error message:', errorMessage);
+      logger.error('Final error message:', errorMessage);
 
       return {
         success: false,
@@ -109,7 +109,7 @@ export class EmailService {
     data: ReminderEmailData
   ): Promise<{ success: boolean; messageId?: string; error?: string }> {
     if (!sendGridConfig.isConfigured) {
-      console.error('❌ SendGrid is not configured. Cannot send email.');
+      logger.error('❌ SendGrid is not configured. Cannot send email.');
       return {
         success: false,
         error: 'SendGrid API key not configured'
@@ -161,14 +161,14 @@ export class EmailService {
         messageId: response[0].headers['x-message-id'] as string
       };
     } catch (error) {
-      console.error('❌ Error sending confirmation email:', error);
+      logger.error('❌ Error sending confirmation email:', error);
 
       // SendGrid specific error handling
       let errorMessage = getErrorMessage(error);
 
       const err = error as any;
       if (err.response) {
-        console.error('SendGrid Error Response:', err.response.body);
+        logger.error('SendGrid Error Response:', err.response.body);
 
         // Extract detailed error information from SendGrid response
         const responseBody = err.response.body;
@@ -185,7 +185,7 @@ export class EmailService {
         }
       }
 
-      console.error('Final error message:', errorMessage);
+      logger.error('Final error message:', errorMessage);
 
       return {
         success: false,
@@ -233,13 +233,13 @@ export class EmailService {
 
       return { success: true };
     } catch (error) {
-      console.error('❌ Error sending test email:', error);
+      logger.error('❌ Error sending test email:', error);
 
       let errorMessage = getErrorMessage(error);
 
       const err = error as any;
       if (err.response) {
-        console.error('SendGrid Error Response:', err.response.body);
+        logger.error('SendGrid Error Response:', err.response.body);
 
         const responseBody = err.response.body;
         if (responseBody && responseBody.errors && Array.isArray(responseBody.errors)) {
@@ -254,7 +254,7 @@ export class EmailService {
         }
       }
 
-      console.error('Final error message:', errorMessage);
+      logger.error('Final error message:', errorMessage);
 
       return {
         success: false,

@@ -16,6 +16,42 @@ export class AppointmentRepository {
     });
   }
 
+  /**
+   * Find appointments with pagination at database level
+   * @param skip - Number of records to skip
+   * @param take - Number of records to return
+   * @param where - Optional where clause for filtering
+   * @returns Array of appointments with includes
+   */
+  async findAllPaginated(options: {
+    skip?: number;
+    take?: number;
+    where?: Prisma.AppointmentWhereInput;
+  }): Promise<Appointment[]> {
+    return prisma.appointment.findMany({
+      where: options.where,
+      skip: options.skip,
+      take: options.take,
+      include: {
+        customer: true,
+        service: true,
+        staff: true,
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Count appointments matching the where clause
+   * @param where - Optional where clause for filtering
+   * @returns Total count
+   */
+  async count(where?: Prisma.AppointmentWhereInput): Promise<number> {
+    return prisma.appointment.count({ where });
+  }
+
   async findById(id: string) {
     return prisma.appointment.findUnique({
       where: { id },

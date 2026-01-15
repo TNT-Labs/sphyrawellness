@@ -5,6 +5,7 @@
  */
 
 import fs from 'fs';
+import { logger } from './logger.js';
 
 /**
  * Magic bytes signatures for common image formats
@@ -93,7 +94,7 @@ export async function validateImageFile(filePath: string): Promise<string | null
     // No matching signature found
     return null;
   } catch (error) {
-    console.error('Error validating file:', error);
+    logger.error('Error validating file:', error);
     return null;
   }
 }

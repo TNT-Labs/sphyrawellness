@@ -153,19 +153,6 @@ export const settingsSchema = z.object({
     .int('Il timeout deve essere un numero intero')
     .min(0, 'Il timeout non può essere negativo')
     .max(120, 'Il timeout massimo è 120 minuti'),
-  syncEnabled: z.boolean(),
-  couchdbUrl: z.string()
-    .url('URL non valido')
-    .optional()
-    .or(z.literal('')),
-  couchdbUsername: z.string()
-    .max(100, 'Username troppo lungo')
-    .optional()
-    .or(z.literal('')),
-  couchdbPassword: z.string()
-    .max(100, 'Password troppo lunga')
-    .optional()
-    .or(z.literal('')),
 });
 
 export type SettingsFormData = z.infer<typeof settingsSchema>;
