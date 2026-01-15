@@ -231,13 +231,13 @@ router.post('/reset-database', async (req, res, next) => {
 
     logger.warn(`⚠️ DATABASE RESET initiated by user: ${user.username} (${user.id})`);
 
-    // Get admin password from environment
-    const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD;
+    // Get admin password from environment (same as validated in security.ts)
+    const adminPassword = process.env.VITE_ADMIN_INITIAL_PASSWORD;
     if (!adminPassword) {
-      logger.error('❌ ADMIN_DEFAULT_PASSWORD not set in environment variables');
+      logger.error('❌ VITE_ADMIN_INITIAL_PASSWORD not set in environment variables');
       return res.status(500).json({
         success: false,
-        error: 'Configurazione mancante: ADMIN_DEFAULT_PASSWORD non impostata',
+        error: 'Configurazione mancante: VITE_ADMIN_INITIAL_PASSWORD non impostata',
       });
     }
 

@@ -7,17 +7,60 @@ import { Request, Response, NextFunction } from 'express';
 import logger from '../utils/logger.js';
 
 /**
+ * Sanitize sensitive data from objects before logging
+ * Removes passwords, tokens, and other sensitive fields
+ */
+function sanitizeSensitiveData(data: any): any {
+  if (!data || typeof data !== 'object') {
+    return data;
+  }
+
+  const sanitized = { ...data };
+  const sensitiveFields = [
+    'password',
+    'passwordHash',
+    'newPassword',
+    'oldPassword',
+    'currentPassword',
+    'token',
+    'accessToken',
+    'refreshToken',
+    'confirmationToken',
+    'confirmationTokenHash',
+    'authorization',
+    'apiKey',
+    'secret',
+    'privateKey',
+  ];
+
+  for (const field of sensitiveFields) {
+    if (field in sanitized) {
+      sanitized[field] = '***REDACTED***';
+    }
+  }
+
+  // Recursively sanitize nested objects
+  for (const key in sanitized) {
+    if (sanitized[key] && typeof sanitized[key] === 'object') {
+      sanitized[key] = sanitizeSensitiveData(sanitized[key]);
+    }
+  }
+
+  return sanitized;
+}
+
+/**
  * Middleware to log HTTP requests and responses
  */
 export const requestLogger = (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
 
-  // Log incoming request
+  // Log incoming request with sanitized query params
   logger.info('Incoming request', {
     method: req.method,
     url: req.url,
     path: req.path,
-    query: req.query,
+    query: sanitizeSensitiveData(req.query),
     ip: req.ip,
     userAgent: req.get('user-agent'),
     contentType: req.get('content-type'),
