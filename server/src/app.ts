@@ -170,21 +170,19 @@ app.use(globalLimiter);
 app.use(requestLogger);
 
 // Attach CSRF token to all responses
-// Enabled by default in production, can be disabled in development with ENABLE_CSRF=false
+// ALWAYS enabled in production (security requirement)
+// Can be disabled in development with ENABLE_CSRF=false
 const isProduction = process.env.NODE_ENV === 'production';
 const enableCSRF = isProduction
-  ? process.env.ENABLE_CSRF !== 'false'  // Production: enabled by default, explicit opt-out
+  ? true  // Production: ALWAYS enabled (no override allowed)
   : process.env.ENABLE_CSRF === 'true';  // Development: disabled by default, explicit opt-in
 
 if (enableCSRF) {
   app.use(attachCsrfToken);
   logger.info('✅ CSRF protection enabled');
 } else {
-  logger.warn('⚠️  CSRF protection disabled - Only acceptable in development!');
-  if (isProduction) {
-    logger.error('❌ CRITICAL: CSRF protection disabled in production!');
-    logger.error('   This is a security vulnerability. Set ENABLE_CSRF=true or remove the override.');
-  }
+  // Only possible in development
+  logger.warn('⚠️  CSRF protection disabled - Development mode only!');
 }
 
 // Health check

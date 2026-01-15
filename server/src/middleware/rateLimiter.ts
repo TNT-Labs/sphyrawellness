@@ -87,3 +87,49 @@ export const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // Don't count successful logins
   message: 'Too many login attempts, please try again after 15 minutes.'
 });
+
+/**
+ * Token verification rate limiter
+ * Prevent token verification abuse and timing attacks
+ */
+export const verifyLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 verifications per 15 minutes (less strict than auth, but still protected)
+  message: {
+    success: false,
+    error: 'Too many token verification attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    logger.warn(`⚠️ Verify rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      success: false,
+      error: 'Too many verification requests. Please try again in a few minutes.',
+      retryAfter: Math.ceil((req.rateLimit?.resetTime?.getTime() ?? Date.now()) / 1000)
+    });
+  }
+});
+
+/**
+ * Public booking rate limiter
+ * Prevent booking spam and abuse on public endpoints
+ */
+export const publicBookingLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // 10 bookings per hour per IP
+  message: {
+    success: false,
+    error: 'Too many booking attempts. Please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    logger.warn(`🚨 Public booking rate limit exceeded for IP: ${req.ip}`);
+    res.status(429).json({
+      success: false,
+      error: 'You have exceeded the booking limit. Please try again in 1 hour.',
+      retryAfter: Math.ceil((req.rateLimit?.resetTime?.getTime() ?? Date.now()) / 1000)
+    });
+  }
+});

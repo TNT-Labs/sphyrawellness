@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { userRepository } from '../repositories/userRepository.js';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { authLimiter } from '../middleware/rateLimiter.js';
+import { authLimiter, verifyLimiter } from '../middleware/rateLimiter.js';
 import { logLoginSuccess, logLoginFailure } from '../utils/auditLog.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.js';
 
@@ -55,8 +55,8 @@ router.post('/login', authLimiter, async (req, res, next) => {
   }
 });
 
-// POST /api/auth/verify
-router.post('/verify', async (req, res, next) => {
+// POST /api/auth/verify (with rate limiting to prevent timing attacks and abuse)
+router.post('/verify', verifyLimiter, async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
 

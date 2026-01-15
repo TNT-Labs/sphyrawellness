@@ -106,9 +106,12 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateReturn {
 
     // Confronta le versioni usando il buildHash (più affidabile del timestamp)
     if (server.buildHash !== current.buildHash) {
-      console.log('🔄 Nuova versione disponibile!');
-      console.log(`  Versione corrente: ${current.version} (${current.buildHash})`);
-      console.log(`  Nuova versione: ${server.version} (${server.buildHash})`);
+      // Log version updates (development only)
+      if (import.meta.env.DEV) {
+        console.log('🔄 Nuova versione disponibile!');
+        console.log(`  Versione corrente: ${current.version} (${current.buildHash})`);
+        console.log(`  Nuova versione: ${server.version} (${server.buildHash})`);
+      }
 
       setUpdateAvailable(true);
       setCurrentVersion(current.version);
@@ -160,7 +163,10 @@ export function useServiceWorkerUpdate(): UseServiceWorkerUpdateReturn {
   useEffect(() => {
     // Listener per l'evento di aggiornamento del service worker
     const handleControllerChange = () => {
-      console.log('🔄 Service worker aggiornato, verifica nuova versione...');
+      // Log service worker updates (development only)
+      if (import.meta.env.DEV) {
+        console.log('🔄 Service worker aggiornato, verifica nuova versione...');
+      }
       checkForUpdates();
     };
 
