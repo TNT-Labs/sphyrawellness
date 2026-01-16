@@ -59,9 +59,21 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
 
-      // Redirect to login if not already there
+      // Dispatch custom event for SPA navigation (React Router compatible)
+      // The App component should listen to this event and navigate programmatically
       if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+        const authErrorEvent = new CustomEvent('auth:unauthorized', {
+          detail: { redirectTo: '/login' }
+        });
+        window.dispatchEvent(authErrorEvent);
+
+        // Fallback to hard redirect after delay if SPA doesn't handle it
+        // This ensures navigation even if the event listener isn't registered
+        setTimeout(() => {
+          if (window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
+        }, 100);
       }
     }
 

@@ -466,6 +466,12 @@ router.post('/appointments', publicBookingLimiter, async (req, res, next) => {
     const endTimeStr = `${String(endTimeDate.getHours()).padStart(2, '0')}:${String(endTimeDate.getMinutes()).padStart(2, '0')}`;
     const endTimeObj = new Date(`1970-01-01T${endTimeStr}:00.000Z`);
 
+    // Generate confirmation token BEFORE creating appointment (prevents inconsistent state)
+    const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
+    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48); // Token valid for 48 hours
+
     // Create appointment with atomic conflict check (prevents race conditions)
     const appointment = await appointmentRepository.createWithConflictCheck(
       {
@@ -476,24 +482,14 @@ router.post('/appointments', publicBookingLimiter, async (req, res, next) => {
         startTime,
         endTime: endTimeObj,
         status: 'scheduled',
+        confirmationTokenHash,
+        tokenExpiresAt,
       },
       data.staffId,
       dateObj,
       startTime,
       endTimeObj
     );
-
-    // Generate confirmation token (so customer can confirm later)
-    const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
-    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
-    const tokenExpiresAt = new Date();
-    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48); // Token valid for 48 hours
-
-    // Update appointment with confirmation token
-    await appointmentRepository.update(appointment.id, {
-      confirmationTokenHash,
-      tokenExpiresAt,
-    });
 
     // Send confirmation email (async, non-blocking)
     try {
@@ -706,6 +702,12 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
     const endTimeStr = `${String(slotEnd.getHours()).padStart(2, '0')}:${String(slotEnd.getMinutes()).padStart(2, '0')}`;
     const endTimeISO = new Date(`1970-01-01T${endTimeStr}:00.000Z`);
 
+    // Generate confirmation token BEFORE creating appointment (prevents inconsistent state)
+    const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
+    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
+    const tokenExpiresAt = new Date();
+    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48); // Token valid for 48 hours
+
     const appointment = await appointmentRepository.createWithConflictCheck(
       {
         customer: { connect: { id: customer.id } },
@@ -716,24 +718,14 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
         endTime: endTimeISO,
         status: 'scheduled',
         notes: data.notes || undefined,
+        confirmationTokenHash,
+        tokenExpiresAt,
       },
       availableStaffId,
       appointmentDate,
       startTimeISO,
       endTimeISO
     );
-
-    // Generate confirmation token immediately (so customer can confirm later)
-    const confirmationToken = uuidv4() + uuidv4(); // 2 UUIDs for extra security
-    const confirmationTokenHash = await bcrypt.hash(confirmationToken, 12);
-    const tokenExpiresAt = new Date();
-    tokenExpiresAt.setHours(tokenExpiresAt.getHours() + 48); // Token valid for 48 hours
-
-    // Update appointment with confirmation token
-    await appointmentRepository.update(appointment.id, {
-      confirmationTokenHash,
-      tokenExpiresAt,
-    });
 
     logger.info(`✅ Public booking created: ${customer.firstName} ${customer.lastName} - ${service.name} on ${data.date} at ${data.startTime}`);
 
