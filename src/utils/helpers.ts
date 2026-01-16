@@ -56,10 +56,58 @@ export const calculateEndTime = (startTime: string, duration: number): string | 
 
 /**
  * Validate email format
+ * Uses a more robust regex that follows RFC 5322 practical implementation
+ * - Requires valid local part (before @)
+ * - Requires valid domain with at least one dot
+ * - Prevents common formatting issues
  */
 export const isValidEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  if (!email || typeof email !== 'string') {
+    return false;
+  }
+
+  // Trim whitespace
+  const trimmed = email.trim();
+
+  // Check length constraints
+  if (trimmed.length < 3 || trimmed.length > 254) {
+    return false;
+  }
+
+  // More robust email regex following RFC 5322
+  // Allows: letters, numbers, dots, hyphens, underscores, plus signs in local part
+  // Requires: @ symbol, domain name, and TLD (at least 2 chars)
+  const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+
+  if (!emailRegex.test(trimmed)) {
+    return false;
+  }
+
+  // Additional checks
+  const [localPart, domain] = trimmed.split('@');
+
+  // Local part should not start/end with dot
+  if (localPart.startsWith('.') || localPart.endsWith('.')) {
+    return false;
+  }
+
+  // Local part should not have consecutive dots
+  if (localPart.includes('..')) {
+    return false;
+  }
+
+  // Domain should have at least one dot and valid TLD
+  if (!domain.includes('.') || domain.endsWith('.')) {
+    return false;
+  }
+
+  // TLD should be at least 2 characters
+  const tld = domain.split('.').pop();
+  if (!tld || tld.length < 2) {
+    return false;
+  }
+
+  return true;
 };
 
 /**

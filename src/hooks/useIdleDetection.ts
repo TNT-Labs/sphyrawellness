@@ -92,16 +92,20 @@ export const useIdleDetection = ({
     // Start idle timer
     resetIdle();
 
-    // Cleanup
+    // Cleanup - CRITICAL: Clear timeout to prevent setState on unmounted component
     return () => {
+      // Remove event listeners
       events.forEach((event) => {
         window.removeEventListener(event, handleActivity);
       });
+
+      // Clear timeout to prevent memory leak and setState on unmounted component
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
-  }, [timeoutMinutes, enabled]); // Only re-run when timeout or enabled changes, not when callbacks change
+  }, [timeoutMinutes, enabled, handleActivity, resetIdle]); // Include all dependencies to ensure proper cleanup
 
   return {
     isIdle,
