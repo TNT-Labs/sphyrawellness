@@ -132,6 +132,15 @@ router.get('/available-slots', async (req, res, next) => {
 
     // Determine day of week from date (0 = Sunday, 1 = Monday, etc.)
     const appointmentDate = new Date(date as string);
+
+    // Validate date parsing
+    if (isNaN(appointmentDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Expected YYYY-MM-DD'
+      });
+    }
+
     const dayIndex = getDay(appointmentDate);
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
     const dayOfWeek = dayNames[dayIndex];
@@ -297,6 +306,14 @@ router.post('/appointments/availability', async (req, res, next) => {
 
     // Determine day of week from date
     const appointmentDate = new Date(date);
+
+    // Validate date parsing
+    if (isNaN(appointmentDate.getTime())) {
+      return res.status(400).json({
+        error: 'Invalid date format. Expected YYYY-MM-DD'
+      });
+    }
+
     const dayIndex = getDay(appointmentDate);
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
     const dayOfWeek = dayNames[dayIndex];
@@ -433,7 +450,15 @@ router.post('/appointments', publicBookingLimiter, async (req, res, next) => {
     // Parse start time and calculate end time (standardized method using date-fns)
     const [startHours, startMinutes] = data.startTime.split(':').map(Number);
     const dateObj = new Date(data.date);
-    const startTimeDate = setMinutes(setHours(new Date(), startHours), startMinutes);
+
+    // Validate date parsing
+    if (isNaN(dateObj.getTime())) {
+      return res.status(400).json({
+        error: 'Invalid date format. Expected YYYY-MM-DD'
+      });
+    }
+
+    const startTimeDate = setMinutes(setHours(dateObj, startHours), startMinutes);
     const endTimeDate = addMinutes(startTimeDate, service.duration);
 
     // Create ISO time strings for database storage
@@ -569,8 +594,17 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
 
     // Calculate time slot details
     const appointmentDate = new Date(data.date);
+
+    // Validate date parsing
+    if (isNaN(appointmentDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid date format. Expected YYYY-MM-DD'
+      });
+    }
+
     const [hours, minutes] = data.startTime.split(':').map(Number);
-    const slotStart = setMinutes(setHours(new Date(), hours), minutes);
+    const slotStart = setMinutes(setHours(appointmentDate, hours), minutes);
     const slotEnd = addMinutes(slotStart, service.duration);
 
     // Find first available staff member for this time slot

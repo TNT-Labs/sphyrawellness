@@ -2,6 +2,7 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
+import crypto from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { isValidImage } from '../utils/fileValidation.js';
 import { logger } from '../utils/logger.js';
@@ -28,8 +29,9 @@ const serviceStorage = multer.diskStorage({
     cb(null, servicesDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-random-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Generate unique filename using cryptographically secure random bytes
+    const randomBytes = crypto.randomBytes(8).toString('hex');
+    const uniqueSuffix = `${Date.now()}-${randomBytes}`;
     const ext = path.extname(file.originalname);
     const nameWithoutExt = path.basename(file.originalname, ext);
     cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
@@ -42,8 +44,9 @@ const staffStorage = multer.diskStorage({
     cb(null, staffDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename: timestamp-random-originalname
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    // Generate unique filename using cryptographically secure random bytes
+    const randomBytes = crypto.randomBytes(8).toString('hex');
+    const uniqueSuffix = `${Date.now()}-${randomBytes}`;
     const ext = path.extname(file.originalname);
     const nameWithoutExt = path.basename(file.originalname, ext);
     cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
