@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { logger } from '../utils/logger';
+import { safeLocalStorage, safeSessionStorage } from '../utils/safeStorage';
 
 // API base URL from environment or default to localhost
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -20,14 +22,14 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // Add JWT token
-    const token = localStorage.getItem('auth_token');
+    const token = safeLocalStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
     // Add CSRF token for state-changing requests (if available)
     if (config.method && !['get', 'head', 'options'].includes(config.method.toLowerCase())) {
-      const csrfToken = sessionStorage.getItem('csrf_token');
+      const csrfToken = safeSessionStorage.getItem('csrf_token');
       if (csrfToken) {
         config.headers['X-CSRF-Token'] = csrfToken;
       }
@@ -48,16 +50,16 @@ apiClient.interceptors.response.use(
     // Extract and store CSRF token from response headers (if present)
     const csrfToken = response.headers['x-csrf-token'];
     if (csrfToken) {
-      sessionStorage.setItem('csrf_token', csrfToken);
+      safeSessionStorage.setItem('csrf_token', csrfToken);
     }
     return response;
   },
   (error) => {
     // Handle 401 Unauthorized - Token expired or invalid
     if (error.response?.status === 401) {
-      console.error('Authentication error - redirecting to login');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      logger.error('Authentication error - redirecting to login');
+      safeLocalStorage.removeItem('auth_token');
+      safeLocalStorage.removeItem('user');
 
       // Dispatch custom event for SPA navigation (React Router compatible)
       // The App component should listen to this event and navigate programmatically
@@ -79,12 +81,12 @@ apiClient.interceptors.response.use(
 
     // Handle 403 Forbidden - Insufficient permissions
     if (error.response?.status === 403) {
-      console.error('Insufficient permissions');
+      logger.error('Insufficient permissions');
     }
 
     // Handle network errors
     if (!error.response) {
-      console.error('Network error - check if backend is running');
+      logger.error('Network error - check if backend is running');
     }
 
     // Extract error message from backend response

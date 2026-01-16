@@ -247,11 +247,11 @@ router.get('/available-slots', async (req, res, next) => {
           });
 
           if (!hasConflict) {
-            const timeKey = slotStart.toTimeString().substring(0, 5);
+            const timeKey = formatDate(slotStart, 'HH:mm');
             if (!allSlots.has(timeKey)) {
               allSlots.set(timeKey, {
                 startTime: timeKey,
-                endTime: slotEnd.toTimeString().substring(0, 5),
+                endTime: formatDate(slotEnd, 'HH:mm'),
                 availableStaff: []
               });
             }
@@ -400,8 +400,8 @@ router.post('/appointments/availability', async (req, res, next) => {
 
         if (!hasConflict) {
           slots.push({
-            startTime: slotStart.toTimeString().substring(0, 5),
-            endTime: slotEnd.toTimeString().substring(0, 5),
+            startTime: formatDate(slotStart, 'HH:mm'),
+            endTime: formatDate(slotEnd, 'HH:mm'),
           });
         }
       }
