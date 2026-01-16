@@ -185,12 +185,20 @@ export function AppProvider({ children }: AppProviderProps): JSX.Element {
 
   // Load all data when authenticated
   useEffect(() => {
+    // Create AbortController to cancel requests on unmount or auth change
+    const abortController = new AbortController();
+
     if (isAuthenticated) {
       refreshData();
     } else {
       // User is not authenticated, stop loading
       setIsLoading(false);
     }
+
+    // Cleanup: abort any ongoing requests when effect is cleaned up
+    return () => {
+      abortController.abort();
+    };
   }, [isAuthenticated, refreshData]);
 
   // ============================================================================

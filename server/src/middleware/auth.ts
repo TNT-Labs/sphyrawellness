@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import type { ApiResponse } from '../types/index.js';
 import { JWT_SECRET } from '../config/jwt.js';
+import { isUserJwtPayload } from '../types/jwt.js';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -40,8 +41,20 @@ export function authenticateToken(
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = decoded as unknown as { id: string; role: string };
-    req.user = user;
+
+    // Validate JWT payload structure
+    if (!isUserJwtPayload(decoded)) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Invalid token payload'
+      };
+      return res.status(403).json(response);
+    }
+
+    req.user = {
+      id: decoded.id,
+      role: decoded.role
+    };
     next();
   } catch {
     const response: ApiResponse = {

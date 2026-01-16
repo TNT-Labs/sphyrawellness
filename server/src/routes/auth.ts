@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { authLimiter, verifyLimiter } from '../middleware/rateLimiter.js';
 import { logLoginSuccess, logLoginFailure } from '../utils/auditLog.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/jwt.js';
+import type { UserJwtPayload } from '../types/jwt.js';
+import { isUserJwtPayload } from '../types/jwt.js';
 
 const router = Router();
 
@@ -67,7 +69,12 @@ router.post('/verify', verifyLimiter, async (req, res, next) => {
     const token = authHeader.substring(7);
 
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
+      const decoded = jwt.verify(token, JWT_SECRET);
+
+      // Validate JWT payload structure
+      if (!isUserJwtPayload(decoded)) {
+        return res.status(401).json({ error: 'Invalid token payload' });
+      }
 
       // Get fresh user data
       const user = await userRepository.findById(decoded.id);

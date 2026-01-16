@@ -84,16 +84,29 @@ app.use(helmet({
 
 // CORS configuration
 const isDevelopment = process.env.NODE_ENV !== 'production';
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-  ...(isDevelopment ? [
+
+// Parse ALLOWED_ORIGINS from environment
+let allowedOrigins: string[] = [];
+
+if (process.env.ALLOWED_ORIGINS) {
+  // Production/configured: Use only env var origins
+  allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim());
+  logger.info(`CORS: Using ${allowedOrigins.length} allowed origins from ALLOWED_ORIGINS env var`);
+} else if (isDevelopment) {
+  // Development fallback: Common localhost ports only
+  allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:3000',
-  ] : []),
-  'https://sphyra.local',
-  'https://192.168.1.95',
-  'https://sphyrawellnesslab.duckdns.org',
-  'https://tnt-labs.github.io', // GitHub Pages
-];
+  ];
+  logger.warn('⚠️  CORS: Using development fallback origins (localhost only)');
+  logger.warn('⚠️  Set ALLOWED_ORIGINS in .env to configure origins');
+} else {
+  // Production without ALLOWED_ORIGINS: Empty list (only mobile apps will work)
+  allowedOrigins = [];
+  logger.error('❌ CORS: ALLOWED_ORIGINS not set in production!');
+  logger.error('   Web clients will be blocked. Set ALLOWED_ORIGINS in .env');
+  logger.error('   Example: ALLOWED_ORIGINS=https://yourdomain.com,https://www.yourdomain.com');
+}
 
 app.use(cors({
   origin: function (origin, callback) {
