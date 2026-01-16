@@ -102,7 +102,7 @@ function getJWTExpiresIn(): string {
 
   // Validate format
   if (!validateExpiresIn(expiresIn)) {
-    if (isProduction) {
+    if (!isDevelopment) {
       logger.error(`❌ FATAL: Invalid JWT_EXPIRES_IN format: "${expiresIn}"`);
       logger.error('   Valid formats: "7d", "24h", "60m", "3600s"');
       logger.error('   Using default: "7d"');
