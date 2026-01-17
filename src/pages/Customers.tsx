@@ -134,14 +134,16 @@ const Customers: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    // Check for unsaved changes
-    const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
+  const handleCloseModal = (force: boolean = false) => {
+    // Skip unsaved changes check if force is true (e.g., after successful save)
+    if (!force) {
+      const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current);
 
-    if (hasUnsavedChanges) {
-      const shouldClose = window.confirm('Ci sono modifiche non salvate. Sei sicuro di voler chiudere?');
-      if (!shouldClose) {
-        return;
+      if (hasUnsavedChanges) {
+        const shouldClose = window.confirm('Ci sono modifiche non salvate. Sei sicuro di voler chiudere?');
+        if (!shouldClose) {
+          return;
+        }
       }
     }
 
@@ -192,7 +194,7 @@ const Customers: React.FC = () => {
         await addCustomer(customerData);
         showSuccess('Cliente aggiunto con successo!');
       }
-      handleCloseModal();
+      handleCloseModal(true); // Force close without unsaved changes warning
     } catch (error) {
       showError('Errore durante il salvataggio del cliente');
       logger.error('Error saving customer:', error);
