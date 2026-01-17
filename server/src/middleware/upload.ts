@@ -16,8 +16,9 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '../../uploads');
 const servicesDir = path.join(uploadsDir, 'services');
 const staffDir = path.join(uploadsDir, 'staff');
+const apkDir = path.join(uploadsDir, 'apk');
 
-[uploadsDir, servicesDir, staffDir].forEach(dir => {
+[uploadsDir, servicesDir, staffDir, apkDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -83,6 +84,40 @@ export const uploadStaffImage = multer({
   }
 }).single('image');
 
+// Configure storage for APK files
+const apkStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, apkDir);
+  },
+  filename: (req, file, cb) => {
+    // For APK, use simple filename with timestamp
+    const timestamp = Date.now();
+    cb(null, `sphyra-wellness-${timestamp}.apk`);
+  }
+});
+
+// File filter for APK only
+const apkFileFilter = (req: Express.Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  // Accept APK files only
+  const allowedMimes = ['application/vnd.android.package-archive', 'application/octet-stream'];
+  const ext = path.extname(file.originalname).toLowerCase();
+
+  if ((allowedMimes.includes(file.mimetype) || file.mimetype === '') && ext === '.apk') {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only APK files are allowed.'));
+  }
+};
+
+// Multer upload middleware for APK
+export const uploadApk = multer({
+  storage: apkStorage,
+  fileFilter: apkFileFilter,
+  limits: {
+    fileSize: 200 * 1024 * 1024, // 200MB max file size for APK
+  }
+}).single('apk');
+
 // Helper function to delete old image file
 export const deleteImageFile = (imageUrl: string) => {
   try {
@@ -95,6 +130,22 @@ export const deleteImageFile = (imageUrl: string) => {
     }
   } catch (error) {
     logger.error('Error deleting image file:', error);
+  }
+};
+
+// Helper function to delete APK file
+export const deleteApkFile = (filePath: string) => {
+  try {
+    // filePath is relative like '/uploads/apk/sphyra-wellness-123.apk'
+    const relativePath = filePath.replace('/uploads/', '');
+    const fullPath = path.join(uploadsDir, relativePath);
+
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      logger.info(`APK file deleted: ${fullPath}`);
+    }
+  } catch (error) {
+    logger.error('Error deleting APK file:', error);
   }
 };
 
