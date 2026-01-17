@@ -130,7 +130,10 @@ const Services: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = (force: boolean = false) => {
+  const handleCloseModal = (forceOrEvent?: boolean | React.MouseEvent) => {
+    // Determine if force is true (when called programmatically with true)
+    const force = typeof forceOrEvent === 'boolean' ? forceOrEvent : false;
+
     // Skip unsaved changes check if force is true (e.g., after successful save)
     if (!force) {
       const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current) || selectedImage !== null;
