@@ -76,10 +76,12 @@ export default function ApkRepositoryCard(): JSX.Element {
   };
 
   const handleDelete = async () => {
-    const confirmed = await confirm(
-      'Conferma eliminazione',
-      'Sei sicuro di voler eliminare l\'APK corrente? Questa azione non può essere annullata.'
-    );
+    const confirmed = await confirm({
+      title: 'Conferma eliminazione',
+      message: 'Sei sicuro di voler eliminare l\'APK corrente? Questa azione non può essere annullata.',
+      confirmText: 'Elimina',
+      variant: 'danger',
+    });
 
     if (!confirmed) return;
 
