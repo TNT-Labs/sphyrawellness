@@ -311,10 +311,10 @@ export class ReminderServicePrisma {
         reminderId: reminder.id
       };
     } catch (error) {
-      logger.error('❌ Error sending reminder for appointment:', appointmentId, error);
+      logger.error('❌ Error sending reminder for appointment:', error, { appointmentId });
 
       const errorMessage = getErrorMessage(error);
-      logger.error('Final error:', errorMessage);
+      logger.error('Final error:', error);
 
       return {
         success: false,
