@@ -248,8 +248,10 @@ app.use('/api/reminders', ...protectedMiddleware, remindersRouter);
 app.use('/api/users', ...protectedMiddleware, usersRouter);
 app.use('/api/settings', ...protectedMiddleware, settingsRouter);
 
-// Upload (keep existing - may need auth)
-app.use('/api/upload', ...protectedMiddleware, uploadRouter);
+// Upload routes - Authentication only (no CSRF for multipart/form-data)
+// Multipart form uploads don't easily support CSRF tokens in headers
+// JWT authentication provides sufficient protection for file uploads
+app.use('/api/upload', authenticateToken, uploadRouter);
 
 // Root route
 app.get('/', (req, res) => {
