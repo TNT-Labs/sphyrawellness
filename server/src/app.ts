@@ -220,7 +220,7 @@ app.get('/health', (req, res) => {
 // Public routes (no authentication)
 app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
-app.use('/api/mobile/reminders', mobileRemindersRouter);
+app.use('/api/reminders/mobile', mobileRemindersRouter);
 
 // Public business hours endpoint (must be before protected /api/settings)
 app.get('/api/settings/business-hours', async (req, res, next) => {
@@ -274,7 +274,7 @@ app.get('/', (req, res) => {
         users: '/api/users',
         settings: '/api/settings',
         public: '/api/public (public booking)',
-        mobile: '/api/mobile/reminders (mobile app - no auth)',
+        mobile: '/api/reminders/mobile (mobile app - no auth)',
         upload: '/api/upload'
       }
     },

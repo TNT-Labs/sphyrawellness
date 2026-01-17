@@ -35,7 +35,7 @@ async function startServer() {
           appointments: `/api/appointments`,
           settings: `/api/settings`,
           public: `/api/public`,
-          mobile: `/api/mobile/reminders`,
+          mobile: `/api/reminders/mobile`,
           upload: `/api/upload`
         }
       });
