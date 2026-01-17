@@ -656,7 +656,7 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
     }
 
     // 4. Create or update customer with GDPR consents
-    const now = new Date();
+    const consentDate = new Date();
     if (!customer) {
       customer = await customerRepository.create({
         firstName: data.firstName,
@@ -664,14 +664,14 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
         email: data.email,
         phone: data.phone,
         privacyConsent: data.privacyConsent,
-        privacyConsentDate: now,
+        privacyConsentDate: consentDate,
         privacyConsentVersion: '1.0',
         emailReminderConsent: data.emailReminderConsent || false,
-        emailReminderConsentDate: data.emailReminderConsent ? now : undefined,
+        emailReminderConsentDate: data.emailReminderConsent ? consentDate : undefined,
         smsReminderConsent: data.smsReminderConsent || false,
-        smsReminderConsentDate: data.smsReminderConsent ? now : undefined,
+        smsReminderConsentDate: data.smsReminderConsent ? consentDate : undefined,
         healthDataConsent: data.healthDataConsent || false,
-        healthDataConsentDate: data.healthDataConsent ? now : undefined,
+        healthDataConsentDate: data.healthDataConsent ? consentDate : undefined,
       });
     } else {
       // Update existing customer consents if needed
@@ -679,17 +679,17 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
 
       if (data.emailReminderConsent && !customer.emailReminderConsent) {
         updates.emailReminderConsent = true;
-        updates.emailReminderConsentDate = now;
+        updates.emailReminderConsentDate = consentDate;
       }
 
       if (data.smsReminderConsent && !customer.smsReminderConsent) {
         updates.smsReminderConsent = true;
-        updates.smsReminderConsentDate = now;
+        updates.smsReminderConsentDate = consentDate;
       }
 
       if (data.healthDataConsent && !customer.healthDataConsent) {
         updates.healthDataConsent = true;
-        updates.healthDataConsentDate = now;
+        updates.healthDataConsentDate = consentDate;
       }
 
       if (Object.keys(updates).length > 0) {
