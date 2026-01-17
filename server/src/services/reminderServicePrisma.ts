@@ -206,8 +206,68 @@ export class ReminderServicePrisma {
 
       // 5. Send reminder based on type
       let sendResult: { success: boolean; messageId?: string; error?: string };
+      const remindersToCreate: Array<{ type: 'email' | 'sms'; success: boolean; messageId?: string; error?: string }> = [];
 
-      if (type === 'email') {
+      // IMPORTANT: When sending SMS, also send EMAIL if possible to avoid duplicate SMS later
+      // This prevents the email reminder from remaining in the queue and triggering another SMS
+      const shouldSendEmail = type === 'sms' && customer.email && customer.emailReminderConsent;
+
+      if (shouldSendEmail) {
+        logger.info(`📧 Sending EMAIL reminder first (before SMS) to avoid duplicate SMS later...`);
+
+        // Generate .ics file content for calendar attachment (email only)
+        const icsContent = calendarService.generateICS({
+          appointment: {
+            ...appointment,
+            date: format(appointment.date, 'yyyy-MM-dd'),
+            startTime: typeof appointment.startTime === 'string' ? appointment.startTime : format(appointment.startTime, 'HH:mm'),
+            endTime: typeof appointment.endTime === 'string' ? appointment.endTime : format(appointment.endTime, 'HH:mm'),
+            createdAt: appointment.createdAt.toISOString(),
+          } as any,
+          customer: {
+            ...customer,
+            email: customer.email || '',
+            phone: customer.phone || '',
+            createdAt: customer.createdAt.toISOString(),
+          } as any,
+          service: {
+            ...service,
+            description: service.description || undefined,
+            price: Number(service.price),
+            createdAt: service.createdAt.toISOString(),
+          } as any,
+          staff: {
+            ...staff,
+            role: staff.roleId || '',
+            phone: staff.phone || '',
+            createdAt: staff.createdAt.toISOString(),
+          } as any
+        });
+
+        const emailData: ReminderEmailData = {
+          ...commonData,
+          icsContent,
+          confirmationLink
+        };
+
+        logger.info(`Sending reminder email to ${customer.email} for appointment on ${commonData.appointmentDate}...`);
+        const emailResult = await emailService.sendReminderEmail(customer.email!, emailData);
+
+        remindersToCreate.push({
+          type: 'email',
+          success: emailResult.success,
+          messageId: emailResult.messageId,
+          error: emailResult.error
+        });
+
+        if (emailResult.success) {
+          logger.info(`✅ Email reminder sent successfully before SMS`);
+        } else {
+          logger.warn(`⚠️ Email reminder failed, but continuing with SMS:`, emailResult.error);
+        }
+      }
+
+      if (type === 'email' && !shouldSendEmail) {
         // Generate .ics file content for calendar attachment (email only)
         // Convert Prisma types to legacy types for calendarService
         const icsContent = calendarService.generateICS({
@@ -246,7 +306,16 @@ export class ReminderServicePrisma {
 
         logger.info(`Sending reminder email to ${customer.email} for appointment on ${commonData.appointmentDate}...`);
         sendResult = await emailService.sendReminderEmail(customer.email!, emailData);
-      } else if (type === 'sms') {
+
+        remindersToCreate.push({
+          type: 'email',
+          success: sendResult.success,
+          messageId: sendResult.messageId,
+          error: sendResult.error
+        });
+      }
+
+      if (type === 'sms') {
         // Prepare SMS data with confirmation link
         const smsData: ReminderSMSData = {
           ...commonData,
@@ -254,61 +323,87 @@ export class ReminderServicePrisma {
         };
 
         logger.info(`Sending reminder SMS to ${customer.phone} for appointment on ${commonData.appointmentDate}...`);
-        sendResult = await smsService.sendReminderSMS(customer.phone!, smsData);
-      } else {
+        const smsResult = await smsService.sendReminderSMS(customer.phone!, smsData);
+
+        remindersToCreate.push({
+          type: 'sms',
+          success: smsResult.success,
+          messageId: smsResult.messageId,
+          error: smsResult.error
+        });
+
+        // For backward compatibility, set sendResult to SMS result
+        sendResult = smsResult;
+      } else if (type === 'email' && remindersToCreate.length === 0) {
+        // Only email was sent (no SMS)
+        // sendResult is already set above
+      } else if (remindersToCreate.length === 0) {
         return {
           success: false,
           error: `Unsupported reminder type: ${type}`
         };
       }
 
-      // 6. Handle send failure
-      if (!sendResult.success) {
-        const recipient = type === 'email' ? customer.email : customer.phone;
-        logger.error(`Failed to send reminder ${type} to ${recipient}:`, sendResult.error);
+      // 6. Create reminder records for all sent reminders
+      const createdReminders: string[] = [];
+      let primarySuccess = false;
+      let primaryError: string | undefined;
 
-        // Create failed reminder record
-        const failedReminder = await prisma.reminder.create({
+      for (const reminderData of remindersToCreate) {
+        try {
+          const reminder = await prisma.reminder.create({
+            data: {
+              appointmentId,
+              type: reminderData.type,
+              scheduledFor: new Date(),
+              sent: reminderData.success,
+              sentAt: reminderData.success ? new Date() : null,
+              errorMessage: reminderData.error
+            }
+          });
+
+          createdReminders.push(reminder.id);
+
+          if (reminderData.type === type) {
+            primarySuccess = reminderData.success;
+            primaryError = reminderData.error;
+          }
+
+          if (reminderData.success) {
+            logger.info(`✅ Reminder ${reminderData.type} sent successfully for appointment ${appointmentId}`);
+          } else {
+            logger.error(`❌ Reminder ${reminderData.type} failed for appointment ${appointmentId}:`, reminderData.error);
+          }
+        } catch (error) {
+          logger.error(`Error creating reminder record for ${reminderData.type}:`, error);
+        }
+      }
+
+      // 7. Update appointment reminderSent flag if at least one reminder was sent successfully
+      const anySent = remindersToCreate.some(r => r.success);
+      if (anySent) {
+        await prisma.appointment.update({
+          where: { id: appointmentId },
           data: {
-            appointmentId,
-            type,
-            scheduledFor: new Date(),
-            sent: false,
-            errorMessage: sendResult.error
+            reminderSent: true
           }
         });
+      }
 
+      // 8. Return result based on primary reminder type
+      if (!primarySuccess && primaryError) {
         return {
           success: false,
-          reminderId: failedReminder.id,
-          error: sendResult.error
+          reminderId: createdReminders[0],
+          error: primaryError
         };
       }
 
-      // 7. Create successful reminder record
-      const reminder = await prisma.reminder.create({
-        data: {
-          appointmentId,
-          type,
-          scheduledFor: new Date(),
-          sent: true,
-          sentAt: new Date()
-        }
-      });
-
-      // 8. Update appointment reminderSent flag
-      await prisma.appointment.update({
-        where: { id: appointmentId },
-        data: {
-          reminderSent: true
-        }
-      });
-
-      logger.info(`✅ Reminder ${type} sent for appointment ${appointmentId}`);
+      logger.info(`✅ Reminder process completed for appointment ${appointmentId} (sent: ${remindersToCreate.filter(r => r.success).length}/${remindersToCreate.length})`);
 
       return {
         success: true,
-        reminderId: reminder.id
+        reminderId: createdReminders[0] || undefined
       };
     } catch (error) {
       logger.error('❌ Error sending reminder for appointment:', error, { appointmentId });

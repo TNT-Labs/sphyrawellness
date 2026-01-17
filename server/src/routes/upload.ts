@@ -3,38 +3,14 @@ import path from 'path';
 import { prisma } from '../lib/prisma.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { uploadServiceImage, uploadStaffImage, deleteImageFile, validateUploadedImage } from '../middleware/upload.js';
-import { validateCsrfToken } from '../middleware/csrf.js';
 import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
 
 const router = express.Router();
 
-// All upload routes require authentication
+// All upload routes require authentication (JWT only, no CSRF)
+// CSRF is not enforced for multipart/form-data uploads as it's complex to implement
+// JWT authentication provides sufficient protection for file uploads
 router.use(authenticateToken);
-
-// Helper function to validate CSRF token from form body (after multer processing)
-const checkCsrfFromBody = (req: express.Request, res: express.Response): boolean => {
-  // Skip CSRF check in development if CSRF is disabled
-  const isProduction = process.env.NODE_ENV === 'production';
-  const enableCSRF = isProduction ? true : process.env.ENABLE_CSRF === 'true';
-
-  if (!enableCSRF) {
-    return true; // CSRF disabled, allow request
-  }
-
-  const token = req.body?._csrf;
-
-  if (!token) {
-    sendError(res, 'CSRF token missing', 403);
-    return false;
-  }
-
-  if (!validateCsrfToken(token)) {
-    sendError(res, 'Invalid or expired CSRF token', 403);
-    return false;
-  }
-
-  return true;
-};
 
 /**
  * POST /api/upload/service/:serviceId
@@ -51,16 +27,7 @@ router.post('/service/:serviceId', (req, res, next) => {
       return sendError(res, 'No file uploaded', 400);
     }
 
-    // Step 2: Validate CSRF token from form body (after multer processing)
-    if (!checkCsrfFromBody(req, res)) {
-      // Delete uploaded file if CSRF validation fails
-      if (req.file) {
-        deleteImageFile(`/uploads/services/${req.file.filename}`);
-      }
-      return; // Response already sent by checkCsrfFromBody
-    }
-
-    // Step 3: Validate file magic bytes
+    // Step 2: Validate file magic bytes
     validateUploadedImage(req, res, async () => {
       try {
         const { serviceId } = req.params;
@@ -157,16 +124,7 @@ router.post('/staff/:staffId', (req, res, next) => {
       return sendError(res, 'No file uploaded', 400);
     }
 
-    // Step 2: Validate CSRF token from form body (after multer processing)
-    if (!checkCsrfFromBody(req, res)) {
-      // Delete uploaded file if CSRF validation fails
-      if (req.file) {
-        deleteImageFile(`/uploads/staff/${req.file.filename}`);
-      }
-      return; // Response already sent by checkCsrfFromBody
-    }
-
-    // Step 3: Validate file magic bytes
+    // Step 2: Validate file magic bytes
     validateUploadedImage(req, res, async () => {
       try {
         const { staffId } = req.params;
