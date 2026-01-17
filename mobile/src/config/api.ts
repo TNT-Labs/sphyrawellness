@@ -53,7 +53,7 @@ export const STORAGE_KEYS = {
 export const ENDPOINTS = {
   LOGIN: '/auth/login',
   ME: '/auth/me',
-  PENDING_REMINDERS: '/reminders/mobile/pending',
-  MARK_SENT: '/reminders/mobile/mark-sent',
-  MARK_FAILED: '/reminders/mobile/mark-failed',
+  PENDING_REMINDERS: '/mobile/reminders/pending',
+  MARK_SENT: '/mobile/reminders/mark-sent',
+  MARK_FAILED: '/mobile/reminders/mark-failed',
 };
