@@ -97,7 +97,7 @@ export function validateCsrfToken(token: string): boolean {
 
 /**
  * Middleware to verify CSRF token for state-changing operations
- * Checks for X-CSRF-Token header
+ * Checks for X-CSRF-Token header or _csrf field in body/form
  */
 export function csrfProtection(
   req: Request,
@@ -109,8 +109,10 @@ export function csrfProtection(
     return next();
   }
 
-  // Get token from header
-  const token = req.headers['x-csrf-token'] as string;
+  // Get token from header or body/form field
+  // Header takes precedence (for JSON requests)
+  // Body field is used for multipart/form-data uploads
+  const token = (req.headers['x-csrf-token'] as string) || req.body?._csrf;
 
   if (!token) {
     const response: ApiResponse = {

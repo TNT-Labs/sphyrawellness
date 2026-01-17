@@ -248,8 +248,9 @@ app.use('/api/reminders', ...protectedMiddleware, remindersRouter);
 app.use('/api/users', ...protectedMiddleware, usersRouter);
 app.use('/api/settings', ...protectedMiddleware, settingsRouter);
 
-// Upload (keep existing - may need auth)
-app.use('/api/upload', ...protectedMiddleware, uploadRouter);
+// Upload routes - CSRF protection handled inside routes after multer processing
+// Authentication is enforced at router level, CSRF is checked after form parsing
+app.use('/api/upload', uploadRouter);
 
 // Root route
 app.get('/', (req, res) => {
