@@ -257,8 +257,18 @@ export async function uploadApk(file: File): Promise<{ apk: ApkFileInfo }> {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Errore durante il caricamento dell\'APK');
+      // Try to get the response as text first
+      const responseText = await response.text();
+
+      // Try to parse as JSON
+      try {
+        const error = JSON.parse(responseText);
+        throw new Error(error.error || `Errore HTTP ${response.status}: ${response.statusText}`);
+      } catch (parseError) {
+        // If it's not JSON, show the actual response (likely HTML error page)
+        console.error('Server response (not JSON):', responseText.substring(0, 500));
+        throw new Error(`Errore HTTP ${response.status}: ${response.statusText}\n\nIl server ha restituito HTML invece di JSON. Controlla i log del backend per dettagli.`);
+      }
     }
 
     const result = await response.json();
@@ -304,8 +314,14 @@ export async function getApkInfo(): Promise<{ apk: ApkFileInfo | null }> {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Errore durante il recupero delle informazioni APK');
+      const responseText = await response.text();
+      try {
+        const error = JSON.parse(responseText);
+        throw new Error(error.error || `Errore HTTP ${response.status}`);
+      } catch (parseError) {
+        console.error('Server response (not JSON):', responseText.substring(0, 500));
+        throw new Error(`Errore HTTP ${response.status}: Il server ha restituito HTML`);
+      }
     }
 
     const result = await response.json();
