@@ -222,6 +222,14 @@ router.get('/available-slots', async (req, res, next) => {
             continue; // Skip this slot if it extends beyond the period
           }
 
+          // IMPORTANT: Skip slots that are in the past for today
+          const now = new Date();
+          const today = startOfDay(now);
+          const isToday = appointmentDate.getTime() === today.getTime();
+          if (isToday && slotStart <= now) {
+            continue; // Skip this slot if it's in the past or current time
+          }
+
           // Check if slot conflicts with existing appointments for this staff
           const hasConflict = appointments.some((apt) => {
             // Extract HH:mm from ISO datetime strings (e.g., "1970-01-01T09:00:00.000Z" -> "09:00")
@@ -374,6 +382,14 @@ router.post('/appointments/availability', async (req, res, next) => {
           continue; // Skip this slot if it extends beyond the period
         }
 
+        // IMPORTANT: Skip slots that are in the past for today
+        const now = new Date();
+        const today = startOfDay(now);
+        const isToday = appointmentDate.getTime() === today.getTime();
+        if (isToday && slotStart <= now) {
+          continue; // Skip this slot if it's in the past or current time
+        }
+
         // Check if slot conflicts with existing appointments
         const hasConflict = appointments.some((apt) => {
           // Extract time from ISO datetime strings
@@ -460,6 +476,14 @@ router.post('/appointments', publicBookingLimiter, async (req, res, next) => {
 
     const startTimeDate = setMinutes(setHours(dateObj, startHours), startMinutes);
     const endTimeDate = addMinutes(startTimeDate, service.duration);
+
+    // IMPORTANT: Prevent booking for past time slots (same day validation)
+    const now = new Date();
+    if (startTimeDate <= now) {
+      return res.status(400).json({
+        error: 'Non è possibile prenotare per un orario già trascorso. Seleziona un orario futuro.'
+      });
+    }
 
     // Create ISO time strings for database storage
     const startTime = new Date(`1970-01-01T${data.startTime}:00.000Z`);
@@ -602,6 +626,15 @@ router.post('/bookings', publicBookingLimiter, async (req, res, next) => {
     const [hours, minutes] = data.startTime.split(':').map(Number);
     const slotStart = setMinutes(setHours(appointmentDate, hours), minutes);
     const slotEnd = addMinutes(slotStart, service.duration);
+
+    // IMPORTANT: Prevent booking for past time slots (same day validation)
+    const now = new Date();
+    if (slotStart <= now) {
+      return res.status(400).json({
+        success: false,
+        error: 'Non è possibile prenotare per un orario già trascorso. Seleziona un orario futuro.'
+      });
+    }
 
     // Find first available staff member for this time slot
     let availableStaffId: string | null = null;
