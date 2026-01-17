@@ -263,7 +263,7 @@ export class ReminderServicePrisma {
         if (emailResult.success) {
           logger.info(`✅ Email reminder sent successfully before SMS`);
         } else {
-          logger.warn(`⚠️ Email reminder failed, but continuing with SMS:`, emailResult.error);
+          logger.warn(`⚠️ Email reminder failed, but continuing with SMS`, { error: emailResult.error });
         }
       }
 
