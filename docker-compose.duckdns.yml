@@ -123,6 +123,8 @@ services:
       - PORT=3001
       # PostgreSQL Database URL
       - DATABASE_URL=postgresql://${POSTGRES_USER:-sphyra_user}:${POSTGRES_PASSWORD:-sphyra_dev_password_2024}@postgres:5432/${POSTGRES_DB:-sphyra_wellness}?schema=public
+      # Database credentials (for security validation)
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sphyra_dev_password_2024}
       # JWT Secret for authentication
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
