@@ -48,7 +48,7 @@ COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 # Crea la directory uploads con la struttura necessaria
-RUN mkdir -p uploads/services uploads/staff
+RUN mkdir -p uploads/services uploads/staff uploads/apk
 
 # Crea la directory logs per Winston logging
 RUN mkdir -p logs
