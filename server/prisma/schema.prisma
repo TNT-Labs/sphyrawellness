@@ -331,3 +331,19 @@ model CronLock {
   @@index([jobName, expiresAt])
   @@map("cron_locks")
 }
+
+// ============================================================================
+// APK FILES - Repository APK per app mobile
+// ============================================================================
+
+model ApkFile {
+  id          String   @id @default(uuid())
+  fileName    String   @map("file_name") @db.VarChar(255)
+  filePath    String   @map("file_path") @db.VarChar(500)
+  version     String?  @db.VarChar(50)
+  fileSize    BigInt   @map("file_size") // in bytes
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+  uploadedBy  String   @map("uploaded_by") // User ID
+
+  @@map("apk_files")
+}

@@ -1,8 +1,9 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { prisma } from '../lib/prisma.js';
-import { authenticateToken } from '../middleware/auth.js';
-import { uploadServiceImage, uploadStaffImage, deleteImageFile, validateUploadedImage } from '../middleware/upload.js';
+import { authenticateToken, requireRole } from '../middleware/auth.js';
+import { uploadServiceImage, uploadStaffImage, uploadApk, deleteImageFile, deleteApkFile, validateUploadedImage } from '../middleware/upload.js';
 import { sendSuccess, sendError, handleRouteError } from '../utils/response.js';
 
 const router = express.Router();
@@ -203,6 +204,155 @@ router.delete('/staff/:staffId', async (req, res) => {
     }
   } catch (error: any) {
     handleRouteError(res, error, 'Failed to delete staff profile image');
+  }
+});
+
+// ============================================================================
+// APK REPOSITORY ROUTES - Only for RESPONSABILE role
+// ============================================================================
+
+/**
+ * POST /api/upload/apk
+ * Upload APK file (RESPONSABILE only)
+ */
+router.post('/apk', requireRole('RESPONSABILE'), (req, res) => {
+  uploadApk(req, res, async (err) => {
+    if (err) {
+      return sendError(res, err.message || 'Upload failed', 400);
+    }
+
+    if (!req.file) {
+      return sendError(res, 'No file uploaded', 400);
+    }
+
+    try {
+      const userId = (req as any).user?.id;
+      const filePath = `/uploads/apk/${req.file.filename}`;
+      const fileSize = req.file.size;
+      const fileName = req.file.originalname;
+
+      // Delete old APK files and database records
+      const oldApks = await prisma.apkFile.findMany();
+      for (const oldApk of oldApks) {
+        deleteApkFile(oldApk.filePath);
+        await prisma.apkFile.delete({ where: { id: oldApk.id } });
+      }
+
+      // Save new APK metadata to database
+      const apkFile = await prisma.apkFile.create({
+        data: {
+          fileName,
+          filePath,
+          fileSize: BigInt(fileSize),
+          uploadedBy: userId || 'unknown',
+          version: null, // Can be extracted from APK if needed
+        }
+      });
+
+      // Convert BigInt to string for JSON serialization
+      const apkFileResponse = {
+        ...apkFile,
+        fileSize: apkFile.fileSize.toString(),
+      };
+
+      sendSuccess(res, { apk: apkFileResponse }, 'APK uploaded successfully');
+    } catch (error: any) {
+      // Clean up uploaded file on error
+      if (req.file) {
+        deleteApkFile(`/uploads/apk/${req.file.filename}`);
+      }
+      handleRouteError(res, error, 'Failed to upload APK');
+    }
+  });
+});
+
+/**
+ * GET /api/upload/apk/info
+ * Get current APK info (authenticated users only)
+ */
+router.get('/apk/info', async (req, res) => {
+  try {
+    // Get the most recent APK from database
+    const apk = await prisma.apkFile.findFirst({
+      orderBy: { uploadedAt: 'desc' }
+    });
+
+    if (!apk) {
+      return sendSuccess(res, { apk: null }, 'No APK available');
+    }
+
+    // Convert BigInt to string for JSON serialization
+    const apkResponse = {
+      ...apk,
+      fileSize: apk.fileSize.toString(),
+    };
+
+    sendSuccess(res, { apk: apkResponse }, 'APK info retrieved successfully');
+  } catch (error: any) {
+    handleRouteError(res, error, 'Failed to get APK info');
+  }
+});
+
+/**
+ * GET /api/upload/apk/download
+ * Download current APK file (authenticated users only)
+ */
+router.get('/apk/download', async (req, res) => {
+  try {
+    // Get the most recent APK from database
+    const apk = await prisma.apkFile.findFirst({
+      orderBy: { uploadedAt: 'desc' }
+    });
+
+    if (!apk) {
+      return sendError(res, 'No APK available for download', 404);
+    }
+
+    // Construct full file path
+    const relativePath = apk.filePath.replace('/uploads/', '');
+    const uploadsDir = path.join(path.dirname(new URL(import.meta.url).pathname), '../../uploads');
+    const filePath = path.join(uploadsDir, relativePath);
+
+    // Check if file exists
+    if (!fs.existsSync(filePath)) {
+      return sendError(res, 'APK file not found on server', 404);
+    }
+
+    // Set headers for download
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', `attachment; filename="${apk.fileName}"`);
+    res.setHeader('Content-Length', apk.fileSize.toString());
+
+    // Stream the file
+    const fileStream = fs.createReadStream(filePath);
+    fileStream.pipe(res);
+  } catch (error: any) {
+    handleRouteError(res, error, 'Failed to download APK');
+  }
+});
+
+/**
+ * DELETE /api/upload/apk
+ * Delete APK file (RESPONSABILE only)
+ */
+router.delete('/apk', requireRole('RESPONSABILE'), async (req, res) => {
+  try {
+    // Get all APK files from database
+    const apks = await prisma.apkFile.findMany();
+
+    if (apks.length === 0) {
+      return sendSuccess(res, {}, 'No APK to delete');
+    }
+
+    // Delete all APK files and records
+    for (const apk of apks) {
+      deleteApkFile(apk.filePath);
+      await prisma.apkFile.delete({ where: { id: apk.id } });
+    }
+
+    sendSuccess(res, {}, 'APK deleted successfully');
+  } catch (error: any) {
+    handleRouteError(res, error, 'Failed to delete APK');
   }
 });
 

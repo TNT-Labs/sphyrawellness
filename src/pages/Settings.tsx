@@ -12,6 +12,7 @@ import { StaffRole, ServiceCategory, BusinessHours } from '../types';
 import { logger, LogEntry } from '../utils/logger';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 import UserManagementCard from '../components/settings/UserManagementCard';
+import ApkRepositoryCard from '../components/settings/ApkRepositoryCard';
 import BusinessHoursSettings from '../components/BusinessHoursSettings';
 import LoadingSpinner from '../components/LoadingSpinner';
 
@@ -998,6 +999,9 @@ const Settings: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* APK Repository */}
+              <ApkRepositoryCard />
 
               {/* DANGER ZONE - Database Reset */}
               <div className="card border-2 border-red-500 bg-red-50">

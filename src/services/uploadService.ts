@@ -220,3 +220,148 @@ export function getImageUrl(imageUrl?: string): string | undefined {
   const baseUrl = API_URL.replace(/\/api$/, '');
   return `${baseUrl}${imageUrl}`;
 }
+
+// ============================================================================
+// APK Repository Functions
+// ============================================================================
+
+export interface ApkFileInfo {
+  id: string;
+  fileName: string;
+  filePath: string;
+  version: string | null;
+  fileSize: string; // BigInt as string
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
+/**
+ * Upload APK file (RESPONSABILE only)
+ */
+export async function uploadApk(file: File): Promise<{ apk: ApkFileInfo }> {
+  const formData = new FormData();
+  formData.append('apk', file);
+
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Autenticazione richiesta');
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/upload/apk`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Errore durante il caricamento dell\'APK');
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error: any) {
+    // Handle network errors with clearer messages
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `Possibili cause:\n` +
+        `• Il server backend non è in esecuzione\n` +
+        `• Stai accedendo da un IP non autorizzato\n` +
+        `• Problema di configurazione CORS\n` +
+        `• Certificato HTTPS non valido o scaduto\n\n` +
+        `URL cercato: ${apiUrl}\n\n` +
+        `Assicurati che il server backend sia avviato e che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.`
+      );
+    }
+    if (error.message && error.message.includes('CORS')) {
+      throw new Error('Errore di configurazione CORS. Verifica che tu stia accedendo tramite HTTPS da un indirizzo della rete privata.');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get current APK info
+ */
+export async function getApkInfo(): Promise<{ apk: ApkFileInfo | null }> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Autenticazione richiesta');
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/upload/apk/info`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Errore durante il recupero delle informazioni APK');
+    }
+
+    const result = await response.json();
+    return result.data;
+  } catch (error: any) {
+    // Handle network errors
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `URL cercato: ${apiUrl}`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get download URL for current APK
+ */
+export function getApkDownloadUrl(): string {
+  const baseUrl = API_URL;
+  return `${baseUrl}/upload/apk/download`;
+}
+
+/**
+ * Delete current APK (RESPONSABILE only)
+ */
+export async function deleteApk(): Promise<void> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Autenticazione richiesta');
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/upload/apk`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Errore durante l\'eliminazione dell\'APK');
+    }
+  } catch (error: any) {
+    // Handle network errors
+    if (error.message === 'Failed to fetch' || error.name === 'TypeError' && error.message.includes('fetch')) {
+      const apiUrl = API_URL.replace('/api', '');
+      throw new Error(
+        `Impossibile connettersi al server backend.\n\n` +
+        `URL cercato: ${apiUrl}`
+      );
+    }
+    throw error;
+  }
+}
