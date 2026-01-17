@@ -24,6 +24,7 @@ import remindersRouter from './routes/reminders.js';
 import usersRouter from './routes/users.js';
 import settingsRouter from './routes/settings.js';
 import publicRouter from './routes/public.js';
+import mobileRemindersRouter from './routes/mobileReminders.js';
 
 // Upload route
 import uploadRouter from './routes/upload.js';
@@ -219,6 +220,7 @@ app.get('/health', (req, res) => {
 // Public routes (no authentication)
 app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
+app.use('/api/mobile/reminders', mobileRemindersRouter);
 
 // Public business hours endpoint (must be before protected /api/settings)
 app.get('/api/settings/business-hours', async (req, res, next) => {
@@ -272,6 +274,7 @@ app.get('/', (req, res) => {
         users: '/api/users',
         settings: '/api/settings',
         public: '/api/public (public booking)',
+        mobile: '/api/mobile/reminders (mobile app - no auth)',
         upload: '/api/upload'
       }
     },
