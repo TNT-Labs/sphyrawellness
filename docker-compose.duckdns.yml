@@ -126,6 +126,8 @@ services:
       # JWT Secret for authentication
       - JWT_SECRET=${JWT_SECRET}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      # Admin settings
+      - VITE_ADMIN_INITIAL_PASSWORD=${VITE_ADMIN_INITIAL_PASSWORD:-}
       # Email settings (SendGrid)
       - SENDGRID_API_KEY=${SENDGRID_API_KEY:-}
       - SENDGRID_FROM_EMAIL=${SENDGRID_FROM_EMAIL:-noreply@sphyrawellness.com}

@@ -98,9 +98,13 @@ function validateAdminPassword(): void {
 
   if (!adminPassword) {
     if (isProduction) {
-      logger.error('❌ FATAL: VITE_ADMIN_INITIAL_PASSWORD is not set in production!');
-      logger.error('   Set a strong admin password in .env file');
-      process.exit(1);
+      logger.error('═══════════════════════════════════════════════════════════');
+      logger.error('❌ WARNING: VITE_ADMIN_INITIAL_PASSWORD is not set in production!');
+      logger.error('═══════════════════════════════════════════════════════════');
+      logger.error('⚠️  A secure password will be AUTO-GENERATED');
+      logger.error('⚠️  This is NOT RECOMMENDED for production deployments!');
+      logger.error('⚠️  Set VITE_ADMIN_INITIAL_PASSWORD in .env file');
+      logger.error('═══════════════════════════════════════════════════════════');
     } else {
       logger.warn('⚠️  WARNING: VITE_ADMIN_INITIAL_PASSWORD not set');
       logger.warn('   A secure password will be generated automatically');
@@ -177,7 +181,7 @@ export function validateSecurityConfig(): void {
 }
 
 /**
- * Get admin initial password - generates secure one if not set in development
+ * Get admin initial password - generates secure one if not set
  */
 export function getAdminInitialPassword(): string {
   const envPassword = process.env.VITE_ADMIN_INITIAL_PASSWORD;
@@ -186,23 +190,31 @@ export function getAdminInitialPassword(): string {
     return envPassword;
   }
 
-  if (isProduction) {
-    // Should never reach here due to validateSecurityConfig()
-    logger.error('❌ FATAL: Cannot generate password in production');
-    process.exit(1);
-  }
-
-  // Generate secure password for development
+  // Generate secure password
   const generatedPassword = generateSecurePassword(16);
-  logger.warn('═══════════════════════════════════════════════════════════');
-  logger.warn('⚠️  AUTO-GENERATED ADMIN PASSWORD (Development Only)');
-  logger.warn('═══════════════════════════════════════════════════════════');
-  logger.warn(`   Username: admin`);
-  logger.warn(`   Password: ${generatedPassword}`);
-  logger.warn('═══════════════════════════════════════════════════════════');
-  logger.warn('⚠️  SAVE THIS PASSWORD - It will change on restart!');
-  logger.warn('⚠️  Set VITE_ADMIN_INITIAL_PASSWORD in .env to make it permanent');
-  logger.warn('═══════════════════════════════════════════════════════════');
+
+  if (isProduction) {
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('🔐 AUTO-GENERATED ADMIN PASSWORD (PRODUCTION MODE)');
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error(`   Username: admin`);
+    logger.error(`   Password: ${generatedPassword}`);
+    logger.error('═══════════════════════════════════════════════════════════');
+    logger.error('⚠️  CRITICAL: SAVE THIS PASSWORD IMMEDIATELY!');
+    logger.error('⚠️  Password will change on container restart!');
+    logger.error('⚠️  Set VITE_ADMIN_INITIAL_PASSWORD in .env for persistence');
+    logger.error('═══════════════════════════════════════════════════════════');
+  } else {
+    logger.warn('═══════════════════════════════════════════════════════════');
+    logger.warn('⚠️  AUTO-GENERATED ADMIN PASSWORD (Development Only)');
+    logger.warn('═══════════════════════════════════════════════════════════');
+    logger.warn(`   Username: admin`);
+    logger.warn(`   Password: ${generatedPassword}`);
+    logger.warn('═══════════════════════════════════════════════════════════');
+    logger.warn('⚠️  SAVE THIS PASSWORD - It will change on restart!');
+    logger.warn('⚠️  Set VITE_ADMIN_INITIAL_PASSWORD in .env to make it permanent');
+    logger.warn('═══════════════════════════════════════════════════════════');
+  }
 
   return generatedPassword;
 }
