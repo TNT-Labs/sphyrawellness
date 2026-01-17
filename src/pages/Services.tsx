@@ -130,14 +130,16 @@ const Services: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    // Check for unsaved changes (excluding image changes for simplicity)
-    const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current) || selectedImage !== null;
+  const handleCloseModal = (force: boolean = false) => {
+    // Skip unsaved changes check if force is true (e.g., after successful save)
+    if (!force) {
+      const hasUnsavedChanges = JSON.stringify(formData) !== JSON.stringify(initialFormDataRef.current) || selectedImage !== null;
 
-    if (hasUnsavedChanges) {
-      const shouldClose = window.confirm('Ci sono modifiche non salvate. Sei sicuro di voler chiudere?');
-      if (!shouldClose) {
-        return;
+      if (hasUnsavedChanges) {
+        const shouldClose = window.confirm('Ci sono modifiche non salvate. Sei sicuro di voler chiudere?');
+        if (!shouldClose) {
+          return;
+        }
       }
     }
 
@@ -264,7 +266,7 @@ const Services: React.FC = () => {
         showSuccess(editingService ? 'Servizio aggiornato con successo!' : 'Servizio aggiunto con successo!');
       }
 
-      handleCloseModal();
+      handleCloseModal(true); // Force close without unsaved changes warning
     } catch (error) {
       showError('Errore durante il salvataggio del servizio');
       logger.error('Error saving service:', error);
