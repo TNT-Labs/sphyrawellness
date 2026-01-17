@@ -859,10 +859,10 @@ const PublicBooking: React.FC = () => {
         </div>
 
         <button
-          onClick={() => window.location.href = '/'}
+          onClick={() => window.location.reload()}
           className="btn-primary"
         >
-          Torna alla Home
+          Fai una Nuova Prenotazione
         </button>
       </div>
     );

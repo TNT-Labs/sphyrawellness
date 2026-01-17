@@ -1,4 +1,5 @@
 import type { Settings, Appointment, CustomerConsents, BusinessHours } from '../types';
+import { safeSessionStorage } from './safeStorage';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
@@ -7,6 +8,20 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+}
+
+/**
+ * Get CSRF token from sessionStorage
+ */
+function getCsrfToken(): string | null {
+  return safeSessionStorage.getItem('csrf_token');
+}
+
+/**
+ * Store CSRF token in sessionStorage
+ */
+function storeCsrfToken(token: string): void {
+  safeSessionStorage.setItem('csrf_token', token);
 }
 
 /**
@@ -23,6 +38,12 @@ export const settingsApi = {
     }
 
     const response = await fetch(`${API_BASE_URL}/settings`, { headers });
+
+    // Extract and store CSRF token from response headers
+    const csrfToken = response.headers.get('x-csrf-token');
+    if (csrfToken) {
+      storeCsrfToken(csrfToken);
+    }
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -42,11 +63,15 @@ export const settingsApi = {
 
   async update(settings: Partial<Settings>): Promise<Settings> {
     const token = getAuthToken();
+    const csrfToken = getCsrfToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
     }
 
     const response = await fetch(`${API_BASE_URL}/settings`, {
@@ -54,6 +79,12 @@ export const settingsApi = {
       headers,
       body: JSON.stringify(settings),
     });
+
+    // Extract and store CSRF token from response headers
+    const newCsrfToken = response.headers.get('x-csrf-token');
+    if (newCsrfToken) {
+      storeCsrfToken(newCsrfToken);
+    }
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -74,6 +105,12 @@ export const settingsApi = {
   async getBusinessHours(): Promise<BusinessHours> {
     const response = await fetch(`${API_BASE_URL}/settings/business-hours`);
 
+    // Extract and store CSRF token from response headers
+    const csrfToken = response.headers.get('x-csrf-token');
+    if (csrfToken) {
+      storeCsrfToken(csrfToken);
+    }
+
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -89,11 +126,15 @@ export const settingsApi = {
 
   async updateBusinessHours(businessHours: BusinessHours): Promise<BusinessHours> {
     const token = getAuthToken();
+    const csrfToken = getCsrfToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
     }
 
     const response = await fetch(`${API_BASE_URL}/settings/business-hours`, {
@@ -101,6 +142,12 @@ export const settingsApi = {
       headers,
       body: JSON.stringify({ businessHours }),
     });
+
+    // Extract and store CSRF token from response headers
+    const newCsrfToken = response.headers.get('x-csrf-token');
+    if (newCsrfToken) {
+      storeCsrfToken(newCsrfToken);
+    }
 
     if (!response.ok) {
       if (response.status === 401) {
@@ -149,11 +196,15 @@ export const settingsApi = {
    */
   async resetDatabase(confirmation: string): Promise<{ success: boolean; message: string; data: any }> {
     const token = getAuthToken();
+    const csrfToken = getCsrfToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
     }
 
     const response = await fetch(`${API_BASE_URL}/settings/reset-database`, {
@@ -161,6 +212,12 @@ export const settingsApi = {
       headers,
       body: JSON.stringify({ confirmation }),
     });
+
+    // Extract and store CSRF token from response headers
+    const newCsrfToken = response.headers.get('x-csrf-token');
+    if (newCsrfToken) {
+      storeCsrfToken(newCsrfToken);
+    }
 
     if (!response.ok) {
       const result: ApiResponse = await response.json();
@@ -183,13 +240,25 @@ export const settingsApi = {
 export const remindersApi = {
   async sendForAppointment(appointmentId: string, type: 'email' | 'sms' = 'email'): Promise<{ reminderId: string }> {
     try {
+      const csrfToken = getCsrfToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/reminders/send/${appointmentId}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ type }),
       });
+
+      // Extract and store CSRF token from response headers
+      const newCsrfToken = response.headers.get('x-csrf-token');
+      if (newCsrfToken) {
+        storeCsrfToken(newCsrfToken);
+      }
 
       if (!response.ok) {
         const result: ApiResponse = await response.json();
@@ -231,12 +300,24 @@ export const remindersApi = {
     results: Array<{ appointmentId: string; success: boolean; error?: string }>;
   }> {
     try {
+      const csrfToken = getCsrfToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/reminders/send-all`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
       });
+
+      // Extract and store CSRF token from response headers
+      const newCsrfToken = response.headers.get('x-csrf-token');
+      if (newCsrfToken) {
+        storeCsrfToken(newCsrfToken);
+      }
 
       if (!response.ok) {
         const result: ApiResponse = await response.json();
@@ -315,14 +396,26 @@ export const appointmentsApi = {
   },
 
   async confirm(appointmentId: string, token: string): Promise<Appointment> {
-    // Public endpoint - no authentication required
+    // Public endpoint - no authentication required, but CSRF token may be needed
+    const csrfToken = getCsrfToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
     const response = await fetch(`${API_BASE_URL}/public/appointments/${appointmentId}/confirm`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ token }),
     });
+
+    // Extract and store CSRF token from response headers
+    const newCsrfToken = response.headers.get('x-csrf-token');
+    if (newCsrfToken) {
+      storeCsrfToken(newCsrfToken);
+    }
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -340,13 +433,25 @@ export const appointmentsApi = {
 export const customersApi = {
   async updateConsents(customerId: string, consents: Partial<CustomerConsents>): Promise<void> {
     try {
+      const csrfToken = getCsrfToken();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (csrfToken) {
+        headers['X-CSRF-Token'] = csrfToken;
+      }
+
       const response = await fetch(`${API_BASE_URL}/customers/${customerId}/consents`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ consents }),
       });
+
+      // Extract and store CSRF token from response headers
+      const newCsrfToken = response.headers.get('x-csrf-token');
+      if (newCsrfToken) {
+        storeCsrfToken(newCsrfToken);
+      }
 
       if (!response.ok) {
         const result: ApiResponse = await response.json();
