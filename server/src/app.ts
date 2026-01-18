@@ -31,6 +31,7 @@ import uploadRouter from './routes/upload.js';
 
 // Repositories for public endpoints
 import { settingsRepository } from './repositories/settingsRepository.js';
+import { settingRepository } from './repositories/settingRepository.js';
 
 import logger from './utils/logger.js';
 import type { ApiResponse } from './types/index.js';
@@ -222,13 +223,40 @@ app.use('/api/auth', authRouter);
 app.use('/api/public', publicRouter);
 app.use('/api/reminders/mobile', mobileRemindersRouter);
 
-// Public business hours endpoint (must be before protected /api/settings)
+// Public settings endpoints (must be before protected /api/settings)
 app.get('/api/settings/business-hours', async (req, res, next) => {
   try {
     const businessHours = await settingsRepository.getBusinessHours();
     res.json({
       success: true,
       data: { businessHours },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/settings/vacation-periods', async (req, res, next) => {
+  try {
+    logger.info('📖 [PUBLIC] Reading vacation periods from database');
+    const vacationPeriods = await settingRepository.getValue('vacation_periods', []);
+    logger.info('✅ [PUBLIC] Vacation periods retrieved', { vacationPeriods });
+    res.json({
+      success: true,
+      data: { vacationPeriods },
+    });
+  } catch (error) {
+    logger.error('❌ [PUBLIC] Error reading vacation periods', { error });
+    next(error);
+  }
+});
+
+app.get('/api/settings/booking-window-days', async (req, res, next) => {
+  try {
+    const bookingWindowDays = await settingRepository.getValue('booking_window_days', 90);
+    res.json({
+      success: true,
+      data: { bookingWindowDays },
     });
   } catch (error) {
     next(error);

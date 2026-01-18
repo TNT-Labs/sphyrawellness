@@ -19,27 +19,8 @@ const resetDatabaseSchema = z.object({
 // ============================================================================
 // SPECIALIZED SETTINGS ENDPOINTS (must be before parametric routes)
 // ============================================================================
-// Note: GET /api/settings/business-hours is public and registered in app.ts
-
-/**
- * GET /api/settings/vacation-periods
- * Public endpoint - get vacation/holiday periods
- */
-router.get('/vacation-periods', async (req, res, next) => {
-  try {
-    logger.info('📖 Reading vacation periods from database');
-    const vacationPeriods = await settingRepository.getValue('vacation_periods', []);
-    logger.info('✅ Vacation periods retrieved', { vacationPeriods });
-
-    res.json({
-      success: true,
-      data: { vacationPeriods },
-    });
-  } catch (error) {
-    logger.error('❌ Error reading vacation periods', { error });
-    next(error);
-  }
-});
+// Note: Public GET endpoints for business-hours, vacation-periods, and
+//       booking-window-days are registered in app.ts (before auth middleware)
 
 /**
  * PUT /api/settings/vacation-periods
@@ -102,23 +83,6 @@ router.put('/vacation-periods', async (req, res, next) => {
     });
   } catch (error) {
     logger.error('❌ Error saving vacation periods', { error });
-    next(error);
-  }
-});
-
-/**
- * GET /api/settings/booking-window-days
- * Public endpoint - get number of days available for booking
- */
-router.get('/booking-window-days', async (req, res, next) => {
-  try {
-    const bookingWindowDays = await settingRepository.getValue('booking_window_days', 90);
-
-    res.json({
-      success: true,
-      data: { bookingWindowDays },
-    });
-  } catch (error) {
     next(error);
   }
 });
