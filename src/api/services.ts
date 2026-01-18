@@ -45,6 +45,7 @@ export const servicesApi = {
     if (service.category !== undefined) apiData.categoryId = service.category; // Map category → categoryId
     if (service.color !== undefined) apiData.color = service.color;
     if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
+    if (service.isVisibleToCustomers !== undefined) apiData.isVisibleToCustomers = service.isVisibleToCustomers;
 
     const { data } = await apiClient.post<any>('/services', apiData);
     // Transform backend response: category object → categoryId string, Decimal price → number
@@ -70,6 +71,7 @@ export const servicesApi = {
     if (service.category !== undefined) apiData.categoryId = service.category; // Map category → categoryId
     if (service.color !== undefined) apiData.color = service.color;
     if (service.imageUrl !== undefined) apiData.imageUrl = service.imageUrl;
+    if (service.isVisibleToCustomers !== undefined) apiData.isVisibleToCustomers = service.isVisibleToCustomers;
 
     const { data } = await apiClient.put<any>(`/services/${id}`, apiData);
     // Transform backend response: category object → categoryId string, Decimal price → number
