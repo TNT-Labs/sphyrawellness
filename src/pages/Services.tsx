@@ -48,6 +48,7 @@ const Services: React.FC = () => {
     price: 0,
     category: '',
     color: '#ec4899',
+    isVisibleToCustomers: true,
   });
 
   // Track initial form data to detect unsaved changes
@@ -107,6 +108,7 @@ const Services: React.FC = () => {
         price: service.price,
         category: service.category,
         color: service.color || '#ec4899',
+        isVisibleToCustomers: service.isVisibleToCustomers ?? true,
       };
       // Set image preview if service has an image
       if (service.imageUrl) {
@@ -121,6 +123,7 @@ const Services: React.FC = () => {
         price: 0,
         category: '',
         color: '#ec4899',
+        isVisibleToCustomers: true,
       };
       setSelectedImage(null);
       setImagePreview(null);
@@ -230,6 +233,7 @@ const Services: React.FC = () => {
       color: formData.color,
       // Preserve existing image URL if not uploading a new image, convert null to undefined
       imageUrl: editingService?.imageUrl || undefined,
+      isVisibleToCustomers: formData.isVisibleToCustomers,
     };
 
     try {
@@ -768,6 +772,37 @@ const Services: React.FC = () => {
                     <span className="text-sm text-gray-600">
                       Scegli un colore per identificare il servizio
                     </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-4">
+                  <label className="label">Visibilità Prenotazione Clienti</label>
+                  <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-gray-900 mb-1">
+                        Visibile nel sistema di prenotazione autonoma
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        {formData.isVisibleToCustomers
+                          ? 'I clienti possono prenotare questo servizio in autonomia'
+                          : 'Questo servizio è nascosto ai clienti (solo prenotazioni da amministratore)'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isVisibleToCustomers: !formData.isVisibleToCustomers })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 ${
+                        formData.isVisibleToCustomers ? 'bg-primary-600' : 'bg-gray-300'
+                      }`}
+                      role="switch"
+                      aria-checked={formData.isVisibleToCustomers}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          formData.isVisibleToCustomers ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
 
