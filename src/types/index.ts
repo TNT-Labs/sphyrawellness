@@ -88,6 +88,7 @@ export interface Service {
   category: string;
   color?: string;
   imageUrl?: string; // URL or path to service image
+  isVisibleToCustomers?: boolean; // Controls visibility in customer booking system (default: true)
   createdAt?: string; // ISO timestamp of creation
   updatedAt?: string; // ISO timestamp of last modification
 }

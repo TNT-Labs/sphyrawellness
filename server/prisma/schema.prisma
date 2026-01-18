@@ -76,16 +76,17 @@ model ServiceCategory {
 // ============================================================================
 
 model Service {
-  id          String   @id @default(uuid())
-  name        String   @db.VarChar(200)
-  description String?  @db.Text
-  duration    Int      // minutes
-  price       Decimal  @db.Decimal(10, 2)
-  categoryId  String?  @map("category_id")
-  color       String?  @db.VarChar(7)
-  imageUrl    String?  @map("image_url") @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                   String   @id @default(uuid())
+  name                 String   @db.VarChar(200)
+  description          String?  @db.Text
+  duration             Int      // minutes
+  price                Decimal  @db.Decimal(10, 2)
+  categoryId           String?  @map("category_id")
+  color                String?  @db.VarChar(7)
+  imageUrl             String?  @map("image_url") @db.Text
+  isVisibleToCustomers Boolean  @default(true) @map("is_visible_to_customers")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
 
   // Relations
   category     ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -93,6 +94,7 @@ model Service {
 
   @@index([categoryId])
   @@index([name])
+  @@index([isVisibleToCustomers])
   @@map("services")
 }
 

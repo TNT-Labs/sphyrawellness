@@ -17,6 +17,7 @@ const createServiceSchema = z.object({
   categoryId: z.string().uuid().optional(),
   color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
   imageUrl: z.string().min(1).optional().nullable(),
+  isVisibleToCustomers: z.boolean().optional().default(true),
 });
 
 const updateServiceSchema = createServiceSchema.partial();

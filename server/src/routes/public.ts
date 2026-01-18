@@ -62,9 +62,11 @@ router.get('/services', async (req, res, next) => {
   try {
     const services = await serviceRepository.findAll();
 
-    // Filter only active services with active categories
+    // Filter only visible services with active categories
     const activeServices = services.filter(
-      (s) => !s.categoryId || (s.category && s.category.isActive)
+      (s) =>
+        s.isVisibleToCustomers !== false && // Show if visible to customers (default true)
+        (!s.categoryId || (s.category && s.category.isActive)) // Show if no category or category is active
     );
 
     // Get unique categories from active services
