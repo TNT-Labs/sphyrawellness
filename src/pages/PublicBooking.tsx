@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight, Shield, Plane, AlertCircle } from 'lucide-react';
 import type { Service, ServiceCategory, Staff, VacationPeriod } from '../types';
-import { format, addDays, startOfWeek, isBefore, startOfDay, parse, getDay, isWithinInterval } from 'date-fns';
+import { format, addDays, startOfWeek, isBefore, startOfDay, parse, getDay, isWithinInterval, startOfMonth, endOfMonth, addMonths, isSameMonth, isSameDay, eachDayOfInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getImageUrl } from '../services/uploadService';
 import { formatCurrency } from '../utils/currency';
@@ -59,6 +59,7 @@ const PublicBooking: React.FC = () => {
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
   const [bookingWindowDays, setBookingWindowDays] = useState<number>(90);
+  const [currentMonth, setCurrentMonth] = useState<Date>(startOfDay(new Date())); // Mese corrente per il calendario
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,13 +143,16 @@ const PublicBooking: React.FC = () => {
       // Carica vacation periods
       const vacationResponse = await fetch(`${API_URL}/settings/vacation-periods`);
       const vacationData = await vacationResponse.json();
+      console.log('Vacation periods loaded:', vacationData);
       if (vacationData.success && vacationData.data?.vacationPeriods) {
         setVacationPeriods(vacationData.data.vacationPeriods);
+        console.log('Vacation periods set to state:', vacationData.data.vacationPeriods);
       }
 
       // Carica booking window days
       const bookingWindowResponse = await fetch(`${API_URL}/settings/booking-window-days`);
       const bookingWindowData = await bookingWindowResponse.json();
+      console.log('Booking window days loaded:', bookingWindowData);
       if (bookingWindowData.success && bookingWindowData.data?.bookingWindowDays) {
         setBookingWindowDays(bookingWindowData.data.bookingWindowDays);
       }
@@ -528,7 +532,38 @@ const PublicBooking: React.FC = () => {
   // Step 2: Selezione Data e Ora
   const renderDateTimeSelection = () => {
     const today = startOfDay(new Date());
-    const nextDays = Array.from({ length: bookingWindowDays }, (_, i) => addDays(today, i));
+    const maxDate = addDays(today, bookingWindowDays);
+
+    // Giorni del mese corrente visualizzato
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(currentMonth);
+    const monthDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+
+    // Calcola il primo giorno della settimana per allineamento (lunedì = 0)
+    const firstDayOfMonth = monthStart.getDay();
+    const startPadding = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1; // Converte domenica=0 a 6
+
+    // Aggiungi giorni vuoti all'inizio per allineamento
+    const paddedDays = [
+      ...Array(startPadding).fill(null),
+      ...monthDays
+    ];
+
+    // Funzioni di navigazione mese
+    const canGoPrevious = isSameMonth(currentMonth, today) === false && startOfMonth(currentMonth) > today;
+    const canGoNext = startOfMonth(addMonths(currentMonth, 1)) < maxDate;
+
+    const handlePreviousMonth = () => {
+      if (canGoPrevious) {
+        setCurrentMonth(addMonths(currentMonth, -1));
+      }
+    };
+
+    const handleNextMonth = () => {
+      if (canGoNext) {
+        setCurrentMonth(addMonths(currentMonth, 1));
+      }
+    };
 
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -539,50 +574,130 @@ const PublicBooking: React.FC = () => {
           </p>
         </div>
 
-        {/* Selezione Data */}
+        {/* Selezione Data - Calendario Mensile */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-3">
             <Calendar className="inline w-4 h-4 mr-2" />
             Seleziona una data
           </label>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
-            {nextDays.map(day => {
+
+          {/* Header mese con navigazione */}
+          <div className="flex items-center justify-between mb-4 bg-primary-50 rounded-lg p-3">
+            <button
+              onClick={handlePreviousMonth}
+              disabled={!canGoPrevious}
+              className={`p-2 rounded-lg transition-colors ${
+                canGoPrevious
+                  ? 'hover:bg-primary-100 text-primary-700'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+              title="Mese precedente"
+            >
+              <ChevronLeft size={24} />
+            </button>
+
+            <h3 className="text-lg font-bold text-primary-900">
+              {format(currentMonth, 'MMMM yyyy', { locale: it })}
+            </h3>
+
+            <button
+              onClick={handleNextMonth}
+              disabled={!canGoNext}
+              className={`p-2 rounded-lg transition-colors ${
+                canGoNext
+                  ? 'hover:bg-primary-100 text-primary-700'
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+              title="Mese successivo"
+            >
+              <ChevronRight size={24} />
+            </button>
+          </div>
+
+          {/* Header giorni della settimana */}
+          <div className="grid grid-cols-7 gap-1 mb-2">
+            {['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'].map(day => (
+              <div key={day} className="text-center text-xs font-semibold text-gray-600 py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Griglia calendario */}
+          <div className="grid grid-cols-7 gap-1 sm:gap-2">
+            {paddedDays.map((day, index) => {
+              if (!day) {
+                return <div key={`empty-${index}`} className="aspect-square" />;
+              }
+
               const dateStr = format(day, 'yyyy-MM-dd');
+              const isPast = isBefore(day, today);
+              const isFuture = day > maxDate;
               const isWeekend = day.getDay() === 0; // Solo domenica disabilitata
-              const isVacation = isDateInVacation(day); // Verifica se è in periodo di ferie
-              const isDisabled = isWeekend || isVacation;
+              const isVacation = isDateInVacation(day);
+              const isSelected = bookingData.date === dateStr;
+              const isToday = isSameDay(day, today);
+              const isDisabled = isPast || isFuture || isWeekend || isVacation;
 
               return (
                 <button
                   key={dateStr}
                   onClick={() => !isDisabled && setBookingData({ ...bookingData, date: dateStr, startTime: '' })}
-                  className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all touch-manipulation min-h-[70px] sm:min-h-[80px] relative ${
-                    bookingData.date === dateStr
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-primary-300 bg-white'
-                  } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
                   disabled={isDisabled}
-                  title={isVacation ? 'Chiuso per ferie' : isWeekend ? 'Chiuso' : ''}
+                  className={`aspect-square p-1 sm:p-2 rounded-lg border-2 text-center transition-all relative
+                    ${isSelected
+                      ? 'border-primary-500 bg-primary-500 text-white font-bold'
+                      : isToday
+                      ? 'border-primary-300 bg-white text-primary-700 font-semibold'
+                      : 'border-gray-200 bg-white text-gray-900'
+                    }
+                    ${isDisabled
+                      ? 'opacity-40 cursor-not-allowed'
+                      : 'hover:border-primary-300 hover:bg-primary-50 cursor-pointer'
+                    }
+                  `}
+                  title={
+                    isVacation
+                      ? 'Chiuso per ferie'
+                      : isWeekend
+                      ? 'Chiuso'
+                      : isPast
+                      ? 'Data passata'
+                      : isFuture
+                      ? 'Oltre la finestra di prenotazione'
+                      : ''
+                  }
                 >
                   {isVacation && (
-                    <div className="absolute top-1 right-1">
-                      <Plane className="w-3 h-3 text-orange-500" />
+                    <div className="absolute top-0.5 right-0.5">
+                      <Plane className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-orange-500" />
                     </div>
                   )}
-                  <div className="text-xs text-gray-600 uppercase">
-                    {format(day, 'EEE', { locale: it })}
-                  </div>
-                  <div className="text-base sm:text-lg font-bold text-gray-900 my-1">
-                    {format(day, 'dd')}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {format(day, 'MMM', { locale: it })}
+                  <div className={`text-xs sm:text-sm ${isSelected ? 'font-bold' : ''}`}>
+                    {format(day, 'd')}
                   </div>
                 </button>
               );
             })}
           </div>
+
           {errors.date && <p className="text-red-600 text-sm mt-2">{errors.date}</p>}
+
+          {/* Legenda */}
+          <div className="mt-4 flex flex-wrap gap-3 text-xs text-gray-600">
+            <div className="flex items-center gap-1">
+              <div className="w-4 h-4 rounded border-2 border-primary-300 bg-white"></div>
+              <span>Oggi</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className="w-4 h-4 rounded border-2 border-primary-500 bg-primary-500"></div>
+              <span>Selezionato</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Plane className="w-3 h-3 text-orange-500" />
+              <span>Chiuso per ferie</span>
+            </div>
+          </div>
         </div>
 
         {/* Selezione Ora */}
