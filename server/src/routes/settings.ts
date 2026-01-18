@@ -17,9 +17,128 @@ const resetDatabaseSchema = z.object({
 });
 
 // ============================================================================
-// BUSINESS HOURS - Specialized endpoints (must be before parametric routes)
+// SPECIALIZED SETTINGS ENDPOINTS (must be before parametric routes)
 // ============================================================================
 // Note: GET /api/settings/business-hours is public and registered in app.ts
+
+/**
+ * GET /api/settings/vacation-periods
+ * Public endpoint - get vacation/holiday periods
+ */
+router.get('/vacation-periods', async (req, res, next) => {
+  try {
+    const vacationPeriods = await settingRepository.getValue('vacation_periods', []);
+
+    res.json({
+      success: true,
+      data: { vacationPeriods },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/settings/vacation-periods
+ * Protected endpoint - update vacation/holiday periods (admin only)
+ */
+router.put('/vacation-periods', async (req, res, next) => {
+  try {
+    const { vacationPeriods } = req.body;
+
+    if (!Array.isArray(vacationPeriods)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Vacation periods must be an array',
+      });
+    }
+
+    // Validate each period
+    for (const period of vacationPeriods) {
+      if (!period.id || !period.startDate || !period.endDate) {
+        return res.status(400).json({
+          success: false,
+          error: 'Each vacation period must have id, startDate, and endDate',
+        });
+      }
+
+      // Validate date format (YYYY-MM-DD)
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (!dateRegex.test(period.startDate) || !dateRegex.test(period.endDate)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Dates must be in YYYY-MM-DD format',
+        });
+      }
+
+      // Validate date range
+      if (new Date(period.endDate) < new Date(period.startDate)) {
+        return res.status(400).json({
+          success: false,
+          error: 'End date must be after start date',
+        });
+      }
+    }
+
+    const userId = (req as any).user?.id;
+
+    await settingRepository.upsert('vacation_periods', vacationPeriods, userId);
+
+    res.json({
+      success: true,
+      message: 'Vacation periods updated successfully',
+      data: { vacationPeriods },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/settings/booking-window-days
+ * Public endpoint - get number of days available for booking
+ */
+router.get('/booking-window-days', async (req, res, next) => {
+  try {
+    const bookingWindowDays = await settingRepository.getValue('booking_window_days', 90);
+
+    res.json({
+      success: true,
+      data: { bookingWindowDays },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * PUT /api/settings/booking-window-days
+ * Protected endpoint - update booking window days (admin only)
+ */
+router.put('/booking-window-days', async (req, res, next) => {
+  try {
+    const { bookingWindowDays } = req.body;
+
+    if (typeof bookingWindowDays !== 'number' || bookingWindowDays < 1 || bookingWindowDays > 365) {
+      return res.status(400).json({
+        success: false,
+        error: 'Booking window days must be a number between 1 and 365',
+      });
+    }
+
+    const userId = (req as any).user?.id;
+
+    await settingRepository.upsert('booking_window_days', bookingWindowDays, userId);
+
+    res.json({
+      success: true,
+      message: 'Booking window days updated successfully',
+      data: { bookingWindowDays },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 /**
  * PUT /api/settings/business-hours

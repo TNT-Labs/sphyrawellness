@@ -191,9 +191,19 @@ export type DayOfWeek = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'frida
 
 export type BusinessHours = Record<DayOfWeek, DaySchedule>;
 
+// Vacation/Holiday period
+export interface VacationPeriod {
+  id: string;
+  startDate: string; // YYYY-MM-DD format
+  endDate: string; // YYYY-MM-DD format
+  reason?: string; // Optional reason for closure
+}
+
 export interface AppSettings {
   idleTimeout: number; // in minutes (0 = disabled)
   businessHours?: BusinessHours; // Orari di apertura per giorno della settimana
+  vacationPeriods?: VacationPeriod[]; // Periodi di chiusura/ferie
+  bookingWindowDays?: number; // Numero di giorni disponibili per prenotazioni (default: 90)
 }
 
 export interface SyncStatus {

@@ -8,12 +8,13 @@ import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { useApp } from '../contexts/AppContext';
 import { useAuth } from '../contexts/AuthContext';
-import { StaffRole, ServiceCategory, BusinessHours } from '../types';
+import { StaffRole, ServiceCategory, BusinessHours, VacationPeriod } from '../types';
 import { logger, LogEntry } from '../utils/logger';
 import ReminderSettingsCard from '../components/settings/ReminderSettingsCard';
 import UserManagementCard from '../components/settings/UserManagementCard';
 import ApkRepositoryCard from '../components/settings/ApkRepositoryCard';
 import BusinessHoursSettings from '../components/BusinessHoursSettings';
+import VacationSettings from '../components/VacationSettings';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 type SettingsTab = 'general' | 'configuration' | 'advanced' | 'users';
@@ -33,6 +34,8 @@ const Settings: React.FC = () => {
     saturday: { enabled: true, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
     sunday: { enabled: false, type: 'continuous', morning: { start: '09:00', end: '13:00' } },
   });
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+  const [bookingWindowDays, setBookingWindowDays] = useState<number>(90);
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
 
   // Staff Roles state
@@ -79,6 +82,25 @@ const Settings: React.FC = () => {
         };
         setBusinessHours(defaultBusinessHours);
       }
+
+      // Load vacation periods from database via API
+      try {
+        const periods = await settingsApi.getVacationPeriods();
+        setVacationPeriods(periods);
+      } catch (error) {
+        console.error('Failed to load vacation periods from API:', error);
+        // Non mostriamo errore qui perché potrebbe essere la prima volta
+      }
+
+      // Load booking window days from database via API
+      try {
+        const days = await settingsApi.getBookingWindowDays();
+        setBookingWindowDays(days);
+      } catch (error) {
+        console.error('Failed to load booking window days from API:', error);
+        // Default to 90 days
+        setBookingWindowDays(90);
+      }
     };
 
     loadAppSettings();
@@ -102,6 +124,28 @@ const Settings: React.FC = () => {
     } catch (error) {
       console.error('Failed to save business hours:', error);
       showError('Errore nel salvataggio degli orari di apertura');
+    }
+  };
+
+  const handleVacationPeriodsChange = async (newPeriods: VacationPeriod[]) => {
+    try {
+      setVacationPeriods(newPeriods);
+      await settingsApi.updateVacationPeriods(newPeriods);
+      showSuccess('Periodi di ferie salvati con successo');
+    } catch (error) {
+      console.error('Failed to save vacation periods:', error);
+      showError('Errore nel salvataggio dei periodi di ferie');
+    }
+  };
+
+  const handleBookingWindowDaysChange = async (days: number) => {
+    try {
+      setBookingWindowDays(days);
+      await settingsApi.updateBookingWindowDays(days);
+      showSuccess('Periodo di prenotazione aggiornato');
+    } catch (error) {
+      console.error('Failed to save booking window days:', error);
+      showError('Errore nel salvataggio del periodo di prenotazione');
     }
   };
 
@@ -638,6 +682,55 @@ const Settings: React.FC = () => {
               {/* Business Hours Settings */}
               <div className="card mt-6">
                 <BusinessHoursSettings businessHours={businessHours} onChange={handleBusinessHoursChange} />
+              </div>
+
+              {/* Vacation Periods Settings */}
+              <div className="card mt-6">
+                <VacationSettings vacationPeriods={vacationPeriods} onChange={handleVacationPeriodsChange} />
+              </div>
+
+              {/* Booking Window Settings */}
+              <div className="card mt-6">
+                <div className="flex items-center mb-4">
+                  <Clock className="text-primary-600 mr-2" size={24} />
+                  <h2 className="text-xl font-bold text-gray-900">Periodo di Prenotazione</h2>
+                </div>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="bookingWindowDays" className="block text-sm font-semibold text-gray-700 mb-2">
+                      Giorni disponibili per prenotazioni online
+                    </label>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Seleziona quanti giorni in avanti i clienti possono prenotare
+                    </p>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="range"
+                        id="bookingWindowDays"
+                        min="14"
+                        max="180"
+                        step="1"
+                        value={bookingWindowDays}
+                        onChange={(e) => handleBookingWindowDaysChange(Number(e.target.value))}
+                        className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                      />
+                      <div className="w-24 text-center">
+                        <span className="text-2xl font-bold text-primary-600">{bookingWindowDays}</span>
+                        <span className="text-sm text-gray-600 ml-1">giorni</span>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-gray-500 mt-1">
+                      <span>14 giorni</span>
+                      <span>6 mesi</span>
+                    </div>
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        I clienti potranno prenotare fino a {bookingWindowDays} giorni in avanti
+                        ({Math.floor(bookingWindowDays / 30)} {Math.floor(bookingWindowDays / 30) === 1 ? 'mese' : 'mesi'} circa).
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </>
           )}
