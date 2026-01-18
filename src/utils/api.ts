@@ -1,4 +1,4 @@
-import type { Settings, Appointment, CustomerConsents, BusinessHours } from '../types';
+import type { Settings, Appointment, CustomerConsents, BusinessHours, VacationPeriod } from '../types';
 import { safeSessionStorage } from './safeStorage';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
@@ -231,6 +231,132 @@ export const settingsApi = {
     }
 
     return result as { success: boolean; message: string; data: any };
+  },
+
+  async getVacationPeriods(): Promise<VacationPeriod[]> {
+    const response = await fetch(`${API_BASE_URL}/settings/vacation-periods`);
+
+    // Extract and store CSRF token from response headers
+    const csrfToken = response.headers.get('x-csrf-token');
+    if (csrfToken) {
+      storeCsrfToken(csrfToken);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse<{ vacationPeriods: VacationPeriod[] }> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch vacation periods');
+    }
+
+    return result.data.vacationPeriods || [];
+  },
+
+  async updateVacationPeriods(vacationPeriods: VacationPeriod[]): Promise<VacationPeriod[]> {
+    const token = getAuthToken();
+    const csrfToken = getCsrfToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/settings/vacation-periods`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ vacationPeriods }),
+    });
+
+    // Extract and store CSRF token from response headers
+    const newCsrfToken = response.headers.get('x-csrf-token');
+    if (newCsrfToken) {
+      storeCsrfToken(newCsrfToken);
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication required');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse<{ vacationPeriods: VacationPeriod[] }> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to update vacation periods');
+    }
+
+    return result.data.vacationPeriods;
+  },
+
+  async getBookingWindowDays(): Promise<number> {
+    const response = await fetch(`${API_BASE_URL}/settings/booking-window-days`);
+
+    // Extract and store CSRF token from response headers
+    const csrfToken = response.headers.get('x-csrf-token');
+    if (csrfToken) {
+      storeCsrfToken(csrfToken);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse<{ bookingWindowDays: number }> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to fetch booking window days');
+    }
+
+    return result.data.bookingWindowDays || 90; // Default to 90 days
+  },
+
+  async updateBookingWindowDays(days: number): Promise<number> {
+    const token = getAuthToken();
+    const csrfToken = getCsrfToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (csrfToken) {
+      headers['X-CSRF-Token'] = csrfToken;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/settings/booking-window-days`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ bookingWindowDays: days }),
+    });
+
+    // Extract and store CSRF token from response headers
+    const newCsrfToken = response.headers.get('x-csrf-token');
+    if (newCsrfToken) {
+      storeCsrfToken(newCsrfToken);
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Authentication required');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result: ApiResponse<{ bookingWindowDays: number }> = await response.json();
+
+    if (!result.success || !result.data) {
+      throw new Error(result.error || 'Failed to update booking window days');
+    }
+
+    return result.data.bookingWindowDays;
   },
 };
 

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight, Shield } from 'lucide-react';
-import type { Service, ServiceCategory, Staff } from '../types';
-import { format, addDays, startOfWeek, isBefore, startOfDay, parse, getDay } from 'date-fns';
+import { Calendar, Clock, User, Mail, Phone, CheckCircle, ArrowRight, ArrowLeft, Loader, Search, ChevronLeft, ChevronRight, Shield, Plane, AlertCircle } from 'lucide-react';
+import type { Service, ServiceCategory, Staff, VacationPeriod } from '../types';
+import { format, addDays, startOfWeek, isBefore, startOfDay, parse, getDay, isWithinInterval } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { getImageUrl } from '../services/uploadService';
 import { formatCurrency } from '../utils/currency';
@@ -57,6 +57,8 @@ const PublicBooking: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
+  const [vacationPeriods, setVacationPeriods] = useState<VacationPeriod[]>([]);
+  const [bookingWindowDays, setBookingWindowDays] = useState<number>(90);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,9 +93,10 @@ const PublicBooking: React.FC = () => {
     return () => clearTimeout(timeoutId);
   }, [searchQuery]);
 
-  // Carica servizi e categorie all'avvio
+  // Carica servizi, categorie e configurazioni all'avvio
   useEffect(() => {
     loadServices();
+    loadSettings();
   }, []);
 
   // Carica slot disponibili quando servizio e data sono selezionati
@@ -132,6 +135,49 @@ const PublicBooking: React.FC = () => {
     } finally {
       setIsLoadingServices(false);
     }
+  };
+
+  const loadSettings = async () => {
+    try {
+      // Carica vacation periods
+      const vacationResponse = await fetch(`${API_URL}/settings/vacation-periods`);
+      const vacationData = await vacationResponse.json();
+      if (vacationData.success && vacationData.data?.vacationPeriods) {
+        setVacationPeriods(vacationData.data.vacationPeriods);
+      }
+
+      // Carica booking window days
+      const bookingWindowResponse = await fetch(`${API_URL}/settings/booking-window-days`);
+      const bookingWindowData = await bookingWindowResponse.json();
+      if (bookingWindowData.success && bookingWindowData.data?.bookingWindowDays) {
+        setBookingWindowDays(bookingWindowData.data.bookingWindowDays);
+      }
+    } catch (error: any) {
+      console.error('Errore nel caricamento delle impostazioni:', error);
+      // Non mostriamo errore all'utente, usiamo i valori di default
+    }
+  };
+
+  // Helper: verifica se una data è in un periodo di ferie
+  const isDateInVacation = (date: Date): boolean => {
+    return vacationPeriods.some(period => {
+      const start = new Date(period.startDate);
+      const end = new Date(period.endDate);
+      return isWithinInterval(date, { start, end });
+    });
+  };
+
+  // Helper: trova i periodi di ferie attivi (che si sovrappongono con la finestra di prenotazione)
+  const getActiveVacationPeriods = (): VacationPeriod[] => {
+    const today = startOfDay(new Date());
+    const maxDate = addDays(today, bookingWindowDays);
+
+    return vacationPeriods.filter(period => {
+      const start = new Date(period.startDate);
+      const end = new Date(period.endDate);
+      // Verifica se il periodo si sovrappone con la finestra di prenotazione
+      return (start <= maxDate && end >= today);
+    });
   };
 
   const loadAvailableSlots = async (serviceId: string, date: string) => {
@@ -482,7 +528,7 @@ const PublicBooking: React.FC = () => {
   // Step 2: Selezione Data e Ora
   const renderDateTimeSelection = () => {
     const today = startOfDay(new Date());
-    const nextDays = Array.from({ length: 14 }, (_, i) => addDays(today, i));
+    const nextDays = Array.from({ length: bookingWindowDays }, (_, i) => addDays(today, i));
 
     return (
       <div className="space-y-4 sm:space-y-6">
@@ -503,18 +549,26 @@ const PublicBooking: React.FC = () => {
             {nextDays.map(day => {
               const dateStr = format(day, 'yyyy-MM-dd');
               const isWeekend = day.getDay() === 0; // Solo domenica disabilitata
+              const isVacation = isDateInVacation(day); // Verifica se è in periodo di ferie
+              const isDisabled = isWeekend || isVacation;
 
               return (
                 <button
                   key={dateStr}
-                  onClick={() => setBookingData({ ...bookingData, date: dateStr, startTime: '' })}
-                  className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all touch-manipulation min-h-[70px] sm:min-h-[80px] ${
+                  onClick={() => !isDisabled && setBookingData({ ...bookingData, date: dateStr, startTime: '' })}
+                  className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all touch-manipulation min-h-[70px] sm:min-h-[80px] relative ${
                     bookingData.date === dateStr
                       ? 'border-primary-500 bg-primary-50'
                       : 'border-gray-200 hover:border-primary-300 bg-white'
-                  } ${isWeekend ? 'opacity-50' : ''}`}
-                  disabled={isWeekend}
+                  } ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={isDisabled}
+                  title={isVacation ? 'Chiuso per ferie' : isWeekend ? 'Chiuso' : ''}
                 >
+                  {isVacation && (
+                    <div className="absolute top-1 right-1">
+                      <Plane className="w-3 h-3 text-orange-500" />
+                    </div>
+                  )}
                   <div className="text-xs text-gray-600 uppercase">
                     {format(day, 'EEE', { locale: it })}
                   </div>
@@ -876,6 +930,49 @@ const PublicBooking: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-600 mb-2">Sphyra Wellness Lab</h1>
           <p className="text-sm sm:text-base text-gray-600">Prenota il tuo appuntamento online</p>
         </div>
+
+        {/* Vacation Notice */}
+        {getActiveVacationPeriods().length > 0 && (
+          <div className="mb-6 sm:mb-8 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-4 sm:p-6 shadow-md">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Plane className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg sm:text-xl font-bold text-orange-900 mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5" />
+                  Periodo di Chiusura
+                </h3>
+                <div className="space-y-2 text-sm sm:text-base text-orange-800">
+                  {getActiveVacationPeriods().map((period, index) => (
+                    <div key={period.id} className="flex items-start gap-2">
+                      <span className="font-semibold">•</span>
+                      <div>
+                        <div className="font-medium">
+                          Dal {format(new Date(period.startDate), 'dd MMMM yyyy', { locale: it })} al{' '}
+                          {format(new Date(period.endDate), 'dd MMMM yyyy', { locale: it })}
+                        </div>
+                        {period.reason && (
+                          <div className="text-sm text-orange-700 italic">{period.reason}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="mt-3 pt-3 border-t border-orange-200">
+                    <p className="font-medium">
+                      Le prenotazioni online sono disponibili per tutti gli altri giorni.
+                    </p>
+                    <p className="text-sm mt-1">
+                      Seleziona una data disponibile dal calendario qui sotto per prenotare il tuo appuntamento.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Progress Steps */}
         {step < 4 && (
