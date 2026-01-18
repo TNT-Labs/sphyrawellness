@@ -27,13 +27,16 @@ const resetDatabaseSchema = z.object({
  */
 router.get('/vacation-periods', async (req, res, next) => {
   try {
+    logger.info('📖 Reading vacation periods from database');
     const vacationPeriods = await settingRepository.getValue('vacation_periods', []);
+    logger.info('✅ Vacation periods retrieved', { vacationPeriods });
 
     res.json({
       success: true,
       data: { vacationPeriods },
     });
   } catch (error) {
+    logger.error('❌ Error reading vacation periods', { error });
     next(error);
   }
 });
@@ -45,6 +48,8 @@ router.get('/vacation-periods', async (req, res, next) => {
 router.put('/vacation-periods', async (req, res, next) => {
   try {
     const { vacationPeriods } = req.body;
+
+    logger.info('🔄 Updating vacation periods', { vacationPeriods });
 
     if (!Array.isArray(vacationPeriods)) {
       return res.status(400).json({
@@ -82,7 +87,13 @@ router.put('/vacation-periods', async (req, res, next) => {
 
     const userId = (req as any).user?.id;
 
-    await settingRepository.upsert('vacation_periods', vacationPeriods, userId);
+    logger.info('💾 Upserting vacation periods to database', { key: 'vacation_periods', userId });
+    const result = await settingRepository.upsert('vacation_periods', vacationPeriods, userId);
+    logger.info('✅ Vacation periods saved to database', { result });
+
+    // Verify the data was saved
+    const savedData = await settingRepository.getValue('vacation_periods', []);
+    logger.info('🔍 Verification: Retrieved vacation periods from database', { savedData });
 
     res.json({
       success: true,
@@ -90,6 +101,7 @@ router.put('/vacation-periods', async (req, res, next) => {
       data: { vacationPeriods },
     });
   } catch (error) {
+    logger.error('❌ Error saving vacation periods', { error });
     next(error);
   }
 });

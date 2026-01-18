@@ -129,11 +129,13 @@ const Settings: React.FC = () => {
 
   const handleVacationPeriodsChange = async (newPeriods: VacationPeriod[]) => {
     try {
+      console.log('🔄 Saving vacation periods:', newPeriods);
       setVacationPeriods(newPeriods);
-      await settingsApi.updateVacationPeriods(newPeriods);
+      const result = await settingsApi.updateVacationPeriods(newPeriods);
+      console.log('✅ Vacation periods saved successfully:', result);
       showSuccess('Periodi di ferie salvati con successo');
     } catch (error) {
-      console.error('Failed to save vacation periods:', error);
+      console.error('❌ Failed to save vacation periods:', error);
       showError('Errore nel salvataggio dei periodi di ferie');
     }
   };
