@@ -391,6 +391,46 @@ const PublicBooking: React.FC = () => {
           <p className="text-sm sm:text-base text-gray-600">Seleziona il trattamento che desideri prenotare</p>
         </div>
 
+        {/* Vacation Notice */}
+        {getActiveVacationPeriods().length > 0 && (
+          <div className="mb-6 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-4 sm:p-5 shadow-md">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Plane className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base sm:text-lg font-bold text-orange-900 mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  Periodo di Chiusura
+                </h3>
+                <div className="space-y-2 text-xs sm:text-sm text-orange-800">
+                  {getActiveVacationPeriods().map((period) => (
+                    <div key={period.id} className="flex items-start gap-2">
+                      <span className="font-semibold">•</span>
+                      <div>
+                        <div className="font-medium">
+                          Dal {format(new Date(period.startDate), 'dd MMMM yyyy', { locale: it })} al{' '}
+                          {format(new Date(period.endDate), 'dd MMMM yyyy', { locale: it })}
+                        </div>
+                        {period.reason && (
+                          <div className="text-xs text-orange-700 italic mt-0.5">{period.reason}</div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="mt-2 pt-2 border-t border-orange-200">
+                    <p className="font-medium text-xs sm:text-sm">
+                      ℹ️ Le prenotazioni online sono disponibili per tutti gli altri giorni
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Barra di ricerca */}
         <div className="mb-6">
           <div className="relative">
@@ -1045,49 +1085,6 @@ const PublicBooking: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary-600 mb-2">Sphyra Wellness Lab</h1>
           <p className="text-sm sm:text-base text-gray-600">Prenota il tuo appuntamento online</p>
         </div>
-
-        {/* Vacation Notice */}
-        {getActiveVacationPeriods().length > 0 && (
-          <div className="mb-6 sm:mb-8 bg-gradient-to-r from-orange-50 to-yellow-50 border-2 border-orange-200 rounded-xl p-4 sm:p-6 shadow-md">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-100 rounded-full flex items-center justify-center">
-                  <Plane className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg sm:text-xl font-bold text-orange-900 mb-2 flex items-center gap-2">
-                  <AlertCircle className="w-5 h-5" />
-                  Periodo di Chiusura
-                </h3>
-                <div className="space-y-2 text-sm sm:text-base text-orange-800">
-                  {getActiveVacationPeriods().map((period, index) => (
-                    <div key={period.id} className="flex items-start gap-2">
-                      <span className="font-semibold">•</span>
-                      <div>
-                        <div className="font-medium">
-                          Dal {format(new Date(period.startDate), 'dd MMMM yyyy', { locale: it })} al{' '}
-                          {format(new Date(period.endDate), 'dd MMMM yyyy', { locale: it })}
-                        </div>
-                        {period.reason && (
-                          <div className="text-sm text-orange-700 italic">{period.reason}</div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div className="mt-3 pt-3 border-t border-orange-200">
-                    <p className="font-medium">
-                      Le prenotazioni online sono disponibili per tutti gli altri giorni.
-                    </p>
-                    <p className="text-sm mt-1">
-                      Seleziona una data disponibile dal calendario qui sotto per prenotare il tuo appuntamento.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Progress Steps */}
         {step < 4 && (
